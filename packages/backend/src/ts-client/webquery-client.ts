@@ -5,32 +5,47 @@ import { TSApiError } from '../middleware/error-handler.js';
 import { config } from '../config.js';
 
 export class WebQueryClient {
-  private http: AxiosInstance;
-  private agent: http.Agent | https.Agent;
+  private http!: AxiosInstance;
+  private agent!: http.Agent | https.Agent;
 
   constructor(
-    host: string,
-    port: number,
-    apiKey: string,
-    useHttps: boolean = false,
+    private host: string,
+    private port: number,
+    private apiKey: string,
+    private useHttps: boolean = false,
   ) {
-    const protocol = useHttps ? 'https' : 'http';
+    this.createTransport();
+  }
 
-    // Use a single persistent TCP connection (keep-alive) to the TS WebQuery API.
-    // Without this, each concurrent request opens a new TCP connection, and the
-    // TS server registers each one as a separate "serveradmin" query client
-    // (serveradmin, serveradmin1, serveradmin2, ...).
-    this.agent = useHttps
+  // Use a single persistent TCP connection (keep-alive) to the TS WebQuery API.
+  // Without this, each concurrent request opens a new TCP connection, and the
+  // TS server registers each one as a separate "serveradmin" query client
+  // (serveradmin, serveradmin1, serveradmin2, ...).
+  private createTransport(): void {
+    const protocol = this.useHttps ? 'https' : 'http';
+
+    this.agent = this.useHttps
       ? new https.Agent({ keepAlive: true, maxSockets: 1, rejectUnauthorized: !config.tsAllowSelfSigned })
       : new http.Agent({ keepAlive: true, maxSockets: 1 });
 
     this.http = axios.create({
-      baseURL: `${protocol}://${host}:${port}`,
-      headers: { 'x-api-key': apiKey },
+      baseURL: `${protocol}://${this.host}:${this.port}`,
+      headers: { 'x-api-key': this.apiKey },
       timeout: 15000,
-      httpAgent: useHttps ? undefined : this.agent,
-      httpsAgent: useHttps ? this.agent : undefined,
+      httpAgent: this.useHttps ? undefined : this.agent,
+      httpsAgent: this.useHttps ? this.agent : undefined,
     });
+  }
+
+  // A long-lived agent can rot irrecoverably: its single keep-alive socket
+  // may die silently (NAT/conntrack expiry, server-side close without RST)
+  // while Node still considers it established, and with maxSockets: 1 every
+  // request then funnels through the corpse. Rebuild agent + axios so the
+  // retry behaves exactly like a freshly created client.
+  private resetTransport(): void {
+    try { this.agent.destroy(); } catch { }
+    this.createTransport();
+    console.warn(`[WebQuery] Transport reset for ${this.host}:${this.port} after a stale-socket error`);
   }
 
   // The single keep-alive socket can be closed server-side while idle; the
@@ -49,6 +64,7 @@ export class WebQueryClient {
       return await fn();
     } catch (error: any) {
       if (!this.isStaleSocketError(error)) throw error;
+      this.resetTransport();
       return await fn();
     }
   }

@@ -11,24 +11,34 @@ function okResponse(body: any = { ok: 1 }) {
   return { data: { status: { code: 0, message: 'ok' }, body } };
 }
 
+// Pin the mocked transport in place: resetTransport would otherwise replace
+// this.http with a real axios instance mid-test.
+function pinTransport(client: WebQueryClient, impl: any) {
+  (client as any).http = impl;
+  return vi.spyOn(client as any, 'resetTransport').mockImplementation(() => {});
+}
+
 describe('WebQueryClient stale keep-alive retry', () => {
-  it('retries once when the keep-alive socket was closed by the server', async () => {
+  it('resets the transport and retries once when the socket was closed server-side', async () => {
     const client = new WebQueryClient('10.0.0.1', 10080, 'key');
     const get = vi.fn()
       .mockRejectedValueOnce(staleSocketError('socket hang up', 'ECONNRESET'))
       .mockResolvedValueOnce(okResponse());
-    (client as any).http = { get };
+    const reset = pinTransport(client, { get });
 
     const result = await client.execute(1, 'serverinfo');
     expect(result).toEqual({ ok: 1 });
     expect(get).toHaveBeenCalledTimes(2);
+    // The corrupted agent must be rebuilt, not reused: a rotten transport
+    // previously failed every request until the server entry was re-added
+    expect(reset).toHaveBeenCalledTimes(1);
     client.destroy();
   });
 
   it('does not retry more than once', async () => {
     const client = new WebQueryClient('10.0.0.1', 10080, 'key');
     const get = vi.fn().mockRejectedValue(staleSocketError('socket hang up', 'ECONNRESET'));
-    (client as any).http = { get };
+    pinTransport(client, { get });
 
     await expect(client.execute(1, 'serverinfo')).rejects.toThrow(/socket hang up/);
     expect(get).toHaveBeenCalledTimes(2);
@@ -38,20 +48,22 @@ describe('WebQueryClient stale keep-alive retry', () => {
   it('does not retry TS API errors (HTTP response received)', async () => {
     const client = new WebQueryClient('10.0.0.1', 10080, 'key');
     const get = vi.fn().mockResolvedValue({ data: { status: { code: 1538, message: 'invalid parameter' } } });
-    (client as any).http = { get };
+    const reset = pinTransport(client, { get });
 
     await expect(client.execute(1, 'serverinfo')).rejects.toThrow(/invalid parameter/);
     expect(get).toHaveBeenCalledTimes(1);
+    expect(reset).not.toHaveBeenCalled();
     client.destroy();
   });
 
   it('does not retry non-socket network errors', async () => {
     const client = new WebQueryClient('10.0.0.1', 10080, 'key');
     const get = vi.fn().mockRejectedValue(staleSocketError('timeout of 15000ms exceeded', 'ECONNABORTED'));
-    (client as any).http = { get };
+    const reset = pinTransport(client, { get });
 
     await expect(client.execute(1, 'serverinfo')).rejects.toThrow(/timeout/);
     expect(get).toHaveBeenCalledTimes(1);
+    expect(reset).not.toHaveBeenCalled();
     client.destroy();
   });
 
@@ -60,11 +72,24 @@ describe('WebQueryClient stale keep-alive retry', () => {
     const post = vi.fn()
       .mockRejectedValueOnce(staleSocketError('read ECONNRESET', 'ECONNRESET'))
       .mockResolvedValueOnce(okResponse());
-    (client as any).http = { post };
+    const reset = pinTransport(client, { post });
 
     const result = await client.executePost(1, 'clientaddperm', { foo: 'bar' });
     expect(result).toEqual({ ok: 1 });
     expect(post).toHaveBeenCalledTimes(2);
+    expect(reset).toHaveBeenCalledTimes(1);
+    client.destroy();
+  });
+
+  it('resetTransport really replaces the agent and axios instance', () => {
+    const client = new WebQueryClient('10.0.0.1', 10080, 'key');
+    const agentBefore = (client as any).agent;
+    const httpBefore = (client as any).http;
+
+    (client as any).resetTransport();
+
+    expect((client as any).agent).not.toBe(agentBefore);
+    expect((client as any).http).not.toBe(httpBefore);
     client.destroy();
   });
 });
