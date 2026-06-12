@@ -106,7 +106,7 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 ┌──────────────┐     ┌──────────────┐     ┌─────────────────┐
 │   Frontend   │────▶│   Backend    │────▶│  TS Server      │
 │  React SPA   │     │  Express API │     │  WebQuery HTTP  │
-│  nginx :80   │     │  Node :3001  │     │  SSH (events)   │
+│  nginx :8080 │     │  Node :3001  │     │  SSH (events)   │
 └──────────────┘     └──────┬───────┘     └─────────────────┘
                             │
                      ┌──────┴───────┐
@@ -152,6 +152,7 @@ The backend proxies all TeamSpeak API calls. The frontend never has direct acces
 ```env
 JWT_SECRET=your-random-secret-at-least-32-characters
 ENCRYPTION_KEY=another-random-secret-for-credential-encryption
+SIDECAR_TOKEN=a-third-random-secret-for-the-media-sidecar
 ```
 
 Generate secure values:
@@ -159,6 +160,7 @@ Generate secure values:
 ```bash
 echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
 echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
+echo "SIDECAR_TOKEN=$(openssl rand -base64 32)" >> .env
 ```
 
 3. Start the stack:
@@ -171,7 +173,8 @@ docker compose up -d
 5. Log in, then add your TeamSpeak server connection under **Settings → Connections** (host, WebQuery port, API key)
 
 > `JWT_SECRET` is **required** — the backend will refuse to start in production without it.
-> `ENCRYPTION_KEY` is optional but recommended — if not set, `JWT_SECRET` is used as fallback for credential encryption.
+> `ENCRYPTION_KEY` is **required in production** and must differ from `JWT_SECRET`. Values encrypted before this requirement (with the `JWT_SECRET` fallback) are still readable and get re-encrypted on next save.
+> `SIDECAR_TOKEN` authenticates the backend against the media sidecar API. Without it the sidecar logs a warning and accepts unauthenticated requests (acceptable only on an isolated network).
 
 ### Building from Source
 
@@ -180,6 +183,7 @@ git clone https://github.com/clusterzx/ts6-manager.git
 cd ts6-manager
 echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
 echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
+echo "SIDECAR_TOKEN=$(openssl rand -base64 32)" >> .env
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
@@ -188,7 +192,7 @@ docker compose -f docker-compose.local.yml up -d --build
 Use [`docker-compose.coolify.yml`](docker-compose.coolify.yml) as a starting point. Key differences from the standard compose:
 
 - No `ports` section — the reverse proxy handles routing
-- Set the domain on the **frontend** service in Coolify (port 80)
+- Set the domain on the **frontend** service in Coolify (port 8080 — nginx runs unprivileged)
 - If your TS server runs in a separate Docker network, add it as an external network on the backend service:
 
 ```yaml
@@ -231,7 +235,7 @@ The Docker images handle migrations automatically on startup.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `JWT_SECRET` | — | **Required.** Secret for JWT signing. Must be set in production. |
-| `ENCRYPTION_KEY` | — | Optional. Dedicated key for AES-256-GCM credential encryption. Falls back to `JWT_SECRET` if not set. |
+| `ENCRYPTION_KEY` | — | **Required in production**, must differ from `JWT_SECRET`. Dedicated key for AES-256-GCM credential encryption. In development it falls back to `JWT_SECRET`. |
 | `PORT` | `3001` | Backend port |
 | `DATABASE_URL` | `file:./data/ts6webui.db` | SQLite database path |
 | `JWT_ACCESS_EXPIRY` | `15m` | Access token lifetime |
@@ -239,6 +243,8 @@ The Docker images handle migrations automatically on startup.
 | `FRONTEND_URL` | `http://localhost:3000` | CORS origin |
 | `MUSIC_DIR` | `/data/music` | Directory for downloaded music files |
 | `SIDECAR_URL` | — | Optional. Full URL of the WebRTC sidecar service (e.g. `http://ts6-sidecar:9800`). Set in Docker when sidecar runs as a separate container. |
+| `SIDECAR_TOKEN` | — | Shared secret between backend and sidecar. The sidecar rejects API calls without `Authorization: Bearer <token>` when set. |
+| `SIDECAR_LISTEN_ADDR` | `127.0.0.1` | Interface the sidecar API binds to (`0.0.0.0` inside Docker, set by the image). Never publish port 9800. |
 | `YT_COOKIE_FILE` | — | Optional. Path to a Netscape-format cookies.txt file for yt-dlp. Can also be managed via **Settings → YouTube** in the UI. |
 
 ## Environment Variables Sidecar(VideoStreaming)

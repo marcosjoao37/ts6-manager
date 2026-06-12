@@ -18,6 +18,7 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - MUSIC_DIR=/data/music
       - SIDECAR_URL=http://ts6-sidecar:9800
+      - SIDECAR_TOKEN=${SIDECAR_TOKEN:-}
       - SIDECAR_BINARY_PATH=${SIDECAR_BINARY_PATH:-}
     volumes:
       - backend-data:/app/packages/backend/data
@@ -37,8 +38,10 @@ services:
     restart: unless-stopped
     environment:
       - SIDECAR_PORT=9800
-    ports:
-      - "9800:9800"
+      # Reachable by the backend over the internal bridge network only —
+      # do not publish this port: the API has no per-user authentication.
+      - SIDECAR_LISTEN_ADDR=0.0.0.0
+      - SIDECAR_TOKEN=${SIDECAR_TOKEN:-}
     networks:
       - ts6-network
 
@@ -47,7 +50,7 @@ services:
     container_name: ts6-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3000:8080"
     depends_on:
       - backend
     networks:

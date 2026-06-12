@@ -22,6 +22,19 @@ async function main() {
     console.warn('[WARN] JWT_SECRET is using the default development value. Set JWT_SECRET in production!');
   }
 
+  // ENCRYPTION_KEY startup guard: stored credentials (SSH passwords, API keys)
+  // must not be decryptable from a leaked JWT_SECRET alone.
+  if (config.nodeEnv === 'production') {
+    if (!process.env.ENCRYPTION_KEY) {
+      console.error('[FATAL] ENCRYPTION_KEY is not set. Set a dedicated ENCRYPTION_KEY (distinct from JWT_SECRET) before running in production.');
+      process.exit(1);
+    }
+    if (process.env.ENCRYPTION_KEY === config.jwtSecret) {
+      console.error('[FATAL] ENCRYPTION_KEY must be different from JWT_SECRET.');
+      process.exit(1);
+    }
+  }
+
   // Configure yt-dlp cookie file: env var takes priority, then saved file from data dir
   const cookiePath = process.env.YT_COOKIE_FILE;
   const savedCookiePath = path.resolve('data', 'yt-cookies.txt');

@@ -3,7 +3,6 @@ import { config } from '../config.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
-const TAG_LENGTH = 16;
 const SALT = 'ts6-webui-enc-v1';
 
 let encryptionKey: Buffer | null = null;
@@ -13,6 +12,11 @@ function getKey(): Buffer {
 
   const source = process.env.ENCRYPTION_KEY || config.jwtSecret;
   if (!process.env.ENCRYPTION_KEY) {
+    // The startup guard in index.ts already aborts in production; this
+    // fallback only remains for development convenience.
+    if (config.nodeEnv === 'production') {
+      throw new Error('ENCRYPTION_KEY is required in production');
+    }
     console.warn('[WARN] ENCRYPTION_KEY not set. Using JWT_SECRET as fallback for field encryption. Set ENCRYPTION_KEY in production!');
   }
 
@@ -40,6 +44,8 @@ export function encrypt(plaintext: string): string {
 /**
  * Decrypt a string encrypted by `encrypt()`.
  * If the string doesn't start with `enc:`, returns it as-is (plaintext migration).
+ * Values encrypted before ENCRYPTION_KEY existed were keyed from JWT_SECRET;
+ * those still decrypt via the legacy key and are re-encrypted on next save.
  */
 export function decrypt(encrypted: string): string {
   // Support plaintext values (migration: not yet encrypted)
@@ -49,14 +55,24 @@ export function decrypt(encrypted: string): string {
   if (parts.length !== 4) throw new Error('Invalid encrypted format');
 
   const [, ivHex, tagHex, ciphertext] = parts;
-  const key = getKey();
   const iv = Buffer.from(ivHex, 'hex');
   const tag = Buffer.from(tagHex, 'hex');
 
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(tag);
+  const tryKey = (key: Buffer): string => {
+    const decipher = createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  };
 
-  let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+  try {
+    return tryKey(getKey());
+  } catch (err) {
+    if (process.env.ENCRYPTION_KEY) {
+      // Legacy fallback: value was encrypted with the JWT_SECRET-derived key
+      return tryKey(scryptSync(config.jwtSecret, SALT, 32));
+    }
+    throw err;
+  }
 }

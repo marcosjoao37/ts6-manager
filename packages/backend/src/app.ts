@@ -33,6 +33,7 @@ import { widgetRoutes } from './routes/widget.routes.js';
 import { setupRoutes } from './routes/setup.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
 import { requireServerAccess } from './middleware/server-access.js';
+import { requireIntParams } from './middleware/validate-params.js';
 
 export function createApp(): Express {
   const app = express();
@@ -60,6 +61,26 @@ export function createApp(): Express {
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/refresh', authLimiter);
 
+  // Global API rate limit (auth endpoints above keep their stricter limit)
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please slow down' },
+  });
+  app.use('/api', apiLimiter);
+
+  // Stricter limit on unauthenticated widget routes (slows token brute force)
+  const widgetLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please slow down' },
+  });
+  app.use('/api/widget', widgetLimiter);
+
   // Public routes
   app.use('/api/setup', setupRoutes);
   app.use('/api/auth', authRoutes);
@@ -79,7 +100,8 @@ export function createApp(): Express {
   app.use('/api/servers', serverRoutes);
 
   // H9: Server access control on all :configId routes
-  const serverAccess = requireServerAccess();
+  // (NaN guard first: parseInt would otherwise forward NaN to Prisma/ServerQuery)
+  const serverAccess = [requireIntParams('configId', 'sid'), requireServerAccess()];
   app.use('/api/servers/:configId/virtual-servers', serverAccess, virtualServerRoutes);
   app.use('/api/servers/:configId/vs/:sid/channels', serverAccess, channelRoutes);
   app.use('/api/servers/:configId/vs/:sid/clients', serverAccess, clientRoutes);

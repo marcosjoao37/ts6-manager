@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -1016,12 +1019,50 @@ func (s *Sidecar) Stop() {
 	s.peersLock.Unlock()
 }
 
+var peerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+var bitrateRe = regexp.MustCompile(`^[0-9]{1,6}[kKmM]?$`)
+
+// validSource accepts an empty source (test pattern), an http(s) URL, or a
+// local path. Anything starting with '-' is rejected so a malicious source
+// cannot be parsed as an extra FFmpeg flag.
+func validSource(source string) bool {
+	if source == "" {
+		return true
+	}
+	if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+		_, err := url.Parse(source)
+		return err == nil
+	}
+	return !strings.HasPrefix(source, "-")
+}
+
+// secureAPI caps request bodies and, when a token is configured, requires
+// "Authorization: Bearer <token>" on every endpoint except /health.
+func secureAPI(token string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		if token != "" && r.URL.Path != "/health" {
+			expected := "Bearer " + token
+			if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte(expected)) != 1 {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	port := 9800
 	if p := os.Getenv("SIDECAR_PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
 			port = v
 		}
+	}
+	listenAddr := envOrDefault("SIDECAR_LISTEN_ADDR", "127.0.0.1")
+	apiToken := os.Getenv("SIDECAR_TOKEN")
+	if apiToken == "" {
+		log.Println("[WARN] SIDECAR_TOKEN is not set — the HTTP API accepts unauthenticated requests. Set a token shared with the backend.")
 	}
 
 	sidecar := NewSidecar()
@@ -1037,6 +1078,10 @@ func main() {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), 400)
+			return
+		}
+		if !peerIDRe.MatchString(req.ID) {
+			http.Error(w, "invalid peer id", 400)
 			return
 		}
 		debugf("[API] Peer create requested: %s", req.ID)
@@ -1115,7 +1160,19 @@ func main() {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		log.Printf("[API] Setting source: %s (%dx%d @ %dfps)", req.Source, req.Width, req.Height, req.Framerate, req.Bitrate)
+		if !validSource(req.Source) {
+			http.Error(w, "invalid source", 400)
+			return
+		}
+		if req.Bitrate != "" && !bitrateRe.MatchString(req.Bitrate) {
+			http.Error(w, "invalid bitrate", 400)
+			return
+		}
+		if req.Width > 7680 || req.Height > 4320 || req.Framerate > 240 {
+			http.Error(w, "invalid dimensions", 400)
+			return
+		}
+		log.Printf("[API] Setting source: %s (%dx%d @ %dfps, bitrate=%s)", req.Source, req.Width, req.Height, req.Framerate, req.Bitrate)
 		sidecar.StartFFmpeg(req.Source, req.Width, req.Height, req.Framerate, req.Bitrate)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
@@ -1152,8 +1209,8 @@ func main() {
 		os.Exit(0)
 	}()
 
-	log.Printf("[Sidecar] HTTP API listening on :%d", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
+	log.Printf("[Sidecar] HTTP API listening on %s:%d", listenAddr, port)
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", listenAddr, port), secureAPI(apiToken, mux)); err != nil {
 		log.Fatalf("HTTP server error: %v", err)
 	}
 }
