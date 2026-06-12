@@ -48,7 +48,11 @@ export function useAddSongToPlaylist() {
   return useMutation({
     mutationFn: ({ playlistId, songId }: { playlistId: number; songId: number }) =>
       playlistsApi.addSong(playlistId, songId),
-    onSuccess: (_, { playlistId }) => qc.invalidateQueries({ queryKey: ['playlist', playlistId] }),
+    onSuccess: (_, { playlistId }) => {
+      qc.invalidateQueries({ queryKey: ['playlist', playlistId] });
+      // The list carries songCount — keep it in sync
+      qc.invalidateQueries({ queryKey: ['playlists'] });
+    },
   });
 }
 
@@ -57,7 +61,10 @@ export function useRemoveSongFromPlaylist() {
   return useMutation({
     mutationFn: ({ playlistId, songId }: { playlistId: number; songId: number }) =>
       playlistsApi.removeSong(playlistId, songId),
-    onSuccess: (_, { playlistId }) => qc.invalidateQueries({ queryKey: ['playlist', playlistId] }),
+    onSuccess: (_, { playlistId }) => {
+      qc.invalidateQueries({ queryKey: ['playlist', playlistId] });
+      qc.invalidateQueries({ queryKey: ['playlists'] });
+    },
   });
 }
 

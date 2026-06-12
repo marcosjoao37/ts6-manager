@@ -162,8 +162,8 @@ export function useEnqueue() {
 export function useLoadPlaylist() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ botId, playlistId, clearFirst }: { botId: number; playlistId: number; clearFirst?: boolean }) =>
-      musicBotsApi.loadPlaylist(botId, playlistId, clearFirst),
+    mutationFn: ({ botId, playlistId, clearFirst, autoplay }: { botId: number; playlistId: number; clearFirst?: boolean; autoplay?: boolean }) =>
+      musicBotsApi.loadPlaylist(botId, playlistId, clearFirst, autoplay),
     onSuccess: (_, { botId }) => qc.invalidateQueries({ queryKey: ['music-bot-state', botId] }),
   });
 }

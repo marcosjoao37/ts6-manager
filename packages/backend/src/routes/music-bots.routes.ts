@@ -465,7 +465,7 @@ musicBotRoutes.post('/:id/queue/playlist', async (req: Request, res: Response, n
     const bot = manager.getBot(parseInt(req.params.id as string));
     if (!bot) throw new AppError(404, 'Music bot not found');
 
-    const { playlistId, clearFirst } = req.body;
+    const { playlistId, clearFirst, autoplay } = req.body;
     const playlist = await prisma.playlist.findUnique({
       where: { id: parseInt(playlistId) },
       include: { songs: { include: { song: true }, orderBy: { position: 'asc' } } },
@@ -485,7 +485,18 @@ musicBotRoutes.post('/:id/queue/playlist', async (req: Request, res: Response, n
     }));
 
     bot.queue.addMany(items);
-    res.json({ success: true, queueLength: bot.queue.length });
+
+    // "Load & Play": start the first loaded track (replaces any current playback)
+    let started = false;
+    if (autoplay) {
+      const first = bot.queue.next();
+      if (first) {
+        await bot.play(first);
+        started = true;
+      }
+    }
+
+    res.json({ success: true, queueLength: bot.queue.length, started });
   } catch (err) { next(err); }
 });
 

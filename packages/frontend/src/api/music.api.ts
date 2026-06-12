@@ -29,8 +29,8 @@ export const musicBotsApi = {
   // Queue
   queue: (id: number) => api.get(`/music-bots/${id}/queue`).then((r) => r.data),
   enqueue: (id: number, songId: number) => api.post(`/music-bots/${id}/queue`, { songId }).then((r) => r.data),
-  loadPlaylist: (id: number, playlistId: number, clearFirst?: boolean) =>
-    api.post(`/music-bots/${id}/queue/playlist`, { playlistId, clearFirst }).then((r) => r.data),
+  loadPlaylist: (id: number, playlistId: number, clearFirst?: boolean, autoplay?: boolean) =>
+    api.post(`/music-bots/${id}/queue/playlist`, { playlistId, clearFirst, autoplay }).then((r) => r.data),
   removeFromQueue: (id: number, index: number) => api.delete(`/music-bots/${id}/queue/${index}`).then((r) => r.data),
   clearQueue: (id: number) => api.delete(`/music-bots/${id}/queue`).then((r) => r.data),
   shuffle: (id: number, enabled: boolean) => api.post(`/music-bots/${id}/queue/shuffle`, { enabled }).then((r) => r.data),

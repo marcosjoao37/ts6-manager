@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { musicRequestsApi } from '@/api/music-requests.api';
 import { musicBotsApi } from '@/api/music.api';
 import {
@@ -350,6 +350,16 @@ function PlaySongDialog({ botId, onClose, onPlaySong, onPlayUrl, onEnqueue, onLo
   const configId = serverId || selectedConfigId;
   const { data: songs } = useSongs(configId);
   const { data: playlists } = usePlaylists();
+  const qc = useQueryClient();
+
+  // The dialog stays mounted (only `open` toggles), so cached lists never
+  // refetch on open — refresh songCount and songs when it becomes visible
+  useEffect(() => {
+    if (botId !== null) {
+      qc.invalidateQueries({ queryKey: ['playlists'] });
+      qc.invalidateQueries({ queryKey: ['songs'] });
+    }
+  }, [botId, qc]);
   const { data: history = [] } = useQuery({
     queryKey: ['music-requests', configId],
     queryFn: () => musicRequestsApi.list(configId!),
@@ -696,8 +706,8 @@ function BotsTab() {
         }}
         onLoadPlaylist={(playlistId) => {
           if (showPlayDialog) {
-            loadPlaylist.mutate({ botId: showPlayDialog, playlistId, clearFirst: true }, {
-              onSuccess: () => { toast.success('Playlist loaded'); setShowPlayDialog(null); },
+            loadPlaylist.mutate({ botId: showPlayDialog, playlistId, clearFirst: true, autoplay: true }, {
+              onSuccess: () => { toast.success('Playlist loaded, playing'); setShowPlayDialog(null); },
               onError: () => toast.error('Failed to load playlist'),
             });
           }
