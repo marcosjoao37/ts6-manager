@@ -10,13 +10,13 @@ jobs:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
@@ -52,9 +52,9 @@ jobs:
       run:
         working-directory: packages/sidecar
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: packages/sidecar/go.mod
           cache-dependency-path: packages/sidecar/go.sum
@@ -72,7 +72,7 @@ jobs:
       matrix:
         dockerfile: [Dockerfile.backend, Dockerfile.frontend, Dockerfile.sidecar]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: docker/setup-buildx-action@v3
 
