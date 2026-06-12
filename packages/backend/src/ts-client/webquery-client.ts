@@ -33,15 +33,35 @@ export class WebQueryClient {
     });
   }
 
+  // The single keep-alive socket can be closed server-side while idle; the
+  // next request then fails instantly with ECONNRESET/"socket hang up". The
+  // errored socket is discarded from the pool, so one retry on a fresh
+  // connection is safe — but only for errors where no response was received.
+  private isStaleSocketError(error: any): boolean {
+    if (error.response) return false;
+    const code = error.code || '';
+    const msg = error.message || '';
+    return code === 'ECONNRESET' || code === 'EPIPE' || msg.includes('socket hang up');
+  }
+
+  private async withStaleSocketRetry<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (error: any) {
+      if (!this.isStaleSocketError(error)) throw error;
+      return await fn();
+    }
+  }
+
   async execute(sid: number, command: string, params?: Record<string, any>): Promise<any> {
     try {
       // WebQuery URL pattern: /{sid}/{command}
       // For instance-level commands (sid=0): /{command}
       const path = sid > 0 ? `/${sid}/${command}` : `/${command}`;
 
-      const response = await this.http.get(path, {
-        params: this.cleanParams(params),
-      });
+      const response = await this.withStaleSocketRetry(() =>
+        this.http.get(path, { params: this.cleanParams(params) })
+      );
 
       const data = response.data;
 
@@ -65,9 +85,9 @@ export class WebQueryClient {
   async executePost(sid: number, command: string, params?: Record<string, any>): Promise<any> {
     try {
       const path = sid > 0 ? `/${sid}/${command}` : `/${command}`;
-      const response = await this.http.post(path, null, {
-        params: this.cleanParams(params),
-      });
+      const response = await this.withStaleSocketRetry(() =>
+        this.http.post(path, null, { params: this.cleanParams(params) })
+      );
 
       const data = response.data;
       if (data.status && data.status.code !== 0) {
