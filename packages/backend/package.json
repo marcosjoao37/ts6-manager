@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@discordjs/opus": "^0.10.0",
     "@prisma/client": "^6.19.3",
     "@resvg/resvg-js": "^2.6.2",
     "@ts6/common": "workspace:*",

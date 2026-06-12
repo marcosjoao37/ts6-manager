@@ -87,11 +87,13 @@ export class VoiceBot extends EventEmitter {
   private playbackTimer: ReturnType<typeof setTimeout> | null = null;
   private _nowPlaying: QueueItem | null = null;
 
-  // PCM-level playback state
-  private pcmFrames: Buffer[] = [];
-  private frameIndex: number = 0;
-  private pausedAtFrame: number = 0;
-  private loopEpoch: number = 0;
+  // File playback state (streamed: ffmpeg decodes as we consume)
+  private loopEpoch: number = 0;       // tick-loop lifetime (bumped by clearTimer)
+  private streamEpoch: number = 0;     // ffmpeg process lifetime (bumped when a stream is replaced)
+  private fileStdout: import('stream').Readable | null = null;
+  private fileDecodeDone: boolean = false;
+  private framesSent: number = 0;
+  private seekOffsetSec: number = 0;
 
   private lastVoiceSendAt = 0;       // performance.now() timestamp
   private lastVoiceLogAt = 0;        // rate limit logs
@@ -205,10 +207,9 @@ export class VoiceBot extends EventEmitter {
         duration: 0, // Live stream — no known duration
       };
     }
-    if (this.pcmFrames.length === 0) return null;
     return {
-      position: (this.frameIndex * FRAME_MS) / 1000,
-      duration: (this.pcmFrames.length * FRAME_MS) / 1000,
+      position: this.seekOffsetSec + (this.framesSent * FRAME_MS) / 1000,
+      duration: this._nowPlaying.duration ?? 0,
     };
   }
 
@@ -374,16 +375,66 @@ export class VoiceBot extends EventEmitter {
     this.updateNowPlayingNickname(item.title);
 
     try {
-      const pcmData = await this.pipeline.toPcm(item.filePath);
-      this.pcmFrames = this.pipeline.splitFrames(pcmData);
-      this.frameIndex = 0;
-      this.startPlaybackLoop();
+      // Streamed playback: ffmpeg decodes the file as we consume it.
+      // First audio in ~200ms and constant memory, instead of decoding the
+      // entire track to PCM in RAM up front.
+      this.startFileStream(item, 0);
+      this.startFilePlaybackLoop(item);
     } catch (err) {
       this._status = 'connected';
       this._nowPlaying = null;
       this.emit('statusChange', this._status);
       throw err;
     }
+  }
+
+  /** Spawn the decode ffmpeg for a file at the given offset and wire its events. */
+  private startFileStream(item: QueueItem, startSeconds: number): void {
+    const stream = this.pipeline.toPcmFileStream(item.filePath, startSeconds);
+    const sEpoch = ++this.streamEpoch;
+
+    this.streamKill = stream.kill;
+    this.fileStdout = stream.stdout;
+    this.streamChunks = [];
+    this.streamChunksSize = 0;
+    this.fileDecodeDone = false;
+    this.framesSent = 0;
+    this.seekOffsetSec = startSeconds;
+
+    stream.stdout.on('data', (chunk: Buffer) => {
+      if (sEpoch !== this.streamEpoch) return;
+      this.streamChunks.push(chunk);
+      this.streamChunksSize += chunk.length;
+    });
+
+    stream.process.on('close', (code) => {
+      if (sEpoch !== this.streamEpoch) return;
+      // The tick loop drains the remaining buffer, then ends the track
+      this.fileDecodeDone = true;
+      if (code !== 0 && code !== null) {
+        console.error(`[VoiceBot] Decode ffmpeg exited with code ${code} for ${item.filePath}`);
+      }
+    });
+
+    stream.process.on('error', (err) => {
+      if (sEpoch !== this.streamEpoch) return;
+      this.fileDecodeDone = true;
+      this.emit('error', err);
+    });
+  }
+
+  /** Drain whatever PCM remains (< one frame) into a zero-padded final frame. */
+  private takeRemainderPadded(): Buffer | null {
+    if (this.streamChunksSize === 0) return null;
+    const out = Buffer.alloc(BYTES_PER_FRAME, 0);
+    let offset = 0;
+    while (this.streamChunks.length > 0) {
+      const head = this.streamChunks.shift()!;
+      head.copy(out, offset);
+      offset += head.length;
+    }
+    this.streamChunksSize = 0;
+    return out;
   }
 
   async playStream(item: QueueItem): Promise<void> {
@@ -495,8 +546,10 @@ export class VoiceBot extends EventEmitter {
 
   pause(): void {
     if (this._status !== 'playing') return;
-    this.pausedAtFrame = this.frameIndex;
+    if (this._isStreaming) return; // live radio cannot pause
     this.clearTimer();
+    // Pipe backpressure idles the decode ffmpeg at 0 CPU while paused
+    this.fileStdout?.pause();
     this.client.sendVoiceStop();
     this._status = 'paused';
     this.emit('statusChange', this._status);
@@ -504,28 +557,35 @@ export class VoiceBot extends EventEmitter {
 
   resume(): void {
     if (this._status !== 'paused') return;
-    this.frameIndex = this.pausedAtFrame;
+    const item = this._nowPlaying;
+    if (!item) return;
     this._status = 'playing';
     this.emit('statusChange', this._status);
-    this.startPlaybackLoop();
+    this.fileStdout?.resume();
+    this.startFilePlaybackLoop(item);
   }
 
   seek(seconds: number): void {
     if (this._status !== 'playing' && this._status !== 'paused') return;
-    if (this.pcmFrames.length === 0) return;
+    if (this._isStreaming) return; // live radio cannot seek
+    const item = this._nowPlaying;
+    if (!item) return;
 
-    const targetFrame = Math.max(0, Math.min(
-      Math.floor(seconds / (FRAME_MS / 1000)),
-      this.pcmFrames.length - 1
-    ));
+    const target = Math.max(0, item.duration ? Math.min(seconds, Math.max(0, item.duration - 1)) : seconds);
+
+    // Replace the decode ffmpeg with one starting at the target position
+    this.clearTimer();
+    if (this.streamKill) {
+      this.streamKill();
+      this.streamKill = null;
+    }
+    this.startFileStream(item, target);
 
     if (this._status === 'playing') {
-      this.clearTimer();
-      this.frameIndex = targetFrame;
-      this.startPlaybackLoop();
+      this.startFilePlaybackLoop(item);
     } else {
-      this.frameIndex = targetFrame;
-      this.pausedAtFrame = targetFrame;
+      // Stay paused: keep the new stream idle until resume()
+      this.fileStdout?.pause();
     }
   }
 
@@ -634,11 +694,12 @@ export class VoiceBot extends EventEmitter {
     this.client.sendVoice(opusFrame);
   }
 
-  private startPlaybackLoop(): void {
+  private startFilePlaybackLoop(item: QueueItem): void {
     const epoch = ++this.loopEpoch;
 
-    // "Audio clock": next frame is due at this timestamp
-    let nextDue = performance.now();
+    // "Audio clock": next frame is due at this timestamp (small prebuffer
+    // so the decode ffmpeg gets a head start)
+    let nextDue = performance.now() + 200;
 
     const tick = () => {
       if (epoch !== this.loopEpoch) return;
@@ -647,52 +708,34 @@ export class VoiceBot extends EventEmitter {
 
       // If we're early, wait until the next due time
       if (now < nextDue) {
-        const delay = Math.max(1, nextDue - now);
-        this.playbackTimer = setTimeout(tick, delay);
+        this.playbackTimer = setTimeout(tick, Math.max(1, nextDue - now));
         return;
       }
 
-      // If we're behind, skip frames (never burst-send)
-      const lagMs = now - nextDue;
-      if (lagMs >= FRAME_MS) {
-        const skipFrames = Math.floor(lagMs / FRAME_MS);
-
-        // skip frames in data to catch up without bursts
-        this.frameIndex = Math.min(this.frameIndex + skipFrames, this.pcmFrames.length);
-
-        // IMPORTANT: resync clock so next send is ~20ms in the future (prevents immediate burst)
+      // If we're behind, resync clock (never burst-send)
+      if (now - nextDue >= FRAME_MS) {
         nextDue = now + FRAME_MS;
       }
 
       // Send exactly ONE frame (if available)
-      if (this.frameIndex < this.pcmFrames.length) {
-        const opusFrame = this.pipeline.encodeFrame(this.pcmFrames[this.frameIndex], this.config.volume);
+      const frame = this.takeFromStreamChunks(BYTES_PER_FRAME);
+      if (frame) {
+        const opusFrame = this.pipeline.encodeFrame(frame, this.config.volume);
         this.sendVoiceFrame(opusFrame);
-        this.frameIndex++;
-      }
-
-      // End-of-track handling
-      if (this.frameIndex >= this.pcmFrames.length) {
-        this.client.sendVoiceStop();
-        this.clearTimer();
-
-        const finished = this._nowPlaying;
-        this._nowPlaying = null;
-        this._status = 'connected';
-        this.emit('statusChange', this._status);
-        this.emit('trackEnd', finished);
-
-        // Track repeat
-        if (this.queue.repeat === 'track' && finished) {
-          this.play(finished).catch((err) => this.emit('error', err));
-          return;
+        this.framesSent++;
+      } else if (this.fileDecodeDone) {
+        // Decode finished and buffer exhausted: flush the final partial
+        // frame (zero-padded), then end the track
+        const last = this.takeRemainderPadded();
+        if (last) {
+          const opusFrame = this.pipeline.encodeFrame(last, this.config.volume);
+          this.sendVoiceFrame(opusFrame);
+          this.framesSent++;
         }
-
-        const next = this.queue.next();
-        if (next) this.play(next).catch((err) => this.emit('error', err));
-        else this.resetNickname();
+        this.endOfTrack(item);
         return;
       }
+      // else: decode momentarily slower than playback — silent gap, keep pacing
 
       // Schedule next tick for the next 20ms slot
       nextDue += FRAME_MS;
@@ -714,6 +757,38 @@ export class VoiceBot extends EventEmitter {
     this.playbackTimer = setTimeout(tick, 0);
   }
 
+  private endOfTrack(finishedItem: QueueItem): void {
+    this.client.sendVoiceStop();
+    this.clearTimer();
+
+    // Release the decode process and its buffers
+    this.streamEpoch++;
+    if (this.streamKill) {
+      this.streamKill();
+      this.streamKill = null;
+    }
+    this.fileStdout = null;
+    this.fileDecodeDone = false;
+    this.streamChunks = [];
+    this.streamChunksSize = 0;
+
+    const finished = this._nowPlaying ?? finishedItem;
+    this._nowPlaying = null;
+    this._status = 'connected';
+    this.emit('statusChange', this._status);
+    this.emit('trackEnd', finished);
+
+    // Track repeat
+    if (this.queue.repeat === 'track' && finished) {
+      this.play(finished).catch((err) => this.emit('error', err));
+      return;
+    }
+
+    const next = this.queue.next();
+    if (next) this.play(next).catch((err) => this.emit('error', err));
+    else this.resetNickname();
+  }
+
   private clearTimer(): void {
     this.loopEpoch++;
     if (this.playbackTimer) {
@@ -724,11 +799,9 @@ export class VoiceBot extends EventEmitter {
 
   private stopPlayback(): void {
     this.clearTimer();
-    this.pcmFrames = [];
-    this.frameIndex = 0;
-    this.pausedAtFrame = 0;
+    this.streamEpoch++; // orphan any pending stdout/close handlers
 
-    // Kill streaming FFmpeg if active
+    // Kill decode/streaming FFmpeg if active
     if (this.streamKill) {
       this.streamKill();
       this.streamKill = null;
@@ -736,6 +809,10 @@ export class VoiceBot extends EventEmitter {
     this._isStreaming = false;
     this.streamChunks = [];
     this.streamChunksSize = 0;
+    this.fileStdout = null;
+    this.fileDecodeDone = false;
+    this.framesSent = 0;
+    this.seekOffsetSec = 0;
   }
 
   // ─── Video Streaming ────────────────────────────────────────

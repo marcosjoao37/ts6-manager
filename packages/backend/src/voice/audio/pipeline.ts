@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "child_process";
 import type { Readable } from "stream";
+import { createRequire } from "module";
 import OpusScript from "opusscript";
 import { validateUrl } from "../../utils/url-validator.js";
 
@@ -10,54 +11,60 @@ export const BYTES_PER_FRAME = FRAME_SIZE * CHANNELS * 2; // 16-bit = 2 bytes pe
 export const FRAME_MS = 20;
 const BITRATE = 96000;
 
+// Both encoders wrap libopus, so the CTL constants are shared
+const OPUS_SET_VBR = 4006;
+const OPUS_SET_VBR_CONSTRAINT = 4020;
+const OPUS_SET_SIGNAL = 4024;
+const OPUS_SIGNAL_MUSIC = 3002;
+
+// Native libopus bindings encode ~5-10x faster than the opusscript WASM
+// build — that matters at one frame every 20ms on a small VM. Optional:
+// platforms without a prebuild fall back to WASM below.
+const require = createRequire(import.meta.url);
+let NativeOpusEncoder: any = null;
+try {
+  NativeOpusEncoder = require("@discordjs/opus").OpusEncoder;
+} catch {
+  NativeOpusEncoder = null;
+}
+
 export class AudioPipeline {
-  private encoder: OpusScript;
+  private encodeFn: (pcm: Buffer) => Buffer;
   private opusPeak = 0;
   private lastOpusPeakLog = 0;
 
   constructor() {
-    this.encoder = new OpusScript(SAMPLE_RATE, CHANNELS, OpusScript.Application.AUDIO);
-    this.encoder.setBitrate(BITRATE);
-    // After this.encoder.setBitrate(BITRATE);
-
-    const OPUS_SET_VBR = 4006;
-    const OPUS_SET_VBR_CONSTRAINT = 4020;
-    const OPUS_SET_SIGNAL = 4024;
-
-    const OPUS_SIGNAL_MUSIC = 3002;
-
-    // Hard CBR (reduces spikes)
-    this.encoder.encoderCTL(OPUS_SET_VBR, 0);
-
-    // (Optional; CBR ignores it, but harmless)
-    this.encoder.encoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
-
-    // Tell encoder it’s music (helps tuning)
-    this.encoder.encoderCTL(OPUS_SET_SIGNAL, OPUS_SIGNAL_MUSIC);
+    this.encodeFn = this.createEncoder();
   }
 
-  /**
-   * Convert audio file to raw PCM (48kHz, mono, s16le) at full volume.
-   */
-  toPcm(filePath: string): Promise<Buffer> {
-    return this.ffmpegToPcm(filePath);
-  }
-
-  /**
-   * Split raw PCM buffer into 960-sample frames.
-   */
-  splitFrames(pcmData: Buffer): Buffer[] {
-    const frames: Buffer[] = [];
-    for (let offset = 0; offset < pcmData.length; offset += BYTES_PER_FRAME) {
-      let frame = pcmData.subarray(offset, offset + BYTES_PER_FRAME);
-      if (frame.length < BYTES_PER_FRAME) {
-        const padded = Buffer.alloc(BYTES_PER_FRAME, 0);
-        frame.copy(padded);
-        frame = padded;
+  private createEncoder(): (pcm: Buffer) => Buffer {
+    if (NativeOpusEncoder) {
+      try {
+        const encoder = new NativeOpusEncoder(SAMPLE_RATE, CHANNELS);
+        encoder.setBitrate(BITRATE);
+        // Hard CBR (reduces spikes); constraint harmless under CBR
+        encoder.applyEncoderCTL(OPUS_SET_VBR, 0);
+        encoder.applyEncoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
+        // Tell encoder it's music (helps tuning)
+        encoder.applyEncoderCTL(OPUS_SET_SIGNAL, OPUS_SIGNAL_MUSIC);
+        console.log("[audio] Using native opus encoder (@discordjs/opus)");
+        return (pcm) => encoder.encode(pcm);
+      } catch (err: any) {
+        console.warn(`[audio] Native opus encoder failed to initialize (${err.message}), falling back to WASM`);
       }
-      frames.push(frame);
+    } else {
+      console.warn("[audio] @discordjs/opus unavailable, using opusscript (WASM) — higher CPU usage");
     }
-    return frames;
+
+    const encoder = new OpusScript(SAMPLE_RATE, CHANNELS, OpusScript.Application.AUDIO);
+    encoder.setBitrate(BITRATE);
+    encoder.encoderCTL(OPUS_SET_VBR, 0);
+    encoder.encoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
+    encoder.encoderCTL(OPUS_SET_SIGNAL, OPUS_SIGNAL_MUSIC);
+    return (pcm) => {
+      const encoded = encoder.encode(pcm, FRAME_SIZE);
+      return Buffer.isBuffer(encoded) ? encoded : Buffer.from(encoded);
+    };
   }
 
   /**
@@ -75,8 +82,7 @@ export class AudioPipeline {
       }
       input = scaled;
     }
-    const encoded = this.encoder.encode(input, FRAME_SIZE);
-    const opusFrame = Buffer.isBuffer(encoded) ? encoded : Buffer.from(encoded);
+    const opusFrame = this.encodeFn(input);
 
     this.opusPeak = Math.max(this.opusPeak, opusFrame.length);
 
@@ -88,6 +94,34 @@ export class AudioPipeline {
     //}
 
     return opusFrame;
+  }
+
+  /**
+   * Stream a local audio file to raw PCM, starting at an optional offset.
+   * Returns a readable stdout stream + kill function. Constant memory:
+   * the file is decoded as it is consumed (pipe backpressure).
+   */
+  toPcmFileStream(filePath: string, startSeconds: number = 0): { stdout: Readable; process: ChildProcess; kill: () => void } {
+    const args = [
+      // -ss before -i: ffmpeg seeks in the container without decoding what precedes
+      ...(startSeconds > 0 ? ["-ss", String(startSeconds)] : []),
+      "-i", filePath,
+      "-f", "s16le",
+      "-acodec", "pcm_s16le",
+      "-ar", String(SAMPLE_RATE),
+      "-ac", String(CHANNELS),
+      "-loglevel", "error",
+      "pipe:1",
+    ];
+
+    const ffmpeg = spawn("ffmpeg", args, { shell: false });
+    return {
+      stdout: ffmpeg.stdout,
+      process: ffmpeg,
+      kill: () => {
+        try { ffmpeg.kill("SIGKILL"); } catch { }
+      },
+    };
   }
 
   /**
@@ -124,38 +158,4 @@ export class AudioPipeline {
     };
   }
 
-  private ffmpegToPcm(input: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const args = [
-        "-i", input,
-        "-f", "s16le",
-        "-acodec", "pcm_s16le",
-        "-ar", String(SAMPLE_RATE),
-        "-ac", String(CHANNELS),
-        "-loglevel", "error",
-        "pipe:1",
-      ];
-
-      const ffmpeg = spawn("ffmpeg", args, { shell: false });
-      const chunks: Buffer[] = [];
-
-      ffmpeg.stdout.on("data", (chunk: Buffer) => {
-        chunks.push(chunk);
-      });
-
-      ffmpeg.stderr.on("data", () => { });
-
-      ffmpeg.on("close", (code) => {
-        if (code === 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          reject(new Error(`FFmpeg exited with code ${code}`));
-        }
-      });
-
-      ffmpeg.on("error", (err) => {
-        reject(new Error(`FFmpeg not found or failed to start: ${err.message}`));
-      });
-    });
-  }
 }

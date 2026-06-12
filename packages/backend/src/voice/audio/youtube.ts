@@ -49,7 +49,13 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
  */
 function runYtDlp(args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn("yt-dlp", args, { shell: false });
+    // Lowest CPU priority: downloads (and the conversion ffmpeg yt-dlp
+    // spawns, which inherits the niceness) must not steal cycles from the
+    // realtime playback pipeline on a small VM.
+    const useNice = process.platform !== "win32";
+    const proc = useNice
+      ? spawn("nice", ["-n", "19", "yt-dlp", ...args], { shell: false })
+      : spawn("yt-dlp", args, { shell: false });
 
     let stdout = "";
     let stderr = "";
