@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { PageLoader } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { formatUptime } from '@/lib/utils';
-import { Users, MoreHorizontal, LogOut, Ban, MessageSquare, Zap } from 'lucide-react';
+import { Users, MoreHorizontal, LogOut, Ban, Zap } from 'lucide-react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 

@@ -225,7 +225,7 @@ export class AnimationManager {
   }
 
   stopAll(): void {
-    for (const [flowId, anim] of this.animations) {
+    for (const anim of this.animations.values()) {
       clearInterval(anim.timer);
     }
     this.animations.clear();

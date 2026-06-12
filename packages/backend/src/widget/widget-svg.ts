@@ -1,4 +1,4 @@
-import type { WidgetData, WidgetChannelNode, WidgetTheme, WidgetThemePalette } from '@ts6/common';
+import type { WidgetData, WidgetChannelNode, WidgetThemePalette } from '@ts6/common';
 import { WIDGET_THEMES } from '@ts6/common';
 
 const WIDTH = 400;
@@ -85,7 +85,7 @@ export function renderWidgetSvg(data: WidgetData): string {
 
   // --- Channel tree ---
   if (data.showChannelTree) {
-    y = renderTreeNodes(lines, data.channelTree, data.showClients, theme, y, 0);
+    renderTreeNodes(lines, data.channelTree, data.showClients, theme, y, 0);
   }
 
   // --- Footer ---

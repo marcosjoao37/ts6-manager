@@ -13,7 +13,7 @@ import {
   ArrowLeft, Save, HelpCircle, Zap, MessageSquare, Ban, UserX, ArrowRightLeft,
   Clock, GitBranch, Variable, FileText, Webhook, Terminal, Plus, Trash2,
   Bell, PenLine, FolderPlus, FolderMinus, Users, Globe, Send,
-  Moon, Timer, Megaphone, Award, Shield,
+  Moon, Timer, Megaphone, Award,
   Music, Volume2, LogIn, LogOut, Pause, SkipForward, Navigation, Mic, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';

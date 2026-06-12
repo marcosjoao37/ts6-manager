@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Settings as SettingsIcon, Users, Server, Plus, Trash2, Pencil, TestTube, Check, X, Lock, KeyRound, Youtube, Upload, FileText } from 'lucide-react';
+import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {

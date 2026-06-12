@@ -5,10 +5,8 @@ import {
   eaxEncrypt,
   eaxDecrypt,
   sha1,
-  sha512,
   xorInto,
   deriveKeyNonce,
-  ecdsaSign,
   MAC_LEN,
   INIT_MAC,
   DUMMY_KEY,
@@ -18,7 +16,6 @@ import {
 } from "./crypto.js";
 import {
   IdentityData,
-  exportPublicKeyString,
   getSharedSecret,
 } from "./identity.js";
 import {
@@ -779,7 +776,7 @@ export class Ts3Client extends EventEmitter {
       return;
     }
 
-    const alphaBytes = Buffer.from(alpha, "base64");
+    const _alphaBytes = Buffer.from(alpha, "base64");
     const betaBytes = Buffer.from(beta, "base64");
     const omegaBytes = Buffer.from(omega, "base64");
 
@@ -812,7 +809,7 @@ export class Ts3Client extends EventEmitter {
     this.initResend = null;
     this.emit("debug", "Processing initivexpand2 (new protocol)");
 
-    const { l: license, beta, omega, proof } = params;
+    const { l: license, beta, omega, proof: _proof } = params;
     if (!license || !beta || !omega) {
       this.emit("error", new Error("Missing initivexpand2 parameters"));
       return;

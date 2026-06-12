@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main, security-hardening]
+  pull_request:
+
+jobs:
+  node:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Build common package
+        run: pnpm --filter @ts6/common run build
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+  sidecar:
+    name: Build and vet Go sidecar
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sidecar
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/sidecar/go.mod
+          cache-dependency-path: packages/sidecar/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+  docker:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile.backend, Dockerfile.frontend, Dockerfile.sidecar]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.dockerfile }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false

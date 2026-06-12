@@ -3,7 +3,7 @@
  * Currently handles yt-dlp cookie file management.
  */
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -22,7 +22,7 @@ const upload = multer({
 });
 
 // Admin-only guard
-function requireAdmin(req: Request, _res: Response, next: Function) {
+function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   if ((req as any).user?.role !== 'admin') {
     return next(new AppError(403, 'Admin access required'));
   }

@@ -5,7 +5,7 @@ import type { VoiceBotManager } from '../voice/voice-bot-manager.js';
 import { ExecutionContext } from './context.js';
 import type { WebSocketServer } from 'ws';
 import type {
-  FlowDefinition, FlowNode, FlowEdge, NodeData,
+  FlowDefinition, FlowNode, FlowEdge,
   KickActionData, BanActionData, MoveActionData, MessageActionData,
   PokeActionData, ChannelCreateActionData, ChannelEditActionData, ChannelDeleteActionData,
   GroupAddClientActionData, GroupRemoveClientActionData,

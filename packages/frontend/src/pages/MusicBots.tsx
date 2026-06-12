@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { musicRequestsApi } from '@/api/music-requests.api';
 import { musicBotsApi } from '@/api/music.api';
@@ -34,7 +34,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Music, Plus, Trash2, Play, Pause, SkipForward, SkipBack, Square,
   Volume2, VolumeX, Upload, Search, Download, ListMusic, Shuffle,
-  Repeat, Repeat1, Power, PowerOff, RefreshCw, Pencil, X, Loader2,
+  Repeat, Repeat1, Power, PowerOff, Pencil, X, Loader2,
   Youtube, FileAudio, Link, GripVertical, Music2, Radio, Clock,
   Video,
 } from 'lucide-react';
@@ -95,7 +95,6 @@ function BotPlayerCard({ bot, onEdit, onDelete, onPlay }: {
 
   const isRunning = bot.status !== 'stopped' && bot.status !== 'error';
   const isPlaying = state?.status === 'playing';
-  const isPaused = state?.status === 'paused';
   const isStreaming = state?.isStreaming ?? false;
 
   return (
@@ -496,7 +495,6 @@ function PlaySongDialog({ botId, onClose, onPlaySong, onPlayUrl, onEnqueue, onLo
 function BotsTab() {
   const { data, isLoading } = useMusicBots();
   const { data: servers } = useServers();
-  const { selectedConfigId } = useServerStore();
   const createBot = useCreateMusicBot();
   const updateBot = useUpdateMusicBot();
   const deleteBot = useDeleteMusicBot();

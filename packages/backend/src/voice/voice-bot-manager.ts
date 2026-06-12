@@ -288,7 +288,7 @@ export class VoiceBotManager extends EventEmitter {
 
   async stopAll(): Promise<void> {
     // Clear all reconnect timers first to prevent reconnect during shutdown
-    for (const [id, state] of this.reconnectState) {
+    for (const state of this.reconnectState.values()) {
       if (state.timer) clearTimeout(state.timer);
     }
     this.reconnectState.clear();

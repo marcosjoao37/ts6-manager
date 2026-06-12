@@ -4,7 +4,7 @@ import { EventBridge } from './event-bridge.js';
 import { FlowRunner } from './flow-runner.js';
 import type { Express, Request, Response } from 'express';
 import type { WebSocketServer } from 'ws';
-import cron from 'node-cron';
+import cron, { type ScheduledTask } from 'node-cron';
 import type {
   FlowDefinition, FlowNode, FlowEdge,
   EventTriggerData, CronTriggerData, WebhookTriggerData, CommandTriggerData,
@@ -221,7 +221,7 @@ interface LoadedFlow {
 interface CronEntry {
   flowId: number;
   nodeId: string;
-  task: cron.ScheduledTask;
+  task: ScheduledTask;
 }
 
 interface WebhookEntry {

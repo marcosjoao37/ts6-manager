@@ -40,7 +40,7 @@ export function parseLicense(data: Buffer): LicenseBlock[] {
     const key = data.subarray(pos + 1, pos + 33);
     const blockType = data[pos + 33];
 
-    let extraLen = 0;
+    let extraLen: number;
     switch (blockType) {
       case 0: // Intermediate
         extraLen = findNullTerminator(data, pos + 46) + 5;

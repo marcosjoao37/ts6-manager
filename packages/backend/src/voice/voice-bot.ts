@@ -412,8 +412,6 @@ export class VoiceBot extends EventEmitter {
       this.streamChunksSize = 0;
 
       const epoch = ++this.loopEpoch;
-      let framesSent = 0;
-      const startTime = performance.now();
 
       stream.stdout.on('data', (chunk: Buffer) => {
         if (epoch !== this.loopEpoch) return;
@@ -815,7 +813,7 @@ export class VoiceBot extends EventEmitter {
         this.sidecarProc.start();
       } catch (err: any) {
         this.sidecarProc = null;
-        throw new Error(`Failed to start sidecar: ${err.message}`);
+        throw new Error(`Failed to start sidecar: ${err.message}`, { cause: err });
       }
       this.sidecarHttp = new SidecarClient(sidecarPort);
     }

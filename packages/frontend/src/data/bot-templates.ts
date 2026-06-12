@@ -1,4 +1,4 @@
-import { Clock, Users, Shield, Globe, Zap, MessageSquare, Moon, Timer, Megaphone, Award, FolderPlus, Eye, Webhook, Sparkles } from 'lucide-react';
+import { Clock, Users, Shield, Globe, MessageSquare, Moon, Timer, Megaphone, Award, FolderPlus, Eye, Webhook, Sparkles } from 'lucide-react';
 
 export interface TemplateConfigField {
   key: string;

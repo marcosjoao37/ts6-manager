@@ -99,7 +99,7 @@ musicBotRoutes.put('/:id', async (req: Request, res: Response, next) => {
     const id = parseInt(req.params.id as string);
     const { name, nickname, serverPassword, defaultChannel, channelPassword, voicePort, volume, autoStart } = req.body;
 
-    const dbBot = await prisma.musicBot.update({
+    await prisma.musicBot.update({
       where: { id },
       data: {
         ...(name != null && { name }),

@@ -348,7 +348,7 @@ function parseDerSequence(data: Buffer): (number | bigint)[] {
     pos += lenBytes;
 
     if (tag === 0x03) {
-      const unusedBits = data[pos];
+      const _unusedBits = data[pos];
       const value = data[pos + 1];
       results.push(value);
     } else if (tag === 0x02) {
