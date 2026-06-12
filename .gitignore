@@ -1,6 +1,8 @@
 node_modules/
 dist/
 build/
+bin/
+*.tsbuildinfo
 .env
 *.db
 *.db-journal
