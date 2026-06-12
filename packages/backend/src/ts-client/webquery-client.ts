@@ -7,6 +7,11 @@ import { config } from '../config.js';
 export class WebQueryClient {
   private http!: AxiosInstance;
   private agent!: http.Agent | https.Agent;
+  private lastTransportReset = 0;
+  // Circuit breaker: when the server is flood-protecting us, every reset
+  // opens yet another query connection and feeds the flood counter. One
+  // reset attempt per window, then fail fast.
+  private static readonly RESET_COOLDOWN_MS = 5000;
 
   constructor(
     private host: string,
@@ -64,6 +69,11 @@ export class WebQueryClient {
       return await fn();
     } catch (error: any) {
       if (!this.isStaleSocketError(error)) throw error;
+      const now = Date.now();
+      if (now - this.lastTransportReset < WebQueryClient.RESET_COOLDOWN_MS) {
+        throw error;
+      }
+      this.lastTransportReset = now;
       this.resetTransport();
       return await fn();
     }

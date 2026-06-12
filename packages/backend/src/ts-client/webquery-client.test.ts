@@ -81,6 +81,20 @@ describe('WebQueryClient stale keep-alive retry', () => {
     client.destroy();
   });
 
+  it('opens the circuit: no reset churn within the cooldown window', async () => {
+    // When the TS server flood-protects us (error 524 / connection resets),
+    // every reconnection feeds its flood counter — one reset per window max.
+    const client = new WebQueryClient('10.0.0.1', 10080, 'key');
+    const get = vi.fn().mockRejectedValue(staleSocketError('socket hang up', 'ECONNRESET'));
+    const reset = pinTransport(client, { get });
+
+    await expect(client.execute(1, 'serverinfo')).rejects.toThrow(); // reset + retry
+    await expect(client.execute(1, 'serverinfo')).rejects.toThrow(); // fail fast, no churn
+    expect(get).toHaveBeenCalledTimes(3);
+    expect(reset).toHaveBeenCalledTimes(1);
+    client.destroy();
+  });
+
   it('resetTransport really replaces the agent and axios instance', () => {
     const client = new WebQueryClient('10.0.0.1', 10080, 'key');
     const agentBefore = (client as any).agent;
