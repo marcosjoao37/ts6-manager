@@ -25,6 +25,11 @@ WORKDIR /app
 
 # Copy everything at once to avoid BuildKit ordering bug on Windows
 FROM base AS build
+# Toolchain for native modules (@discordjs/opus compiles from source);
+# build stage only — the production stage copies the compiled node_modules.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN pnpm install --no-frozen-lockfile
 RUN pnpm --filter @ts6/common run build

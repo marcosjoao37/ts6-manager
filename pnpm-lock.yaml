@@ -29,9 +29,6 @@ importers:
 
   packages/backend:
     dependencies:
-      '@discordjs/opus':
-        specifier: ^0.10.0
-        version: 0.10.0
       '@prisma/client':
         specifier: ^6.19.3
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
@@ -95,6 +92,10 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+    optionalDependencies:
+      '@discordjs/opus':
+        specifier: ^0.10.0
+        version: 0.10.0
     devDependencies:
       '@types/bcryptjs':
         specifier: ^2.4.6
@@ -3849,6 +3850,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@discordjs/opus@0.10.0':
     dependencies:
@@ -3857,6 +3859,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
@@ -5164,7 +5167,8 @@ snapshots:
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
 
-  abbrev@1.1.1: {}
+  abbrev@1.1.1:
+    optional: true
 
   abort-controller@3.0.0:
     dependencies:
@@ -5194,7 +5198,8 @@ snapshots:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  ansi-regex@5.0.1: {}
+  ansi-regex@5.0.1:
+    optional: true
 
   any-promise@1.3.0: {}
 
@@ -5205,12 +5210,14 @@ snapshots:
 
   append-field@1.0.0: {}
 
-  aproba@2.1.0: {}
+  aproba@2.1.0:
+    optional: true
 
   are-we-there-yet@2.0.0:
     dependencies:
       delegates: 1.0.0
       readable-stream: 3.6.2
+    optional: true
 
   arg@5.0.2: {}
 
@@ -5249,7 +5256,8 @@ snapshots:
       - debug
       - supports-color
 
-  balanced-match@1.0.2: {}
+  balanced-match@1.0.2:
+    optional: true
 
   balanced-match@4.0.4: {}
 
@@ -5286,6 +5294,7 @@ snapshots:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
+    optional: true
 
   brace-expansion@5.0.6:
     dependencies:
@@ -5368,7 +5377,8 @@ snapshots:
     dependencies:
       readdirp: 4.1.2
 
-  chownr@2.0.0: {}
+  chownr@2.0.0:
+    optional: true
 
   citty@0.1.6:
     dependencies:
@@ -5384,7 +5394,8 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  color-support@1.1.3: {}
+  color-support@1.1.3:
+    optional: true
 
   colorette@2.0.20: {}
 
@@ -5394,7 +5405,8 @@ snapshots:
 
   commander@4.1.1: {}
 
-  concat-map@0.0.1: {}
+  concat-map@0.0.1:
+    optional: true
 
   concat-stream@1.6.2:
     dependencies:
@@ -5407,7 +5419,8 @@ snapshots:
 
   consola@3.4.2: {}
 
-  console-control-strings@1.1.0: {}
+  console-control-strings@1.1.0:
+    optional: true
 
   content-disposition@0.5.4:
     dependencies:
@@ -5530,7 +5543,8 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  delegates@1.0.0: {}
+  delegates@1.0.0:
+    optional: true
 
   depd@2.0.0: {}
 
@@ -5538,7 +5552,8 @@ snapshots:
 
   destroy@1.2.0: {}
 
-  detect-libc@2.1.2: {}
+  detect-libc@2.1.2:
+    optional: true
 
   detect-node-es@1.1.0: {}
 
@@ -5572,7 +5587,8 @@ snapshots:
 
   electron-to-chromium@1.5.372: {}
 
-  emoji-regex@8.0.0: {}
+  emoji-regex@8.0.0:
+    optional: true
 
   empathic@2.0.0: {}
 
@@ -5879,8 +5895,10 @@ snapshots:
   fs-minipass@2.1.0:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
-  fs.realpath@1.0.0: {}
+  fs.realpath@1.0.0:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -5898,6 +5916,7 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wide-align: 1.1.5
+    optional: true
 
   gensync@1.0.0-beta.2: {}
 
@@ -5946,6 +5965,7 @@ snapshots:
       minimatch: 3.1.5
       once: 1.4.0
       path-is-absolute: 1.0.1
+    optional: true
 
   globals@17.6.0: {}
 
@@ -5957,7 +5977,8 @@ snapshots:
     dependencies:
       has-symbols: 1.1.0
 
-  has-unicode@2.0.1: {}
+  has-unicode@2.0.1:
+    optional: true
 
   hasown@2.0.4:
     dependencies:
@@ -6004,6 +6025,7 @@ snapshots:
     dependencies:
       once: 1.4.0
       wrappy: 1.0.2
+    optional: true
 
   inherits@2.0.4: {}
 
@@ -6021,7 +6043,8 @@ snapshots:
 
   is-extglob@2.1.1: {}
 
-  is-fullwidth-code-point@3.0.0: {}
+  is-fullwidth-code-point@3.0.0:
+    optional: true
 
   is-glob@4.0.3:
     dependencies:
@@ -6133,6 +6156,7 @@ snapshots:
   make-dir@3.1.0:
     dependencies:
       semver: 6.3.1
+    optional: true
 
   math-intrinsics@1.1.0: {}
 
@@ -6164,25 +6188,30 @@ snapshots:
   minimatch@3.1.5:
     dependencies:
       brace-expansion: 1.1.15
+    optional: true
 
   minimist@1.2.8: {}
 
   minipass@3.3.6:
     dependencies:
       yallist: 4.0.0
+    optional: true
 
-  minipass@5.0.0: {}
+  minipass@5.0.0:
+    optional: true
 
   minizlib@2.1.2:
     dependencies:
       minipass: 3.3.6
       yallist: 4.0.0
+    optional: true
 
   mkdirp@0.5.6:
     dependencies:
       minimist: 1.2.8
 
-  mkdirp@1.0.4: {}
+  mkdirp@1.0.4:
+    optional: true
 
   ms@2.0.0: {}
 
@@ -6215,7 +6244,8 @@ snapshots:
 
   negotiator@0.6.3: {}
 
-  node-addon-api@8.8.0: {}
+  node-addon-api@8.8.0:
+    optional: true
 
   node-cron@4.2.1: {}
 
@@ -6224,12 +6254,14 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+    optional: true
 
   node-releases@2.0.47: {}
 
   nopt@5.0.0:
     dependencies:
       abbrev: 1.1.1
+    optional: true
 
   normalize-path@3.0.0: {}
 
@@ -6239,6 +6271,7 @@ snapshots:
       console-control-strings: 1.1.0
       gauge: 3.0.2
       set-blocking: 2.0.0
+    optional: true
 
   nypm@0.6.7:
     dependencies:
@@ -6289,7 +6322,8 @@ snapshots:
 
   path-exists@4.0.0: {}
 
-  path-is-absolute@1.0.1: {}
+  path-is-absolute@1.0.1:
+    optional: true
 
   path-key@3.1.1: {}
 
@@ -6548,6 +6582,7 @@ snapshots:
       inherits: 2.0.4
       string_decoder: 1.3.0
       util-deprecate: 1.0.2
+    optional: true
 
   readable-stream@4.7.0:
     dependencies:
@@ -6594,6 +6629,7 @@ snapshots:
   rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
+    optional: true
 
   rollup@4.61.1:
     dependencies:
@@ -6675,7 +6711,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  set-blocking@2.0.0: {}
+  set-blocking@2.0.0:
+    optional: true
 
   setprototypeof@1.2.0: {}
 
@@ -6715,7 +6752,8 @@ snapshots:
 
   siginfo@2.0.0: {}
 
-  signal-exit@3.0.7: {}
+  signal-exit@3.0.7:
+    optional: true
 
   sonic-boom@4.2.1:
     dependencies:
@@ -6751,6 +6789,7 @@ snapshots:
       emoji-regex: 8.0.0
       is-fullwidth-code-point: 3.0.0
       strip-ansi: 6.0.1
+    optional: true
 
   string_decoder@1.1.1:
     dependencies:
@@ -6763,6 +6802,7 @@ snapshots:
   strip-ansi@6.0.1:
     dependencies:
       ansi-regex: 5.0.1
+    optional: true
 
   strip-json-comments@3.1.1: {}
 
@@ -6816,6 +6856,7 @@ snapshots:
       minizlib: 2.1.2
       mkdirp: 1.0.4
       yallist: 4.0.0
+    optional: true
 
   thenify-all@1.6.0:
     dependencies:
@@ -6848,7 +6889,8 @@ snapshots:
 
   toidentifier@1.0.1: {}
 
-  tr46@0.0.3: {}
+  tr46@0.0.3:
+    optional: true
 
   ts-api-utils@2.5.0(typescript@5.9.3):
     dependencies:
@@ -7003,12 +7045,14 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  webidl-conversions@3.0.1: {}
+  webidl-conversions@3.0.1:
+    optional: true
 
   whatwg-url@5.0.0:
     dependencies:
       tr46: 0.0.3
       webidl-conversions: 3.0.1
+    optional: true
 
   which@2.0.2:
     dependencies:
@@ -7022,6 +7066,7 @@ snapshots:
   wide-align@1.1.5:
     dependencies:
       string-width: 4.2.3
+    optional: true
 
   word-wrap@1.2.5: {}
 
@@ -7033,7 +7078,8 @@ snapshots:
 
   yallist@3.1.1: {}
 
-  yallist@4.0.0: {}
+  yallist@4.0.0:
+    optional: true
 
   yocto-queue@0.1.0: {}
 
