@@ -146,8 +146,13 @@ The backend proxies all TeamSpeak API calls. The frontend never has direct acces
 
 ## Quick Start (Docker)
 
-1. Download the [`docker-compose.yml`](docker-compose.yml)
-2. Create a `.env` file next to it:
+Building from source is the default in this fork — `docker-compose.yml`
+builds the three images locally. To run the upstream Docker Hub images
+instead, use [`docker-compose.hub.yml`](docker-compose.hub.yml) (note: those
+images do not contain this fork's hardening and fixes).
+
+1. Clone the repository
+2. Create a `.env` file at the repository root:
 
 ```env
 JWT_SECRET=your-random-secret-at-least-32-characters
@@ -163,10 +168,10 @@ echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
 echo "SIDECAR_TOKEN=$(openssl rand -base64 32)" >> .env
 ```
 
-3. Start the stack:
+3. Build and start the stack:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 4. Open `http://localhost:3000/setup` and create your admin account
@@ -176,16 +181,14 @@ docker compose up -d
 > `ENCRYPTION_KEY` is **required in production** and must differ from `JWT_SECRET`. Values encrypted before this requirement (with the `JWT_SECRET` fallback) are still readable and get re-encrypted on next save.
 > `SIDECAR_TOKEN` authenticates the backend against the media sidecar API. Without it the sidecar logs a warning and accepts unauthenticated requests (acceptable only on an isolated network).
 
-### Building from Source
+### Running the upstream Docker Hub images
 
 ```bash
-git clone https://github.com/clusterzx/ts6-manager.git
-cd ts6-manager
-echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
-echo "ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
-echo "SIDECAR_TOKEN=$(openssl rand -base64 32)" >> .env
-docker compose -f docker-compose.local.yml up -d --build
+docker compose -f docker-compose.hub.yml up -d
 ```
+
+The Hub images listen on different internal ports than the locally built
+ones — never mix containers from both compose files in the same stack.
 
 ### Coolify / Reverse Proxy
 
