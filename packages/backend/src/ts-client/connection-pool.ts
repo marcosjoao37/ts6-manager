@@ -13,8 +13,14 @@ export class ConnectionPool {
     });
 
     for (const server of servers) {
-      // H8: Decrypt API key before use
-      this.addClient(server.id, server.host, server.webqueryPort, decrypt(server.apiKey), server.useHttps);
+      try {
+        // H8: Decrypt API key before use
+        this.addClient(server.id, server.host, server.webqueryPort, decrypt(server.apiKey), server.useHttps);
+      } catch (err: any) {
+        // One undecryptable row (e.g. ENCRYPTION_KEY changed) must not prevent
+        // the backend from starting; re-saving the API key repairs the row.
+        console.error(`[ConnectionPool] Skipping server config ID ${server.id}: ${err.message}`);
+      }
     }
 
     console.log(`[ConnectionPool] Initialized ${this.clients.size} server connection(s)`);
@@ -43,6 +49,29 @@ export class ConnectionPool {
 
   hasClient(configId: number): boolean {
     return this.clients.has(configId);
+  }
+
+  /**
+   * Like getClient, but on a cache miss falls back to the DB (source of
+   * truth) and hydrates the pool. This makes the pool self-healing: an
+   * enabled connection present in the DB always works, even if the in-memory
+   * pool diverged (missed registration, partial startup, etc.) — previously
+   * that state persisted until the backend was restarted.
+   */
+  async getOrLoad(configId: number): Promise<WebQueryClient> {
+    const cached = this.clients.get(configId);
+    if (cached) return cached;
+
+    const server = await this.prisma.tsServerConfig.findUnique({
+      where: { id: configId },
+    });
+    if (!server || !server.enabled) {
+      throw new Error(`No connection configured for server config ID ${configId}`);
+    }
+
+    this.addClient(server.id, server.host, server.webqueryPort, decrypt(server.apiKey), server.useHttps);
+    console.log(`[ConnectionPool] Lazily hydrated connection for server config ID ${configId}`);
+    return this.clients.get(configId)!;
   }
 
   async refreshClient(configId: number): Promise<void> {

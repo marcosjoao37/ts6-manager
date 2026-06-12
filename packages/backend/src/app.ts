@@ -34,6 +34,7 @@ import { setupRoutes } from './routes/setup.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
 import { requireServerAccess } from './middleware/server-access.js';
 import { requireIntParams } from './middleware/validate-params.js';
+import { ensureConnection } from './middleware/ensure-connection.js';
 
 export function createApp(): Express {
   const app = express();
@@ -101,7 +102,7 @@ export function createApp(): Express {
 
   // H9: Server access control on all :configId routes
   // (NaN guard first: parseInt would otherwise forward NaN to Prisma/ServerQuery)
-  const serverAccess = [requireIntParams('configId', 'sid'), requireServerAccess()];
+  const serverAccess = [requireIntParams('configId', 'sid'), requireServerAccess(), ensureConnection()];
   app.use('/api/servers/:configId/virtual-servers', serverAccess, virtualServerRoutes);
   app.use('/api/servers/:configId/vs/:sid/channels', serverAccess, channelRoutes);
   app.use('/api/servers/:configId/vs/:sid/clients', serverAccess, clientRoutes);
