@@ -5,6 +5,31 @@
 
 Web-based management interface for TeamSpeak servers. Control virtual servers, channels, clients, permissions, music bots, automated workflows, and embeddable server widgets — all from your browser.
 
+## What this version changes
+
+Hardened, reliability-focused evolution of [clusterzx/ts6-manager](https://github.com/clusterzx/ts6-manager):
+
+**Reliability**
+- Self-healing connection pool: server connections added or edited in the UI work immediately — no backend restart, ever
+- WebQuery client rebuilds its transport when its keep-alive socket dies silently (Docker NAT, server restarts), with a circuit breaker that stops feeding the TS flood counter
+- Dashboard responses cached 5 s server-side: N open tabs cost the same as one
+- One undecryptable credential row no longer crashes startup
+
+**Music bots**
+- Streamed file playback: first audio in ~200 ms, constant memory (previously the entire track was decoded to RAM — ~690 MB for a 1 h mix)
+- Native opus encoder (`@discordjs/opus`, ~5-10× less CPU) with automatic WASM fallback
+- Robust yt-dlp pipeline: hard timeouts, stale-artifact cleanup, deduplicated concurrent downloads, full error logging, low CPU priority, auto-update at container start
+- Load & Play starts playback; playlist song counts stay fresh
+
+**Security**
+- Built-in safe expression evaluator replaces the unmaintained `expr-eval`
+- Sidecar API bearer-token auth, hardened containers, committed binaries removed
+- Dependencies upgraded to clear all audit findings; ESLint + GitHub Actions CI
+
+**Deployment**
+- `docker compose up -d --build` builds from source by default (`docker-compose.hub.yml` for the upstream Docker Hub images)
+- nginx/client timeouts sized for long YouTube downloads; silent, clean container startup
+
 Built on the **WebQuery HTTP API** (the ServerQuery replacement in modern TeamSpeak builds). Telnet is not used or supported.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
