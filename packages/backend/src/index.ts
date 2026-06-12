@@ -52,6 +52,13 @@ async function main() {
   const app = createApp();
   const server = createServer(app);
 
+  // YouTube/batch downloads run inside the HTTP request; Node's default
+  // 5-minute request timeout kills long playlist imports mid-flight while the
+  // download loop keeps running server-side (the UI shows an error but songs
+  // keep appearing). headersTimeout keeps its default, so slowloris
+  // protection is unaffected.
+  server.requestTimeout = 0;
+
   // H3: WebSocket with JWT authentication
   const wss = new WebSocketServer({
     server,
