@@ -15,7 +15,8 @@ export const musicBotsApi = {
   // Playback
   playRadio: (id: number, stationId: number) => api.post(`/music-bots/${id}/play-radio`, { stationId }).then((r) => r.data),
   play: (id: number, songId: number) => api.post(`/music-bots/${id}/play`, { songId }).then((r) => r.data),
-  playUrl: (id: number, url: string) => api.post(`/music-bots/${id}/play-url`, { url }).then((r) => r.data),
+  // Downloads the track server-side before playing — far longer than the default 15s timeout
+  playUrl: (id: number, url: string) => api.post(`/music-bots/${id}/play-url`, { url }, { timeout: 600000 }).then((r) => r.data),
   pause: (id: number) => api.post(`/music-bots/${id}/pause`).then((r) => r.data),
   resume: (id: number) => api.post(`/music-bots/${id}/resume`).then((r) => r.data),
   stopPlayback: (id: number) => api.post(`/music-bots/${id}/stop-playback`).then((r) => r.data),
@@ -64,12 +65,14 @@ export const musicLibraryApi = {
     }).then((r) => r.data),
   deleteSong: (configId: number, songId: number) =>
     api.delete(`/servers/${configId}/music-library/songs/${songId}`).then((r) => r.data),
+  // yt-dlp calls routinely exceed the global 15s axios timeout: searches and
+  // playlist listings take 10-30s, downloads (fetch + opus conversion) minutes.
   youtubeSearch: (configId: number, query: string) =>
-    api.post(`/servers/${configId}/music-library/youtube/search`, { query }).then((r) => r.data),
+    api.post(`/servers/${configId}/music-library/youtube/search`, { query }, { timeout: 60000 }).then((r) => r.data),
   youtubeDownload: (configId: number, url: string) =>
-    api.post(`/servers/${configId}/music-library/youtube/download`, { url }).then((r) => r.data),
+    api.post(`/servers/${configId}/music-library/youtube/download`, { url }, { timeout: 600000 }).then((r) => r.data),
   youtubeInfo: (configId: number, url: string) =>
-    api.post(`/servers/${configId}/music-library/youtube/info`, { url }).then((r) => r.data),
+    api.post(`/servers/${configId}/music-library/youtube/info`, { url }, { timeout: 60000 }).then((r) => r.data),
   youtubeDownloadBatch: (configId: number, urls: string[]) =>
     api.post(`/servers/${configId}/music-library/youtube/download-batch`, { urls }, { timeout: 600000 }).then((r) => r.data),
 };

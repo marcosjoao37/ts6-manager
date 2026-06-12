@@ -181,10 +181,14 @@ async function doDownload(url: string, outputDir: string): Promise<{ filePath: s
 
   // Check if already downloaded
   if (fs.existsSync(expectedPath)) {
+    console.log(`[yt-dlp] Cache hit for ${info.id} (${info.title})`);
     return { filePath: expectedPath, info };
   }
 
   cleanupStaleArtifacts(outputDir, info.id);
+
+  console.log(`[yt-dlp] Downloading ${info.id} (${info.title})...`);
+  const startedAt = Date.now();
 
   // Download audio only
   await runYtDlp(
@@ -208,6 +212,7 @@ async function doDownload(url: string, outputDir: string): Promise<{ filePath: s
     throw new Error("Downloaded file not found");
   }
 
+  console.log(`[yt-dlp] Downloaded ${fileName} in ${Math.round((Date.now() - startedAt) / 1000)}s`);
   return { filePath: path.join(outputDir, fileName), info };
 }
 
