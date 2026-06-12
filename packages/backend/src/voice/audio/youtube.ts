@@ -46,13 +46,14 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
 /**
  * Run yt-dlp with a hard timeout. Resolves with stdout; rejects with a short
  * user-facing message while the full stderr goes to the backend log.
+ * lowPriority (default) runs through nice -n 19 so downloads (and the
+ * conversion ffmpeg yt-dlp spawns, which inherits the niceness) don't steal
+ * cycles from the realtime playback pipeline; latency-sensitive callers
+ * (e.g. stream URL resolution) pass lowPriority: false.
  */
-function runYtDlp(args: string[], timeoutMs: number): Promise<string> {
+export function runYtDlp(args: string[], timeoutMs: number, opts: { lowPriority?: boolean } = {}): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Lowest CPU priority: downloads (and the conversion ffmpeg yt-dlp
-    // spawns, which inherits the niceness) must not steal cycles from the
-    // realtime playback pipeline on a small VM.
-    const useNice = process.platform !== "win32";
+    const useNice = (opts.lowPriority ?? true) && process.platform !== "win32";
     const proc = useNice
       ? spawn("nice", ["-n", "19", "yt-dlp", ...args], { shell: false })
       : spawn("yt-dlp", args, { shell: false });

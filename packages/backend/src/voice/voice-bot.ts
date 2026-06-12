@@ -7,49 +7,34 @@ import { StreamSignaling, type ActiveStream, type SignalingMessage } from './str
 import { SidecarClient } from './streaming/sidecar-client.js';
 import { SidecarProcess, type SidecarConfig } from './streaming/sidecar-process.js';
 import { STREAM_PRESETS, DEFAULT_PRESET, type VideoViewerInfo, type VideoStreamStatus } from './streaming/types.js';
-import { getCookieArgs } from './audio/youtube.js';
-import { spawn } from 'child_process';
+import { getCookieArgs, runYtDlp } from './audio/youtube.js';
 
 /** Resolve a YouTube/yt-dlp-compatible URL to a direct stream URL */
-function resolveVideoUrl(url: string, maxHeight: number = 720): Promise<string> {
+async function resolveVideoUrl(url: string, maxHeight: number = 720): Promise<string> {
   // Only resolve YouTube and other yt-dlp-supported sites
   if (!url.includes('youtube.com/') && !url.includes('youtu.be/') && !url.includes('twitch.tv/')) {
-    return Promise.resolve(url);
+    return url;
   }
 
-  return new Promise((resolve, reject) => {
-    // Request best combined format (video+audio) up to the target height
-    const formatFilter = `best[height<=${maxHeight}][ext=mp4]/best[height<=${maxHeight}]/best[ext=mp4]/best`;
-    const proc = spawn('yt-dlp', [
-      ...getCookieArgs(),
-      '-f', formatFilter,
-      '--no-playlist',
-      '-g',  // print direct URL only
-      url,
-    ], { shell: false });
+  // Request best combined format (video+audio) up to the target height.
+  // runYtDlp adds the cookie args' siblings (timeout, full stderr logging);
+  // normal CPU priority — the user is waiting for the stream to start.
+  const formatFilter = `best[height<=${maxHeight}][ext=mp4]/best[height<=${maxHeight}]/best[ext=mp4]/best`;
+  const stdout = await runYtDlp([
+    ...getCookieArgs(),
+    '-f', formatFilter,
+    '--no-playlist',
+    '-g',  // print direct URL only
+    url,
+  ], 60_000, { lowPriority: false });
 
-    let stdout = '';
-    let stderr = '';
-    proc.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
-    proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
-
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        return reject(new Error(`yt-dlp failed (code ${code}): ${stderr.slice(0, 200)}`));
-      }
-      // yt-dlp -g returns the direct URL(s), take the first one
-      const directUrl = stdout.trim().split('\n')[0];
-      if (!directUrl) {
-        return reject(new Error('yt-dlp returned no URL'));
-      }
-      console.log(`[VideoResolve] Resolved: ${url.substring(0, 60)}... → direct URL`);
-      resolve(directUrl);
-    });
-
-    proc.on('error', (err) => {
-      reject(new Error(`yt-dlp not found: ${err.message}`));
-    });
-  });
+  // yt-dlp -g returns the direct URL(s), take the first one
+  const directUrl = stdout.trim().split('\n')[0];
+  if (!directUrl) {
+    throw new Error('yt-dlp returned no URL');
+  }
+  console.log(`[VideoResolve] Resolved: ${url.substring(0, 60)}... → direct URL`);
+  return directUrl;
 }
 
 export type VoiceBotStatus = 'stopped' | 'starting' | 'connected' | 'playing' | 'paused' | 'error';
