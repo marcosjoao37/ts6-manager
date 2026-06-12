@@ -1,4 +1,4 @@
-import { Parser } from 'expr-eval';
+import { SafeExpressionEvaluator } from './safe-expr.js';
 import type { PrismaClient } from '../../generated/prisma/index.js';
 
 function resolveDotPath(obj: any, path: string): any {
@@ -60,7 +60,7 @@ function getTimeValues(timezone?: string): Record<string, string | number> {
 
 export class ExecutionContext {
   private tempVars: Map<string, any> = new Map();
-  private exprParser: Parser;
+  private exprParser: SafeExpressionEvaluator;
 
   constructor(
     private prisma: PrismaClient,
@@ -72,7 +72,7 @@ export class ExecutionContext {
     public readonly eventData: Record<string, string>,
     public readonly timezone?: string,
   ) {
-    this.exprParser = new Parser();
+    this.exprParser = new SafeExpressionEvaluator();
     // Register custom functions for expression evaluation
     this.exprParser.functions.contains = (str: string, substr: string) => String(str).includes(String(substr)) ? 1 : 0;
     this.exprParser.functions.startsWith = (str: string, prefix: string) => String(str).startsWith(String(prefix)) ? 1 : 0;
