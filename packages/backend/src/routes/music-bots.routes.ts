@@ -486,9 +486,12 @@ musicBotRoutes.post('/:id/queue/playlist', async (req: Request, res: Response, n
 
     bot.queue.addMany(items);
 
-    // "Load & Play": start the first loaded track (replaces any current playback)
+    // "Load & Play": start the first loaded track (replaces any current
+    // playback). Older frontend bundles don't send autoplay — fall back to
+    // clearFirst, which only the Load & Play flow uses.
+    const shouldAutoplay = autoplay ?? clearFirst;
     let started = false;
-    if (autoplay) {
+    if (shouldAutoplay) {
       const first = bot.queue.next();
       if (first) {
         await bot.play(first);
@@ -496,6 +499,7 @@ musicBotRoutes.post('/:id/queue/playlist', async (req: Request, res: Response, n
       }
     }
 
+    console.log(`[MusicBot ${bot.id}] Playlist "${playlist.name}" loaded: ${items.length} track(s), autoplay=${!!shouldAutoplay}, started=${started}`);
     res.json({ success: true, queueLength: bot.queue.length, started });
   } catch (err) { next(err); }
 });
