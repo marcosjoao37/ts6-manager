@@ -16,13 +16,32 @@ services:
       - TS_ALLOW_SELF_SIGNED=${TS_ALLOW_SELF_SIGNED:-false}
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - MUSIC_DIR=/data/music
+      - SIDECAR_URL=http://ts6-sidecar:9800
+      - SIDECAR_TOKEN=${SIDECAR_TOKEN:-}
     volumes:
       - backend-data:/app/packages/backend/data
       - music-data:/data/music
     ports:
       - "3001:3001"
+    depends_on:
+      - sidecar
+    networks:
+      - ts6-network
+
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile.sidecar
+    container_name: ts6-sidecar
+    restart: unless-stopped
+    environment:
+      - SIDECAR_PORT=9800
+      # Reachable by the backend over the internal bridge network only —
+      # do not publish this port: the API has no per-user authentication.
+      - SIDECAR_LISTEN_ADDR=0.0.0.0
+      - SIDECAR_TOKEN=${SIDECAR_TOKEN:-}
     networks:
       - ts6-network
 
