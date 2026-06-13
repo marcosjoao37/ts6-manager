@@ -66,6 +66,11 @@ async function gateAfterPassword(prisma: any, user: any) {
   return issueSession(prisma, user);
 }
 
+// The caller's own trusted-device selector (first segment of the cookie), or null.
+function currentSelector(req: Request): string | null {
+  return (req.cookies?.[TRUSTED_COOKIE_NAME] || '').split('.')[0] || null;
+}
+
 // If the client asked to trust this device, mint a trusted-device cookie.
 // Safe no-op when trustDevice is falsy.
 async function maybeTrustDevice(prisma: any, req: Request, res: Response, userId: number, trustDevice: unknown) {
@@ -148,6 +153,7 @@ authRoutes.post('/login/mfa', async (req: Request, res: Response, next) => {
       });
     }
 
+    // The MFA step always issues a full session, so (unlike /login) no accessToken guard is needed.
     await maybeTrustDevice(prisma, req, res, user.id, req.body.trustDevice);
     res.json(await issueSession(prisma, user));
   } catch (err) {
@@ -314,7 +320,7 @@ authRoutes.get('/me', authMiddleware, async (req: Request, res: Response, next) 
 authRoutes.get('/trusted', authMiddleware, async (req: Request, res: Response, next) => {
   try {
     const prisma = req.app.locals.prisma;
-    const split = (req.cookies?.[TRUSTED_COOKIE_NAME] || '').split('.')[0] || null;
+    const split = currentSelector(req);
     const devices = await prisma.trustedDevice.findMany({
       where: { userId: req.user!.id },
       orderBy: { createdAt: 'desc' },
@@ -346,11 +352,11 @@ authRoutes.delete('/trusted', authMiddleware, async (req: Request, res: Response
 authRoutes.delete('/trusted/:id', authMiddleware, async (req: Request, res: Response, next) => {
   try {
     const id = Number(req.params.id);
-    if (!Number.isInteger(id)) throw new AppError(400, 'Invalid id');
+    if (!Number.isInteger(id) || id <= 0) throw new AppError(400, 'Invalid id');
     const prisma = req.app.locals.prisma;
     const device = await prisma.trustedDevice.findUnique({ where: { id } });
     if (!device || device.userId !== req.user!.id) throw new AppError(404, 'Not found');
-    const isCurrent = (req.cookies?.[TRUSTED_COOKIE_NAME] || '').split('.')[0] === device.selector;
+    const isCurrent = currentSelector(req) === device.selector;
     await prisma.trustedDevice.delete({ where: { id } });
     if (isCurrent) clearTrustedCookie(res);
     res.status(204).send();
