@@ -133,7 +133,8 @@
       "toastCreateFailed": "Échec de la création",
       "toastUpdateFailed": "Échec de la mise à jour",
       "toastTestSuccess": "Connexion réussie",
-      "toastTestFailed": "Échec de la connexion"
+      "toastTestFailed": "Échec de la connexion",
+      "unchanged": "(inchangé)"
     },
     "users": {
       "subtitle": "Gérer les utilisateurs et les rôles de l'application",

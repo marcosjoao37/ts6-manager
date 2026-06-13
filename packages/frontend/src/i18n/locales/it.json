@@ -133,7 +133,8 @@
       "toastCreateFailed": "Creazione non riuscita",
       "toastUpdateFailed": "Aggiornamento non riuscito",
       "toastTestSuccess": "Connessione riuscita",
-      "toastTestFailed": "Connessione non riuscita"
+      "toastTestFailed": "Connessione non riuscita",
+      "unchanged": "(invariato)"
     },
     "users": {
       "subtitle": "Gestisci utenti e ruoli dell'app web",

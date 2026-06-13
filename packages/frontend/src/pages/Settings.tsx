@@ -380,8 +380,8 @@ function ConnectionsTab() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label className="text-xs">{t('settings.connections.sshPort')}</Label><Input type="number" value={form.sshPort} onChange={(e) => setForm({ ...form, sshPort: e.target.value })} /></div>
-              <div><Label className="text-xs">{t('settings.connections.sshUser')}</Label><Input value={form.sshUsername} onChange={(e) => setForm({ ...form, sshUsername: e.target.value })} placeholder="serveradmin" /></div>
-              <div><Label className="text-xs">{t('settings.connections.sshPassword')}</Label><Input type="password" value={form.sshPassword} onChange={(e) => setForm({ ...form, sshPassword: e.target.value })} /></div>
+              <div><Label className="text-xs">{t('settings.connections.sshUser')}</Label><Input value={form.sshUsername} onChange={(e) => setForm({ ...form, sshUsername: e.target.value })} placeholder={editId ? t('settings.connections.unchanged') : 'serveradmin'} /></div>
+              <div><Label className="text-xs">{t('settings.connections.sshPassword')}</Label><Input type="password" value={form.sshPassword} onChange={(e) => setForm({ ...form, sshPassword: e.target.value })} placeholder={editId ? t('settings.connections.unchanged') : ''} /></div>
             </div>
           </div>
           <DialogFooter>

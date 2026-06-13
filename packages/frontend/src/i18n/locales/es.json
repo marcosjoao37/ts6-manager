@@ -133,7 +133,8 @@
       "toastCreateFailed": "Error al crear",
       "toastUpdateFailed": "Error al actualizar",
       "toastTestSuccess": "Conexión exitosa",
-      "toastTestFailed": "Error de conexión"
+      "toastTestFailed": "Error de conexión",
+      "unchanged": "(sin cambios)"
     },
     "users": {
       "subtitle": "Gestionar usuarios y roles de la aplicación",

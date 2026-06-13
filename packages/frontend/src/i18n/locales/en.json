@@ -133,7 +133,8 @@
       "toastCreateFailed": "Failed to create",
       "toastUpdateFailed": "Failed to update",
       "toastTestSuccess": "Connection successful",
-      "toastTestFailed": "Connection failed"
+      "toastTestFailed": "Connection failed",
+      "unchanged": "(unchanged)"
     },
     "users": {
       "subtitle": "Manage webapp users and roles",

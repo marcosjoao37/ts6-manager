@@ -83,10 +83,12 @@ serverRoutes.put('/:configId', requireRole('admin'), async (req: Request, res: R
     const data: any = {};
 
     const fields = ['name', 'host', 'webqueryPort', 'apiKey', 'useHttps', 'sshPort', 'sshUsername', 'sshPassword', 'enabled'];
+    // The frontend never receives these back, so an empty value on edit means
+    // "keep the stored one" — never overwrite credentials with a blank.
+    const keepIfEmpty = ['apiKey', 'sshPassword', 'sshUsername'];
     for (const field of fields) {
       if (req.body[field] !== undefined) {
-        // Don't overwrite API key or SSH password with empty strings
-        if ((field === 'apiKey' || field === 'sshPassword') && req.body[field] === '') continue;
+        if (keepIfEmpty.includes(field) && req.body[field] === '') continue;
         // H8: Encrypt sensitive fields
         if (field === 'apiKey' || field === 'sshPassword') {
           data[field] = encrypt(req.body[field]);

@@ -133,7 +133,8 @@
       "toastCreateFailed": "Erstellen fehlgeschlagen",
       "toastUpdateFailed": "Aktualisieren fehlgeschlagen",
       "toastTestSuccess": "Verbindung erfolgreich",
-      "toastTestFailed": "Verbindung fehlgeschlagen"
+      "toastTestFailed": "Verbindung fehlgeschlagen",
+      "unchanged": "(unverändert)"
     },
     "users": {
       "subtitle": "Webapp-Benutzer und -Rollen verwalten",
