@@ -118,6 +118,7 @@ export class Ts3Client extends EventEmitter {
 
   // Channel map (populated during init sequence for auto-move)
   private channelMap = new Map<string, number>(); // channel_name → cid
+  private currentChannelId = 0; // cid the bot currently sits in (for channel-scoped replies)
 
   constructor() {
     super();
@@ -129,6 +130,10 @@ export class Ts3Client extends EventEmitter {
 
   getClientId(): number {
     return this.clientId;
+  }
+
+  getChannelId(): number {
+    return this.currentChannelId;
   }
 
   async connect(opts: Ts3ClientOptions): Promise<void> {
@@ -954,6 +959,7 @@ export class Ts3Client extends EventEmitter {
       clid: this.clientId,
       cpw: this.opts.channelPassword ?? "",
     });
+    this.currentChannelId = cid;
     this.emit("debug", `Moving to channel "${target}" (cid=${cid})`);
     this.sendCommand(moveCmd);
   }

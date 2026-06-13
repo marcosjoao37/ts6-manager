@@ -6,6 +6,9 @@ import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } f
 
 const CMD_PREFIX = '!';
 
+/** Sends a reply back to wherever the command came from (private or channel). */
+type ReplyFn = (msg: string) => void;
+
 const MUSIC_COMMANDS = new Set([
   'radio', 'play', 'spotify', 'stop', 'pause', 'skip', 'next', 'prev',
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
@@ -63,75 +66,79 @@ export class MusicCommandHandler {
     // Ignore messages from ourselves (the bot)
     if (userClid === bot.ts3ClientId) return;
 
-    console.log(`[MusicCmd] Bot ${botId}: !${command} ${args} (from clid=${userClid})`);
+    // Reply where we were asked: privately to a private message (targetmode 1),
+    // in the channel to a channel message (targetmode 2).
+    const inChannel = String(data.targetmode || '') === '2';
+    const reply: ReplyFn = (m: string) => {
+      try {
+        if (inChannel) bot.sendChannelMessage(m);
+        else bot.sendTextMessage(userClid, m);
+      } catch (err: any) {
+        console.error(`[MusicCmd] Failed to send reply: ${err.message}`);
+      }
+    };
+
+    console.log(`[MusicCmd] Bot ${botId}: !${command} ${args} (from clid=${userClid}, ${inChannel ? 'channel' : 'private'})`);
 
     try {
       switch (command) {
         case 'radio':
-          await this.handleRadio(botId, bot, userClid, args);
+          await this.handleRadio(botId, bot, reply, args);
           break;
         case 'play':
-          await this.handlePlay(bot, userClid, args);
+          await this.handlePlay(bot, reply, args);
           break;
         case 'spotify':
-          await this.handleSpotify(bot, userClid, args);
+          await this.handleSpotify(bot, reply, args);
           break;
         case 'stop':
-          this.handleStop(bot, userClid);
+          this.handleStop(bot, reply);
           break;
         case 'pause':
-          this.handlePause(bot, userClid);
+          this.handlePause(bot, reply);
           break;
         case 'skip':
         case 'next':
-          await this.handleSkip(bot, userClid);
+          await this.handleSkip(bot, reply);
           break;
         case 'prev':
-          await this.handlePrev(bot, userClid);
+          await this.handlePrev(bot, reply);
           break;
         case 'vol':
         case 'volume':
-          this.handleVolume(bot, userClid, args);
+          this.handleVolume(bot, reply, args);
           break;
         case 'np':
         case 'nowplaying':
-          this.handleNowPlaying(bot, userClid);
+          this.handleNowPlaying(bot, reply);
           break;
         case 'queue':
         case 'add':
-          await this.handleQueue(bot, userClid, args);
+          await this.handleQueue(bot, reply, args);
           break;
         case 'stream':
-          await this.handleStream(bot, userClid, args);
+          await this.handleStream(bot, reply, args);
           break;
         case 'stopstream':
-          await this.handleStopStream(bot, userClid);
+          await this.handleStopStream(bot, reply);
           break;
         case 'viewers':
-          this.handleViewers(bot, userClid);
+          this.handleViewers(bot, reply);
           break;
       }
     } catch (err: any) {
       console.error(`[MusicCmd] Error handling !${command}: ${err.message}`);
-      this.reply(bot, userClid, `Error: ${err.message}`);
-    }
-  }
-
-  private reply(bot: VoiceBot, targetClid: number, msg: string): void {
-    try {
-      bot.sendTextMessage(targetClid, msg);
-    } catch (err: any) {
-      console.error(`[MusicCmd] Failed to send reply: ${err.message}`);
+      reply(`Error: ${err.message}`);
     }
   }
 
   // ─── Command Handlers ───────────────────────────────────────
 
-  private async handleRadio(botId: number, bot: VoiceBot, userClid: number, args: string): Promise<void> {
+  private async handleRadio(botId: number, bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     // Get serverConfigId for this bot from DB
     const dbBot = await this.prisma.musicBot.findUnique({ where: { id: botId }, select: { serverConfigId: true } });
     if (!dbBot) {
-      this.reply(bot, userClid, 'Bot config not found.');
+      reply('Bot config not found.');
       return;
     }
 
@@ -141,27 +148,27 @@ export class MusicCommandHandler {
     });
 
     if (stations.length === 0) {
-      this.reply(bot, userClid, 'No radio stations configured.');
+      reply('No radio stations configured.');
       return;
     }
 
     // No argument — list stations
     if (!args) {
       const lines = stations.map((s: any) => `[${s.id}] ${s.name}${s.genre ? ` (${s.genre})` : ''}`);
-      this.reply(bot, userClid, 'Radio Stations:\n' + lines.join('\n'));
+      reply('Radio Stations:\n' + lines.join('\n'));
       return;
     }
 
     // Argument — play station by ID
     const stationId = parseInt(args);
     if (isNaN(stationId)) {
-      this.reply(bot, userClid, 'Usage: !radio <id> — Use !radio to list stations.');
+      reply('Usage: !radio <id> — Use !radio to list stations.');
       return;
     }
 
     const station = stations.find((s: any) => s.id === stationId);
     if (!station) {
-      this.reply(bot, userClid, `Station #${stationId} not found. Use !radio to list stations.`);
+      reply(`Station #${stationId} not found. Use !radio to list stations.`);
       return;
     }
 
@@ -175,77 +182,77 @@ export class MusicCommandHandler {
     };
 
     await bot.playStream(queueItem);
-    this.reply(bot, userClid, `Now playing: ${station.name}`);
+    reply(`Now playing: ${station.name}`);
   }
 
-  private async handlePlay(bot: VoiceBot, userClid: number, args: string): Promise<void> {
+  private async handlePlay(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     if (!args) {
       if (bot.status === 'paused') {
         bot.resume();
-        this.reply(bot, userClid, 'Resumed.');
+        reply('Resumed.');
         return;
       }
-      this.reply(bot, userClid, 'Usage: !play <youtube-url>');
+      reply('Usage: !play <youtube-url | lien Spotify>');
       return;
     }
 
     // Spotify links are metadata-only: delegate to the Spotify→YouTube path
     if (isSpotifyUrl(args)) {
-      await this.handleSpotify(bot, userClid, args);
+      await this.handleSpotify(bot, reply, args);
       return;
     }
 
     if (!args.startsWith('http://') && !args.startsWith('https://')) {
-      this.reply(bot, userClid, 'Please provide a valid URL. Usage: !play <url>');
+      reply('Please provide a valid URL. Usage: !play <youtube-url | lien Spotify>');
       return;
     }
 
-    this.reply(bot, userClid, 'Loading...');
+    reply('Loading...');
 
     try {
       const { item, queued } = await downloadAndEnqueue(this.prisma, bot, args);
       if (queued) {
-        this.reply(bot, userClid, `Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
+        reply(`Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
       } else {
-        this.reply(bot, userClid, `Now playing: ${item.artist} - ${item.title}`);
+        reply(`Now playing: ${item.artist} - ${item.title}`);
       }
     } catch (err: any) {
-      this.reply(bot, userClid, `Failed to play: ${err.message}`);
+      reply(`Failed to play: ${err.message}`);
     }
   }
 
-  private async handleSpotify(bot: VoiceBot, userClid: number, args: string): Promise<void> {
+  private async handleSpotify(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     if (!args) {
-      this.reply(bot, userClid, 'Usage: !spotify <lien-track-ou-album-spotify>');
+      reply('Usage: !spotify <lien-track-ou-album-spotify>');
       return;
     }
 
     const config = await loadSpotifyConfig(this.prisma);
     if (!config) {
-      this.reply(bot, userClid, 'Spotify non configuré (Settings → Spotify).');
+      reply('Spotify non configuré (Settings → Spotify).');
       return;
     }
 
-    this.reply(bot, userClid, 'Résolution du lien Spotify...');
+    reply('Résolution du lien Spotify...');
 
     try {
       const result = await enqueueSpotify(this.prisma, bot, config, args);
       if (result.type === 'album') {
-        this.reply(bot, userClid, `Album "${result.name}" : ${result.added}/${result.total} piste(s) ajoutée(s).`);
+        reply(`Album "${result.name}" : ${result.added}/${result.total} piste(s) ajoutée(s).`);
       } else if (result.added > 0) {
-        this.reply(bot, userClid, result.firstStarted ? `Now playing: ${result.name}` : `Queued: ${result.name}`);
+        reply(result.firstStarted ? `Now playing: ${result.name}` : `Queued: ${result.name}`);
       } else {
-        this.reply(bot, userClid, `Échec : ${result.failed[0] || 'aucune piste ajoutée'}`);
+        reply(`Échec : ${result.failed[0] || 'aucune piste ajoutée'}`);
       }
     } catch (err: any) {
-      this.reply(bot, userClid, `Échec Spotify : ${err.message}`);
+      reply(`Échec Spotify : ${err.message}`);
     }
   }
 
-  private showQueue(bot: VoiceBot, userClid: number): void {
+  private showQueue(bot: VoiceBot, reply: ReplyFn): void {
     const items = bot.queue.getAll();
     if (items.length === 0) {
-      this.reply(bot, userClid, 'Queue is empty.');
+      reply('Queue is empty.');
       return;
     }
 
@@ -257,13 +264,13 @@ export class MusicCommandHandler {
       return `${marker}${i + 1}. ${artist}${item.title}${dur}`;
     });
     if (items.length > 15) lines.push(`  ... and ${items.length - 15} more`);
-    this.reply(bot, userClid, `Queue (${items.length} tracks):\n${lines.join('\n')}`);
+    reply(`Queue (${items.length} tracks):\n${lines.join('\n')}`);
   }
 
-  private async handleQueue(bot: VoiceBot, userClid: number, args: string): Promise<void> {
+  private async handleQueue(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     // No args or "show" — display current queue
     if (!args || args.toLowerCase() === 'show') {
-      this.showQueue(bot, userClid);
+      this.showQueue(bot, reply);
       return;
     }
 
@@ -272,12 +279,12 @@ export class MusicCommandHandler {
       const idx = parseInt(args.substring(7).trim()) - 1; // 1-based to 0-based
       const items = bot.queue.getAll();
       if (isNaN(idx) || idx < 0 || idx >= items.length) {
-        this.reply(bot, userClid, `Invalid index. Queue has ${items.length} tracks.`);
+        reply(`Invalid index. Queue has ${items.length} tracks.`);
         return;
       }
       const removed = items[idx];
       bot.queue.remove(removed.id);
-      this.reply(bot, userClid, `Removed #${idx + 1}: ${removed.title}`);
+      reply(`Removed #${idx + 1}: ${removed.title}`);
       return;
     }
 
@@ -286,7 +293,7 @@ export class MusicCommandHandler {
       const idx = parseInt(args.substring(5).trim()) - 1; // 1-based to 0-based
       const item = bot.queue.playAt(idx);
       if (!item) {
-        this.reply(bot, userClid, `Invalid index. Queue has ${bot.queue.length} tracks.`);
+        reply(`Invalid index. Queue has ${bot.queue.length} tracks.`);
         return;
       }
       if (item.streamUrl) {
@@ -294,55 +301,55 @@ export class MusicCommandHandler {
       } else {
         await bot.play(item);
       }
-      this.reply(bot, userClid, `Playing #${idx + 1}: ${item.title}`);
+      reply(`Playing #${idx + 1}: ${item.title}`);
       return;
     }
 
     // !queue clear
     if (args.toLowerCase() === 'clear') {
       bot.queue.clear();
-      this.reply(bot, userClid, 'Queue cleared.');
+      reply('Queue cleared.');
       return;
     }
 
     // URL provided — add to queue without interrupting
     if (!args.startsWith('http://') && !args.startsWith('https://')) {
-      this.reply(bot, userClid, 'Usage: !queue [show|play <n>|remove <n>|clear|<url>]');
+      reply('Usage: !queue [show|play <n>|remove <n>|clear|<url>]');
       return;
     }
 
-    this.reply(bot, userClid, 'Loading...');
+    reply('Loading...');
 
     try {
       const { item, queued } = await downloadAndEnqueue(this.prisma, bot, args);
       if (queued) {
-        this.reply(bot, userClid, `Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
+        reply(`Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
       } else {
-        this.reply(bot, userClid, `Now playing: ${item.artist} - ${item.title}`);
+        reply(`Now playing: ${item.artist} - ${item.title}`);
       }
     } catch (err: any) {
-      this.reply(bot, userClid, `Failed to queue: ${err.message}`);
+      reply(`Failed to queue: ${err.message}`);
     }
   }
 
-  private handleStop(bot: VoiceBot, userClid: number): void {
+  private handleStop(bot: VoiceBot, reply: ReplyFn): void {
     bot.stopAudio();
-    this.reply(bot, userClid, 'Playback stopped.');
+    reply('Playback stopped.');
   }
 
-  private handlePause(bot: VoiceBot, userClid: number): void {
+  private handlePause(bot: VoiceBot, reply: ReplyFn): void {
     if (bot.status === 'paused') {
       bot.resume();
-      this.reply(bot, userClid, 'Resumed.');
+      reply('Resumed.');
     } else if (bot.status === 'playing') {
       bot.pause();
-      this.reply(bot, userClid, 'Paused.');
+      reply('Paused.');
     } else {
-      this.reply(bot, userClid, 'Nothing is playing.');
+      reply('Nothing is playing.');
     }
   }
 
-  private async handleSkip(bot: VoiceBot, userClid: number): Promise<void> {
+  private async handleSkip(bot: VoiceBot, reply: ReplyFn): Promise<void> {
     const next = bot.queue.next();
     if (next) {
       if (next.streamUrl) {
@@ -350,14 +357,14 @@ export class MusicCommandHandler {
       } else {
         await bot.play(next);
       }
-      this.reply(bot, userClid, `Skipped to: ${next.title}`);
+      reply(`Skipped to: ${next.title}`);
     } else {
       bot.stopAudio();
-      this.reply(bot, userClid, 'Queue empty — playback stopped.');
+      reply('Queue empty — playback stopped.');
     }
   }
 
-  private async handlePrev(bot: VoiceBot, userClid: number): Promise<void> {
+  private async handlePrev(bot: VoiceBot, reply: ReplyFn): Promise<void> {
     const prev = bot.queue.previous();
     if (prev) {
       if (prev.streamUrl) {
@@ -365,45 +372,45 @@ export class MusicCommandHandler {
       } else {
         await bot.play(prev);
       }
-      this.reply(bot, userClid, `Previous: ${prev.title}`);
+      reply(`Previous: ${prev.title}`);
     } else {
-      this.reply(bot, userClid, 'No previous track.');
+      reply('No previous track.');
     }
   }
 
-  private handleVolume(bot: VoiceBot, userClid: number, args: string): void {
+  private handleVolume(bot: VoiceBot, reply: ReplyFn, args: string): void {
     if (!args) {
       const vol = bot.currentConfig.volume;
-      this.reply(bot, userClid, `Volume: ${vol}%`);
+      reply(`Volume: ${vol}%`);
       return;
     }
 
     const vol = parseInt(args);
     if (isNaN(vol) || vol < 0 || vol > 100) {
-      this.reply(bot, userClid, 'Usage: !vol <0-100>');
+      reply('Usage: !vol <0-100>');
       return;
     }
 
     bot.setVolume(vol);
-    this.reply(bot, userClid, `Volume set to ${vol}%.`);
+    reply(`Volume set to ${vol}%.`);
   }
 
-  private handleNowPlaying(bot: VoiceBot, userClid: number): void {
+  private handleNowPlaying(bot: VoiceBot, reply: ReplyFn): void {
     const np = bot.nowPlaying;
     if (!np) {
-      this.reply(bot, userClid, 'Nothing is playing.');
+      reply('Nothing is playing.');
       return;
     }
 
     const artist = np.artist ? `${np.artist} - ` : '';
-    this.reply(bot, userClid, `Now playing: ${artist}${np.title}`);
+    reply(`Now playing: ${artist}${np.title}`);
   }
 
   // ─── Video Streaming Commands ─────────────────────────────
 
-  private async handleStream(bot: VoiceBot, userClid: number, args: string): Promise<void> {
+  private async handleStream(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     if (!args) {
-      this.reply(bot, userClid, 'Usage: !stream <url> [preset]  — Presets: 480p, 720p, 1080p');
+      reply('Usage: !stream <url> [preset]  — Presets: 480p, 720p, 1080p');
       return;
     }
 
@@ -412,7 +419,7 @@ export class MusicCommandHandler {
     const preset = parts[1] || undefined;
 
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      this.reply(bot, userClid, 'Please provide a valid URL.');
+      reply('Please provide a valid URL.');
       return;
     }
 
@@ -420,46 +427,46 @@ export class MusicCommandHandler {
       // Change source if already streaming
       try {
         await bot.setVideoSource(url);
-        this.reply(bot, userClid, `Stream source changed to: ${url}`);
+        reply(`Stream source changed to: ${url}`);
       } catch (err: any) {
-        this.reply(bot, userClid, `Error: ${err.message}`);
+        reply(`Error: ${err.message}`);
       }
       return;
     }
 
-    this.reply(bot, userClid, 'Starting video stream...');
+    reply('Starting video stream...');
     try {
       await bot.startVideoStream(url, preset);
-      this.reply(bot, userClid, `Video stream started: ${url}`);
+      reply(`Video stream started: ${url}`);
     } catch (err: any) {
-      this.reply(bot, userClid, `Failed to start stream: ${err.message}`);
+      reply(`Failed to start stream: ${err.message}`);
     }
   }
 
-  private async handleStopStream(bot: VoiceBot, userClid: number): Promise<void> {
+  private async handleStopStream(bot: VoiceBot, reply: ReplyFn): Promise<void> {
     if (!bot.videoStreaming) {
-      this.reply(bot, userClid, 'No active video stream.');
+      reply('No active video stream.');
       return;
     }
     await bot.stopVideoStream();
-    this.reply(bot, userClid, 'Video stream stopped.');
+    reply('Video stream stopped.');
   }
 
-  private handleViewers(bot: VoiceBot, userClid: number): void {
+  private handleViewers(bot: VoiceBot, reply: ReplyFn): void {
     const status = bot.videoStreamStatus;
     if (!status.streaming) {
-      this.reply(bot, userClid, 'No active video stream.');
+      reply('No active video stream.');
       return;
     }
     if (status.viewers.length === 0) {
-      this.reply(bot, userClid, 'No viewers connected.');
+      reply('No viewers connected.');
       return;
     }
     const lines = status.viewers.map((v) => {
       const duration = Math.floor((Date.now() - v.joinedAt) / 1000);
       return `  clid=${v.clid} (${duration}s)`;
     });
-    this.reply(bot, userClid, `Viewers (${status.viewerCount}):\n${lines.join('\n')}`);
+    reply(`Viewers (${status.viewerCount}):\n${lines.join('\n')}`);
   }
 
 }

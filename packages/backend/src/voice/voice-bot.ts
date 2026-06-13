@@ -219,6 +219,16 @@ export class VoiceBot extends EventEmitter {
     this.client.sendCommand(cmd);
   }
 
+  /** Send a message to the bot's current channel (targetmode 2). */
+  sendChannelMessage(msg: string): void {
+    const cmd = buildCommand('sendtextmessage', {
+      targetmode: 2,
+      target: this.client.getChannelId(),
+      msg,
+    });
+    this.client.sendCommand(cmd);
+  }
+
   get currentConfig(): VoiceBotConfig {
     return { ...this.config };
   }
