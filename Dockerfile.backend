@@ -54,10 +54,14 @@ COPY --from=build /app/packages/backend/package.json ./packages/backend/package.
 COPY --from=build /app/packages/backend/node_modules ./packages/backend/node_modules
 
 WORKDIR /app/packages/backend
-# Run as the unprivileged 'node' user shipped with the base image
+# Run as the unprivileged 'node' user shipped with the base image.
+# Only chown the paths node actually writes to (SQLite data, music, yt-dlp
+# config + venv). The app code / node_modules stay root-owned but are
+# world-readable, so node reads them fine — chowning all of /app recursively
+# (tens of thousands of node_modules files) was the slow build step.
 RUN mkdir -p data /data/music /home/node/.config/yt-dlp && \
     echo "--js-runtimes node" > /home/node/.config/yt-dlp/config && \
-    chown -R node:node /app /data/music /home/node/.config /opt/yt-dlp
+    chown -R node:node data /data/music /home/node/.config /opt/yt-dlp
 USER node
 ENV HOME=/home/node
 
