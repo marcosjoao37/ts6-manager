@@ -38,4 +38,9 @@ export const journalApi = {
   retention: (): Promise<{ retentionDays: number }> => api.get('/journal/retention').then((r) => r.data),
   updateRetention: (retentionDays: number) =>
     api.put('/journal/retention', { retentionDays }).then((r) => r.data),
+  ban: (data: { ip: string; targets: ('web' | 'teamspeak')[]; durationMinutes: number; reason?: string }) =>
+    api.post('/journal/ban', data).then((r) => r.data),
+  webBans: (): Promise<Array<{ id: number; ip: string; reason: string | null; expiresAt: string | null; createdAt: string }>> =>
+    api.get('/journal/web-bans').then((r) => r.data),
+  deleteWebBan: (id: number) => api.delete(`/journal/web-bans/${id}`).then((r) => r.data),
 };

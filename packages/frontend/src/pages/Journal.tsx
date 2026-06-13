@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { journalApi, type ConnectionLogEntry } from '@/api/journal.api';
 import { PageLoader } from '@/components/shared/LoadingSpinner';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, ChevronRight, Globe, MessagesSquare, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ChevronLeft, ChevronRight, Globe, MessagesSquare, ArrowUp, ArrowDown, X, Ban, ShieldOff, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 type SortField = 'createdAt' | 'login' | 'ip' | 'country' | 'success';
 
@@ -28,6 +30,102 @@ function countryName(country: string | null): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' });
+}
+
+function BanDialog({ entry, source, onClose }: { entry: ConnectionLogEntry | null; source: 'web' | 'teamspeak'; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [web, setWeb] = useState(false);
+  const [ts, setTs] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [reason, setReason] = useState('');
+
+  // Pre-check the target matching the current tab each time the dialog opens.
+  useEffect(() => {
+    if (entry) { setWeb(source === 'web'); setTs(source === 'teamspeak'); setDuration(0); setReason(''); }
+  }, [entry, source]);
+
+  const ban = useMutation({
+    mutationFn: () => journalApi.ban({
+      ip: entry!.ip,
+      targets: [...(web ? ['web' as const] : []), ...(ts ? ['teamspeak' as const] : [])],
+      durationMinutes: duration,
+      reason: reason || undefined,
+    }),
+    onSuccess: () => { toast.success(t('journal.banApplied')); onClose(); },
+    onError: (err: any) => toast.error(err.response?.data?.error || t('journal.banFailed')),
+  });
+
+  return (
+    <Dialog open={entry !== null} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{t('journal.banTitle')}</DialogTitle></DialogHeader>
+        {entry && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {t('journal.banIntro')} <span className="font-mono-data">{entry.ip}</span>
+              {entry.login ? <> · <span className="font-medium">{entry.login}</span></> : null}
+            </p>
+            <div className="flex items-center gap-2">
+              <Switch checked={web} onCheckedChange={setWeb} />
+              <Label className="text-xs font-normal">{t('journal.banWeb')}</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={ts} onCheckedChange={setTs} />
+              <Label className="text-xs font-normal">{t('journal.banTeamSpeak')}</Label>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{t('journal.banDuration')}</Label>
+              <Input type="number" min={0} value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 0)} className="h-8 text-xs w-32" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{t('journal.banReason')}</Label>
+              <Input value={reason} onChange={(e) => setReason(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose}>{t('journal.cancel')}</Button>
+          <Button variant="destructive" size="sm" disabled={(!web && !ts) || ban.isPending} onClick={() => ban.mutate()}>
+            {ban.isPending ? t('journal.banning') : t('journal.banConfirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WebBansDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { data: bans = [] } = useQuery({ queryKey: ['web-bans'], queryFn: journalApi.webBans, enabled: open });
+  const revoke = useMutation({
+    mutationFn: (id: number) => journalApi.deleteWebBan(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['web-bans'] }); toast.success(t('journal.banRevoked')); },
+    onError: () => toast.error(t('journal.banFailed')),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{t('journal.webBansTitle')}</DialogTitle></DialogHeader>
+        <div className="max-h-[50vh] overflow-y-auto">
+          {bans.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-6 text-center">{t('journal.noWebBans')}</p>
+          ) : bans.map((b) => (
+            <div key={b.id} className="flex items-center gap-2 py-2 border-b border-border last:border-0">
+              <span className="font-mono-data text-xs flex-1">{b.ip}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {b.expiresAt ? new Date(b.expiresAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : t('journal.permanent')}
+              </span>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => revoke.mutate(b.id)}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function LocationCell({ e }: { e: ConnectionLogEntry }) {
@@ -101,6 +199,9 @@ export default function Journal() {
   const hasFilters = loginF || ipF || countryF || resultF !== 'all';
   const resetFilters = () => { setLoginF(''); setIpF(''); setCountryF(''); setResultF('all'); };
 
+  const [banEntry, setBanEntry] = useState<ConnectionLogEntry | null>(null);
+  const [showWebBans, setShowWebBans] = useState(false);
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{t('journal.title')}</h1>
@@ -114,6 +215,9 @@ export default function Journal() {
         </Tabs>
 
         <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowWebBans(true)}>
+            <ShieldOff className="h-3.5 w-3.5 mr-1" /> {t('journal.webBans')}
+          </Button>
           {hasFilters && (
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetFilters}>
               <X className="h-3.5 w-3.5 mr-1" /> {t('journal.resetFilters')}
@@ -138,6 +242,7 @@ export default function Journal() {
                 <SortHead field="ip" label={t('journal.colIp')} />
                 <SortHead field="country" label={t('journal.colLocation')} />
                 {source === 'web' && <SortHead field="success" label={t('journal.colResult')} />}
+                <th className="h-10 px-3 text-right font-medium text-muted-foreground">{t('journal.colActions')}</th>
               </tr>
               <tr className="border-b border-border bg-background">
                 <th className="px-2 py-1.5"><Input value={loginF} onChange={(e) => setLoginF(e.target.value)} placeholder={t('journal.filterPlaceholder')} className="h-7 text-xs" /></th>
@@ -156,11 +261,12 @@ export default function Journal() {
                     </Select>
                   </th>
                 )}
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {entries.length === 0 ? (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-xs text-muted-foreground">{t('journal.noEntries')}</td></tr>
+                <tr><td colSpan={6} className="px-3 py-8 text-center text-xs text-muted-foreground">{t('journal.noEntries')}</td></tr>
               ) : entries.map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                   <td className="px-3 py-2.5">
@@ -177,6 +283,13 @@ export default function Journal() {
                         : <span className="text-xs text-destructive">{t('journal.failed')}</span>}
                     </td>
                   )}
+                  <td className="px-3 py-2.5 text-right">
+                    {e.ip && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title={t('journal.ban')} onClick={() => setBanEntry(e)}>
+                        <Ban className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -196,6 +309,9 @@ export default function Journal() {
           </Button>
         </div>
       </div>
+
+      <BanDialog entry={banEntry} source={source} onClose={() => setBanEntry(null)} />
+      <WebBansDialog open={showWebBans} onClose={() => setShowWebBans(false)} />
     </div>
   );
 }

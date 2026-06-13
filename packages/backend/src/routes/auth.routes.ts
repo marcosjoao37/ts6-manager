@@ -9,6 +9,7 @@ import { AppError } from '../middleware/error-handler.js';
 import { validatePassword, loadPasswordPolicy } from '../utils/validate-password.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 import { generateMfaSecret, buildOtpAuthUrl, verifyTotp, generateRecoveryCodes, consumeRecoveryCode } from '../utils/mfa.js';
+import { isIpWebBanned } from '../utils/web-ban.js';
 import QRCode from 'qrcode';
 
 export const authRoutes: Router = Router();
@@ -50,6 +51,11 @@ authRoutes.post('/login', async (req: Request, res: Response, next) => {
     if (!username || !password) throw new AppError(400, 'Username and password required');
 
     const prisma = req.app.locals.prisma;
+
+    // Web IP ban: reject before authenticating
+    if (await isIpWebBanned(prisma, req.ip || '')) {
+      throw new AppError(403, 'Access denied');
+    }
     const user = await prisma.user.findUnique({ where: { username } });
 
     if (!user || !user.enabled) {
