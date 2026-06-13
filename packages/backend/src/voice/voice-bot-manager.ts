@@ -22,6 +22,7 @@ export class VoiceBotManager extends EventEmitter {
   private progressTimers = new Map<number, ReturnType<typeof setInterval>>();
   private reconnectState = new Map<number, ReconnectState>();
   private musicCmdHandler: MusicCommandHandler | null = null;
+  private botCreatedListeners: Array<(botId: number, bot: VoiceBot) => void> = [];
 
   constructor(
     private prisma: PrismaClient,
@@ -36,6 +37,16 @@ export class VoiceBotManager extends EventEmitter {
     for (const [id, bot] of this.bots) {
       handler.registerBot(id, bot);
     }
+  }
+
+  /** Subscribe to bot creation (e.g. the Discord bridge attaching listeners). */
+  onBotCreated(cb: (botId: number, bot: VoiceBot) => void): void {
+    this.botCreatedListeners.push(cb);
+  }
+
+  /** Snapshot of all live bot instances. */
+  getAllBots(): Array<{ botId: number; bot: VoiceBot }> {
+    return Array.from(this.bots, ([botId, bot]) => ({ botId, bot }));
   }
 
   async start(): Promise<void> {
@@ -160,6 +171,12 @@ export class VoiceBotManager extends EventEmitter {
     // Register for music text commands
     if (this.musicCmdHandler) {
       this.musicCmdHandler.registerBot(config.id, bot);
+    }
+
+    for (const cb of this.botCreatedListeners) {
+      try { cb(config.id, bot); } catch (err: any) {
+        console.error(`[VoiceBotManager] onBotCreated listener failed: ${err.message}`);
+      }
     }
 
     return bot;

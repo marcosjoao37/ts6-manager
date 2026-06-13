@@ -243,3 +243,18 @@ model StreamSession {
   endedAt        DateTime?
   peakViewers    Int       @default(0)
 }
+
+model DiscordSettings {
+  id                     Int      @id @default(autoincrement())
+  enabled                Boolean  @default(false)
+  botToken               String?
+  guildId                String?
+  notificationsChannelId String?
+  statsChannelId         String?
+  statsLiveEnabled       Boolean  @default(false)
+  statsMessageId         String?
+  defaultMusicBotId      Int?
+  serverConfigId         Int?
+  virtualServerId        Int      @default(1)
+  updatedAt              DateTime @updatedAt
+}

@@ -2,9 +2,8 @@ import type { PrismaClient } from '../../generated/prisma/index.js';
 import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
-import { downloadYouTube } from './audio/youtube.js';
+import { downloadAndEnqueue } from './music-ops.js';
 
-const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
 const CMD_PREFIX = '!';
 
 const MUSIC_COMMANDS = new Set([
@@ -195,30 +194,11 @@ export class MusicCommandHandler {
     this.reply(bot, userClid, 'Loading...');
 
     try {
-      const { filePath, info } = await downloadYouTube(args, MUSIC_DIR);
-
-      const queueItem: QueueItem = {
-        id: `yt_${info.id}`,
-        title: info.title,
-        artist: info.artist,
-        duration: info.duration,
-        filePath,
-        source: 'youtube',
-        sourceUrl: args,
-      };
-
-      bot.queue.add(queueItem);
-
-      // Save to MusicRequest history
-      this.saveMusicRequest(bot, queueItem);
-
-      // If something is already playing, queue it instead of interrupting
-      if (bot.status === 'playing' || bot.status === 'paused') {
-        this.reply(bot, userClid, `Queued: ${info.artist} - ${info.title} (position #${bot.queue.length})`);
+      const { item, queued } = await downloadAndEnqueue(this.prisma, bot, args);
+      if (queued) {
+        this.reply(bot, userClid, `Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
       } else {
-        bot.queue.playAt(bot.queue.length - 1);
-        await bot.play(queueItem);
-        this.reply(bot, userClid, `Now playing: ${info.artist} - ${info.title}`);
+        this.reply(bot, userClid, `Now playing: ${item.artist} - ${item.title}`);
       }
     } catch (err: any) {
       this.reply(bot, userClid, `Failed to play: ${err.message}`);
@@ -297,30 +277,11 @@ export class MusicCommandHandler {
     this.reply(bot, userClid, 'Loading...');
 
     try {
-      const { filePath, info } = await downloadYouTube(args, MUSIC_DIR);
-
-      const queueItem: QueueItem = {
-        id: `yt_${info.id}`,
-        title: info.title,
-        artist: info.artist,
-        duration: info.duration,
-        filePath,
-        source: 'youtube',
-        sourceUrl: args,
-      };
-
-      bot.queue.add(queueItem);
-
-      // Save to MusicRequest history
-      this.saveMusicRequest(bot, queueItem);
-
-      // If nothing is playing, start playing the queued item
-      if (bot.status !== 'playing' && bot.status !== 'paused') {
-        bot.queue.playAt(bot.queue.length - 1);
-        await bot.play(queueItem);
-        this.reply(bot, userClid, `Now playing: ${info.artist} - ${info.title}`);
+      const { item, queued } = await downloadAndEnqueue(this.prisma, bot, args);
+      if (queued) {
+        this.reply(bot, userClid, `Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
       } else {
-        this.reply(bot, userClid, `Queued: ${info.artist} - ${info.title} (position #${bot.queue.length})`);
+        this.reply(bot, userClid, `Now playing: ${item.artist} - ${item.title}`);
       }
     } catch (err: any) {
       this.reply(bot, userClid, `Failed to queue: ${err.message}`);
@@ -464,27 +425,4 @@ export class MusicCommandHandler {
     this.reply(bot, userClid, `Viewers (${status.viewerCount}):\n${lines.join('\n')}`);
   }
 
-  private saveMusicRequest(bot: VoiceBot, item: QueueItem): void {
-    if (!item.sourceUrl || !bot.currentConfig.serverConfigId) return;
-    this.prisma.musicRequest.upsert({
-      where: {
-        serverConfigId_url: {
-          serverConfigId: bot.currentConfig.serverConfigId,
-          url: item.sourceUrl,
-        },
-      },
-      update: {
-        requestedAt: new Date(),
-        title: item.title || 'Unknown Title',
-      },
-      create: {
-        serverConfigId: bot.currentConfig.serverConfigId,
-        url: item.sourceUrl,
-        title: item.title || 'Unknown Title',
-        requestedAt: new Date(),
-      },
-    }).catch((err) => {
-      console.error('[MusicCmd] Failed to save music request history:', err.message);
-    });
-  }
 }

@@ -6,6 +6,7 @@ import { ConnectionPool } from './ts-client/connection-pool.js';
 import { BotEngine } from './bot-engine/engine.js';
 import { VoiceBotManager } from './voice/voice-bot-manager.js';
 import { MusicCommandHandler } from './voice/music-command-handler.js';
+import { DiscordBridge } from './discord/discord-bridge.js';
 import { config } from './config.js';
 import { setYtCookieFile } from './voice/audio/youtube.js';
 import jwt from 'jsonwebtoken';
@@ -103,6 +104,13 @@ async function main() {
   const musicCommandHandler = new MusicCommandHandler(prisma, voiceBotManager);
   voiceBotManager.setMusicCommandHandler(musicCommandHandler);
 
+  // Discord bridge: slash commands, TS notifications, stats (non-blocking)
+  const discordBridge = new DiscordBridge(prisma, connectionPool, voiceBotManager);
+  app.locals.discordBridge = discordBridge;
+  discordBridge.start().catch((err) => {
+    console.error(`[Discord] Failed to start: ${err.message}`);
+  });
+
   server.listen(config.port, () => {
     console.log(`[TS6 WebUI] Backend running on http://localhost:${config.port}`);
     console.log(`[TS6 WebUI] WebSocket available at ws://localhost:${config.port}/ws`);
@@ -112,6 +120,7 @@ async function main() {
   // Graceful shutdown
   const shutdown = async () => {
     console.log('\n[TS6 WebUI] Shutting down...');
+    await discordBridge.stop();
     await voiceBotManager.stopAll();
     botEngine.destroy();
     connectionPool.destroy();
