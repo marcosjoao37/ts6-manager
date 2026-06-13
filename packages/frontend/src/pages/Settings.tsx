@@ -600,7 +600,7 @@ function DiscordTab() {
   const qc = useQueryClient();
   const { data: settings, isLoading } = useQuery({ queryKey: ['discord-settings'], queryFn: discordApi.settings });
   const { data: status } = useQuery({ queryKey: ['discord-status'], queryFn: discordApi.status, refetchInterval: 10000 });
-  const { data: channels = [] } = useQuery({
+  const { data: channels } = useQuery({
     queryKey: ['discord-channels'],
     queryFn: discordApi.channels,
     enabled: !!status?.running,
@@ -630,9 +630,10 @@ function DiscordTab() {
 
   const botList = Array.isArray(bots) ? bots : [];
   const serverList = Array.isArray(servers) ? servers : [];
-  const channelOptions = Array.isArray(channels) ? channels : [];
+  const textChannels = channels?.text ?? [];
+  const voiceChannels = channels?.voice ?? [];
 
-  const channelField = (label: string, key: 'notificationsChannelId' | 'statsChannelId', hint: string) => (
+  const channelField = (label: string, key: 'notificationsChannelId' | 'statsChannelId' | 'voiceChannelId', hint: string, channelOptions: Array<{ id: string; name: string }>) => (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
       {channelOptions.length > 0 ? (
@@ -688,8 +689,9 @@ function DiscordTab() {
             value={form.guildId || ''} onChange={(e) => setForm((f) => ({ ...f, guildId: e.target.value || null }))} />
         </div>
 
-        {channelField('Notifications channel', 'notificationsChannelId', 'TS connect/disconnect events and now-playing announcements')}
-        {channelField('Stats channel', 'statsChannelId', 'Target for the auto-updated stats panel')}
+        {channelField('Notifications channel', 'notificationsChannelId', 'TS connect/disconnect events and now-playing announcements', textChannels)}
+        {channelField('Stats channel', 'statsChannelId', 'Target for the auto-updated stats panel', textChannels)}
+        {channelField('Voice channel (music relay)', 'voiceChannelId', 'The bot joins this voice channel and streams the music bot audio — /join and /leave override it', voiceChannels)}
 
         <div className="flex items-center gap-2">
           <Switch checked={!!form.statsLiveEnabled} onCheckedChange={(v) => setForm((f) => ({ ...f, statsLiveEnabled: v }))} />

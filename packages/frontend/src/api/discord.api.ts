@@ -6,6 +6,7 @@ export interface DiscordSettings {
   guildId: string | null;
   notificationsChannelId: string | null;
   statsChannelId: string | null;
+  voiceChannelId: string | null;
   statsLiveEnabled: boolean;
   defaultMusicBotId: number | null;
   serverConfigId: number | null;
@@ -25,5 +26,6 @@ export const discordApi = {
   updateSettings: (data: Partial<DiscordSettings> & { botToken?: string }) =>
     api.put('/discord/settings', data, { timeout: 30000 }).then((r) => r.data),
   status: (): Promise<DiscordStatus> => api.get('/discord/status').then((r) => r.data),
-  channels: (): Promise<Array<{ id: string; name: string }>> => api.get('/discord/channels').then((r) => r.data),
+  channels: (): Promise<{ text: Array<{ id: string; name: string }>; voice: Array<{ id: string; name: string }> }> =>
+    api.get('/discord/channels').then((r) => r.data),
 };

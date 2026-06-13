@@ -23,6 +23,7 @@ discordRoutes.get('/settings', async (req: Request, res: Response, next) => {
       guildId: s.guildId,
       notificationsChannelId: s.notificationsChannelId,
       statsChannelId: s.statsChannelId,
+      voiceChannelId: s.voiceChannelId,
       statsLiveEnabled: s.statsLiveEnabled,
       defaultMusicBotId: s.defaultMusicBotId,
       serverConfigId: s.serverConfigId,
@@ -37,7 +38,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreateSettings(prisma);
 
-    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, statsLiveEnabled, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
+    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
 
     const data: any = {};
     if (enabled !== undefined) data.enabled = !!enabled;
@@ -46,6 +47,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     if (guildId !== undefined) data.guildId = guildId || null;
     if (notificationsChannelId !== undefined) data.notificationsChannelId = notificationsChannelId || null;
     if (statsChannelId !== undefined) data.statsChannelId = statsChannelId || null;
+    if (voiceChannelId !== undefined) data.voiceChannelId = voiceChannelId || null;
     if (statsLiveEnabled !== undefined) data.statsLiveEnabled = !!statsLiveEnabled;
     if (defaultMusicBotId !== undefined) data.defaultMusicBotId = defaultMusicBotId ? parseInt(defaultMusicBotId) : null;
     if (serverConfigId !== undefined) data.serverConfigId = serverConfigId ? parseInt(serverConfigId) : null;
@@ -66,8 +68,8 @@ discordRoutes.get('/status', (req: Request, res: Response) => {
   res.json(bridge?.getStatus() ?? { enabled: false, running: false, error: 'Bridge not initialized', guildName: null, warnings: [] });
 });
 
-// GET /api/discord/channels — text channels of the configured guild
+// GET /api/discord/channels — text + voice channels of the configured guild
 discordRoutes.get('/channels', (req: Request, res: Response) => {
   const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;
-  res.json(bridge?.listChannels() ?? []);
+  res.json(bridge?.listChannels() ?? { text: [], voice: [] });
 });

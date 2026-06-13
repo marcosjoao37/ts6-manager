@@ -15,8 +15,10 @@
     "@discordjs/opus": "^0.10.0"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.19.2",
     "@prisma/client": "^6.19.3",
     "@resvg/resvg-js": "^2.6.2",
+    "@snazzah/davey": "^0.1.11",
     "@ts6/common": "workspace:*",
     "axios": "^1.17.0",
     "bcryptjs": "^2.4.3",

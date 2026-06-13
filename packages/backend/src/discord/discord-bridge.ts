@@ -6,7 +6,9 @@ import {
   ChannelType,
   type ChatInputCommandInteraction,
   type TextChannel,
+  type GuildMember,
 } from 'discord.js';
+import { DiscordVoiceRelay } from './discord-voice.js';
 import type { PrismaClient, DiscordSettings } from '../../generated/prisma/index.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { VoiceBotManager } from '../voice/voice-bot-manager.js';
@@ -43,6 +45,7 @@ export class DiscordBridge {
   private client: Client | null = null;
   private settings: DiscordSettings | null = null;
   private eventBridge: EventBridge | null = null;
+  private voiceRelay: DiscordVoiceRelay | null = null;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   private nowPlayingListeners = new Map<number, (item: QueueItem) => void>();
   private clientNicknames = new Map<string, string>(); // clid → nickname (for leave events)
@@ -55,9 +58,13 @@ export class DiscordBridge {
     private pool: ConnectionPool,
     private voiceBotManager: VoiceBotManager,
   ) {
-    // Attach now-playing listeners to bots created after startup too
+    // Attach now-playing listeners to bots created after startup too, and
+    // re-attach the voice relay when the default music bot is recreated
     this.voiceBotManager.onBotCreated((botId, bot) => {
       if (this.client) this.attachNowPlaying(botId, bot);
+      if (this.voiceRelay && this.settings?.defaultMusicBotId === botId) {
+        this.voiceRelay.attachBot(bot);
+      }
     });
   }
 
@@ -77,7 +84,9 @@ export class DiscordBridge {
       return;
     }
 
-    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    const client = new Client({
+      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+    });
     this.client = client;
 
     client.on(Events.ClientReady, () => {
@@ -88,6 +97,9 @@ export class DiscordBridge {
         console.error(`[Discord] ${this.lastError}`);
       });
       this.startStatsPanel();
+      this.startVoiceRelay().catch((err) => {
+        console.error(`[Discord] Voice relay start failed: ${err.message}`);
+      });
     });
 
     client.on(Events.InteractionCreate, (interaction) => {
@@ -125,6 +137,10 @@ export class DiscordBridge {
       clearInterval(this.statsTimer);
       this.statsTimer = null;
     }
+    if (this.voiceRelay) {
+      this.voiceRelay.destroy();
+      this.voiceRelay = null;
+    }
     this.detachNowPlayingFromAllBots();
     if (this.eventBridge) {
       const settings = this.settings;
@@ -154,14 +170,16 @@ export class DiscordBridge {
     };
   }
 
-  /** Text channels of the configured guild, for the settings UI dropdowns. */
-  listChannels(): Array<{ id: string; name: string }> {
+  /** Text + voice channels of the configured guild, for the settings UI dropdowns. */
+  listChannels(): { text: Array<{ id: string; name: string }>; voice: Array<{ id: string; name: string }> } {
     const guild = this.guild();
-    if (!guild) return [];
-    return guild.channels.cache
-      .filter((c) => c.type === ChannelType.GuildText)
-      .map((c) => ({ id: c.id, name: `#${c.name}` }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!guild) return { text: [], voice: [] };
+    const ofType = (type: ChannelType) =>
+      guild.channels.cache
+        .filter((c) => c.type === type)
+        .map((c) => ({ id: c.id, name: `#${c.name}` }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    return { text: ofType(ChannelType.GuildText), voice: ofType(ChannelType.GuildVoice) };
   }
 
   // ─── Internals ──────────────────────────────────────────────
@@ -194,6 +212,8 @@ export class DiscordBridge {
         .addIntegerOption((o) => o.setName('level').setDescription('0-100').setMinValue(0).setMaxValue(100).setRequired(true)),
       new SlashCommandBuilder().setName('nowplaying').setDescription('Piste en cours'),
       new SlashCommandBuilder().setName('stats').setDescription('Stats du serveur TeamSpeak'),
+      new SlashCommandBuilder().setName('join').setDescription('Faire venir le bot dans ton salon vocal'),
+      new SlashCommandBuilder().setName('leave').setDescription('Faire quitter le salon vocal au bot'),
     ].map((c) => c.toJSON());
 
     await this.client.application.commands.set(defs, this.settings.guildId);
@@ -278,6 +298,47 @@ export class DiscordBridge {
         await i.deferReply();
         await i.editReply({ embeds: [statsEmbed(await this.fetchStats())] });
         break;
+      }
+      case 'join': {
+        const member = i.member as GuildMember | null;
+        const channelId = member?.voice?.channelId;
+        if (!channelId || !i.guild) {
+          await i.reply({ content: "Rejoins d'abord un salon vocal.", ephemeral: true });
+          return;
+        }
+        if (!this.voiceRelay) throw new Error('Relais vocal non initialisé');
+        await i.deferReply();
+        await this.voiceRelay.joinChannel(i.guild, channelId);
+        await i.editReply(`🔊 Connecté à <#${channelId}> — la musique du bot y est diffusée.`);
+        break;
+      }
+      case 'leave': {
+        this.voiceRelay?.leaveChannel();
+        await i.reply('👋 Salon vocal quitté.');
+        break;
+      }
+    }
+  }
+
+  // ─── Voice relay ────────────────────────────────────────────
+
+  private async startVoiceRelay(): Promise<void> {
+    const settings = this.settings;
+    if (!settings) return;
+
+    this.voiceRelay = new DiscordVoiceRelay();
+
+    if (settings.defaultMusicBotId) {
+      const bot = this.voiceBotManager.getBot(settings.defaultMusicBotId);
+      if (bot) this.voiceRelay.attachBot(bot);
+    } else if (settings.voiceChannelId) {
+      this.warnings.push('Voice channel configured but no default music bot — nothing to relay');
+    }
+
+    if (settings.voiceChannelId) {
+      const guild = this.guild();
+      if (guild) {
+        await this.voiceRelay.joinChannel(guild, settings.voiceChannelId);
       }
     }
   }

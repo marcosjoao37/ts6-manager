@@ -253,6 +253,7 @@ model DiscordSettings {
   statsChannelId         String?
   statsLiveEnabled       Boolean  @default(false)
   statsMessageId         String?
+  voiceChannelId         String?
   defaultMusicBotId      Int?
   serverConfigId         Int?
   virtualServerId        Int      @default(1)
