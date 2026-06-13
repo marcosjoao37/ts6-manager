@@ -148,7 +148,64 @@ function AccountTab() {
       </Card>
 
       <MfaCard />
+      <TrustedDevicesCard />
     </div>
+  );
+}
+
+function TrustedDevicesCard() {
+  const { t, i18n } = useTranslation();
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['trusted-devices'], queryFn: () => authApi.trustedList() });
+  const devices: any[] = data?.devices ?? [];
+
+  const fmt = (d: string) => new Date(d).toLocaleDateString(i18n.resolvedLanguage);
+
+  const revoke = useMutation({
+    mutationFn: (id: number) => authApi.trustedRevoke(id),
+    onSuccess: () => { toast.success(t('settings.account.trustedDevices.revoked')); qc.invalidateQueries({ queryKey: ['trusted-devices'] }); },
+    onError: () => toast.error(t('settings.account.trustedDevices.revokeError')),
+  });
+  const revokeAll = useMutation({
+    mutationFn: () => authApi.trustedRevokeAll(),
+    onSuccess: () => { toast.success(t('settings.account.trustedDevices.revokedAll')); qc.invalidateQueries({ queryKey: ['trusted-devices'] }); },
+    onError: () => toast.error(t('settings.account.trustedDevices.revokeError')),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">{t('settings.account.trustedDevices.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">{t('settings.account.trustedDevices.description')}</p>
+        {devices.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t('settings.account.trustedDevices.empty')}</p>
+        ) : (
+          <div className="space-y-2">
+            {devices.map((d) => (
+              <div key={d.id} className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium truncate">
+                    {d.userAgent || '—'}{d.current && <span className="ml-2 text-[10px] text-primary">({t('settings.account.trustedDevices.thisDevice')})</span>}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {t('settings.account.trustedDevices.added')}: {fmt(d.createdAt)} · {t('settings.account.trustedDevices.expires')}: {fmt(d.expiresAt)}
+                    {d.ipAddress ? ` · ${d.ipAddress}` : ''}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" disabled={revoke.isPending} onClick={() => revoke.mutate(d.id)}>
+                  {t('settings.account.trustedDevices.revoke')}
+                </Button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" disabled={revokeAll.isPending} onClick={() => revokeAll.mutate()}>
+              {t('settings.account.trustedDevices.revokeAll')}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
