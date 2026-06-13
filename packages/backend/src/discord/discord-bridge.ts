@@ -20,9 +20,13 @@ import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, 
 import {
   clientConnectedEmbed,
   clientDisconnectedEmbed,
+  channelPresenceEmbed,
+  renderTemplate,
   nowPlayingEmbed,
   statsEmbed,
   queueEmbed,
+  DEFAULT_JOIN_TEMPLATE,
+  DEFAULT_LEAVE_TEMPLATE,
   type ServerStats,
 } from './embeds.js';
 
@@ -49,6 +53,8 @@ export class DiscordBridge {
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   private nowPlayingListeners = new Map<number, (item: QueueItem) => void>();
   private clientNicknames = new Map<string, string>(); // clid → nickname (for leave events)
+  private clientChannels = new Map<string, string>(); // clid → current channel id (for channel mode)
+  private channelNameCache: { at: number; names: Map<string, string> } | null = null;
   private lastError: string | null = null;
   private warnings: string[] = [];
   private startEpoch = 0; // guards async callbacks across reloads
@@ -445,18 +451,122 @@ export class DiscordBridge {
   }
 
   private async onTsEvent(eventName: string, data: Record<string, string>): Promise<void> {
+    const watchedChannel = this.settings?.notifyChannelId;
+
     if (eventName === 'notifycliententerview') {
-      // Real clients only (query clients are type 1), fresh connections only
-      if (String(data.client_type) !== '0' || String(data.reasonid || '0') !== '0') return;
-      const nickname = data.client_nickname || `Client #${data.clid}`;
-      this.clientNicknames.set(String(data.clid), nickname);
-      await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [clientConnectedEmbed(nickname)] });
-    } else if (eventName === 'notifyclientleftview') {
+      // Real clients only (query clients are type 1)
+      if (String(data.client_type) !== '0') return;
+      const clid = String(data.clid);
+      const nickname = data.client_nickname || `Client #${clid}`;
+      const channelId = String(data.ctid || '');
+      this.clientNicknames.set(clid, nickname);
+      this.clientChannels.set(clid, channelId);
+
+      if (watchedChannel) {
+        // Connected directly into the watched channel → join
+        if (channelId === watchedChannel) await this.notifyChannel('join', nickname, channelId);
+      } else if (String(data.reasonid || '0') === '0') {
+        // Server-connect mode (legacy): fresh connections only
+        await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [clientConnectedEmbed(nickname)] });
+      }
+      return;
+    }
+
+    if (eventName === 'notifyclientmoved' && watchedChannel) {
+      const clid = String(data.clid);
+      const toChannel = String(data.ctid || '');
+      const fromChannel = this.clientChannels.get(clid) ?? String(data.cfid || '');
+      this.clientChannels.set(clid, toChannel);
+      const nickname = await this.resolveNickname(clid);
+
+      if (toChannel === watchedChannel && fromChannel !== watchedChannel) {
+        await this.notifyChannel('join', nickname, toChannel);
+      } else if (fromChannel === watchedChannel && toChannel !== watchedChannel) {
+        await this.notifyChannel('leave', nickname, fromChannel);
+      }
+      return;
+    }
+
+    if (eventName === 'notifyclientleftview') {
       const clid = String(data.clid);
       const nickname = this.clientNicknames.get(clid);
+      const lastChannel = this.clientChannels.get(clid);
       this.clientNicknames.delete(clid);
+      this.clientChannels.delete(clid);
       if (!nickname) return; // unknown clid (connected before us, or a query client)
-      await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [clientDisconnectedEmbed(nickname)] });
+
+      if (watchedChannel) {
+        // Disconnected while inside the watched channel → leave
+        if (lastChannel === watchedChannel) await this.notifyChannel('leave', nickname, watchedChannel);
+      } else {
+        await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [clientDisconnectedEmbed(nickname)] });
+      }
+    }
+  }
+
+  private async notifyChannel(kind: 'join' | 'leave', user: string, channelId: string): Promise<void> {
+    const channel = await this.resolveChannelName(channelId);
+    const template = kind === 'join'
+      ? (this.settings?.notifyJoinTemplate || DEFAULT_JOIN_TEMPLATE)
+      : (this.settings?.notifyLeaveTemplate || DEFAULT_LEAVE_TEMPLATE);
+    const message = renderTemplate(template, { user, channel });
+    await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [channelPresenceEmbed(message, kind)] });
+  }
+
+  /** Nickname from the in-memory map, falling back to a WebQuery clientlist lookup. */
+  private async resolveNickname(clid: string): Promise<string> {
+    const cached = this.clientNicknames.get(clid);
+    if (cached) return cached;
+    const settings = this.settings;
+    if (settings?.serverConfigId) {
+      try {
+        const client = await this.pool.getOrLoad(settings.serverConfigId);
+        const list = await client.execute(settings.virtualServerId, 'clientlist');
+        for (const c of Array.isArray(list) ? list : []) {
+          const id = String(c.clid);
+          this.clientNicknames.set(id, c.client_nickname);
+          if (c.cid !== undefined) this.clientChannels.set(id, String(c.cid));
+        }
+        const found = this.clientNicknames.get(clid);
+        if (found) return found;
+      } catch { /* fall through */ }
+    }
+    return `Client #${clid}`;
+  }
+
+  /** Watched channel name, cached briefly to avoid per-event WebQuery calls. */
+  private async resolveChannelName(channelId: string): Promise<string> {
+    const now = Date.now();
+    if (this.channelNameCache && now - this.channelNameCache.at < 60_000) {
+      return this.channelNameCache.names.get(channelId) || `#${channelId}`;
+    }
+    const settings = this.settings;
+    if (!settings?.serverConfigId) return `#${channelId}`;
+    try {
+      const client = await this.pool.getOrLoad(settings.serverConfigId);
+      const list = await client.execute(settings.virtualServerId, 'channellist');
+      const names = new Map<string, string>();
+      for (const c of Array.isArray(list) ? list : []) {
+        names.set(String(c.cid), c.channel_name || `#${c.cid}`);
+      }
+      this.channelNameCache = { at: now, names };
+      return names.get(channelId) || `#${channelId}`;
+    } catch {
+      return `#${channelId}`;
+    }
+  }
+
+  /** TS channels of the configured server, for the settings UI dropdown. */
+  async listTsChannels(): Promise<Array<{ id: string; name: string }>> {
+    const settings = this.settings;
+    if (!settings?.serverConfigId) return [];
+    try {
+      const client = await this.pool.getOrLoad(settings.serverConfigId);
+      const list = await client.execute(settings.virtualServerId, 'channellist');
+      return (Array.isArray(list) ? list : [])
+        .map((c: any) => ({ id: String(c.cid), name: c.channel_name || `#${c.cid}` }));
+    } catch {
+      return [];
     }
   }
 

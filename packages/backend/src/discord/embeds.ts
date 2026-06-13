@@ -38,6 +38,25 @@ export function clientDisconnectedEmbed(nickname: string) {
   };
 }
 
+/** Channel join/leave notification from a rendered message template. */
+export function channelPresenceEmbed(message: string, kind: 'join' | 'leave') {
+  return {
+    color: kind === 'join' ? COLORS.green : COLORS.red,
+    description: `${kind === 'join' ? '🟢' : '🔴'} ${message}`,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/** Render a notification template, substituting {user} and {channel}. */
+export function renderTemplate(template: string, vars: { user: string; channel: string }): string {
+  return template
+    .replace(/\{\{?\s*user\s*\}?\}/gi, vars.user)
+    .replace(/\{\{?\s*(channel|canal)\s*\}?\}/gi, vars.channel);
+}
+
+export const DEFAULT_JOIN_TEMPLATE = '{user} a rejoint le canal {channel} du TeamSpeak';
+export const DEFAULT_LEAVE_TEMPLATE = '{user} a quitté le canal {channel} du TeamSpeak';
+
 export function nowPlayingEmbed(botName: string, item: { title: string; artist?: string; duration?: number }) {
   const artist = item.artist && item.artist !== 'Unknown' ? `${item.artist} — ` : '';
   return {

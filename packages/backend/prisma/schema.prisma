@@ -254,6 +254,9 @@ model DiscordSettings {
   statsLiveEnabled       Boolean  @default(false)
   notifyConnections      Boolean  @default(true)
   notifyNowPlaying       Boolean  @default(true)
+  notifyChannelId        String?
+  notifyJoinTemplate     String?
+  notifyLeaveTemplate    String?
   statsMessageId         String?
   voiceChannelId         String?
   defaultMusicBotId      Int?

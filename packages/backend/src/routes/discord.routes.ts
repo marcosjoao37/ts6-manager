@@ -27,6 +27,9 @@ discordRoutes.get('/settings', async (req: Request, res: Response, next) => {
       statsLiveEnabled: s.statsLiveEnabled,
       notifyConnections: s.notifyConnections,
       notifyNowPlaying: s.notifyNowPlaying,
+      notifyChannelId: s.notifyChannelId,
+      notifyJoinTemplate: s.notifyJoinTemplate,
+      notifyLeaveTemplate: s.notifyLeaveTemplate,
       defaultMusicBotId: s.defaultMusicBotId,
       serverConfigId: s.serverConfigId,
       virtualServerId: s.virtualServerId,
@@ -40,7 +43,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreateSettings(prisma);
 
-    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
+    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
 
     const data: any = {};
     if (enabled !== undefined) data.enabled = !!enabled;
@@ -53,6 +56,9 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     if (statsLiveEnabled !== undefined) data.statsLiveEnabled = !!statsLiveEnabled;
     if (notifyConnections !== undefined) data.notifyConnections = !!notifyConnections;
     if (notifyNowPlaying !== undefined) data.notifyNowPlaying = !!notifyNowPlaying;
+    if (notifyChannelId !== undefined) data.notifyChannelId = notifyChannelId || null;
+    if (notifyJoinTemplate !== undefined) data.notifyJoinTemplate = notifyJoinTemplate || null;
+    if (notifyLeaveTemplate !== undefined) data.notifyLeaveTemplate = notifyLeaveTemplate || null;
     if (defaultMusicBotId !== undefined) data.defaultMusicBotId = defaultMusicBotId ? parseInt(defaultMusicBotId) : null;
     if (serverConfigId !== undefined) data.serverConfigId = serverConfigId ? parseInt(serverConfigId) : null;
     if (virtualServerId !== undefined) data.virtualServerId = parseInt(virtualServerId) || 1;
@@ -82,4 +88,12 @@ discordRoutes.get('/guilds', (req: Request, res: Response) => {
 discordRoutes.get('/channels', (req: Request, res: Response) => {
   const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;
   res.json(bridge?.listChannels() ?? { text: [], voice: [] });
+});
+
+// GET /api/discord/ts-channels — TS channels of the configured server (for the watch-channel picker)
+discordRoutes.get('/ts-channels', async (req: Request, res: Response, next) => {
+  try {
+    const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;
+    res.json(bridge ? await bridge.listTsChannels() : []);
+  } catch (err) { next(err); }
 });

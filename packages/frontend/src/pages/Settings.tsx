@@ -625,6 +625,11 @@ function DiscordTab() {
   });
   const { data: bots } = useQuery({ queryKey: ['music-bots'], queryFn: musicBotsApi.list });
   const { data: servers } = useQuery({ queryKey: ['servers'], queryFn: serversApi.list });
+  const { data: tsChannels = [] } = useQuery({
+    queryKey: ['discord-ts-channels'],
+    queryFn: discordApi.tsChannels,
+    enabled: !!status?.running,
+  });
 
   const [form, setForm] = useState<Partial<DiscordSettings> & { botToken?: string }>({});
 
@@ -726,8 +731,47 @@ function DiscordTab() {
           <Label className="text-xs font-medium">Notifications</Label>
           <div className="flex items-center gap-2">
             <Switch checked={!!form.notifyConnections} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyConnections: v }))} />
-            <Label className="text-xs font-normal">TS connect / disconnect</Label>
+            <Label className="text-xs font-normal">TS presence (connect / channel join)</Label>
           </div>
+
+          {form.notifyConnections && (
+            <div className="ml-9 space-y-2 border-l border-border pl-3">
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">Watch a specific channel</Label>
+                {tsChannels.length > 0 ? (
+                  <Select value={form.notifyChannelId || 'server'} onValueChange={(v) => setForm((f) => ({ ...f, notifyChannelId: v === 'server' ? null : v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="server">Whole server (connect / disconnect)</SelectItem>
+                      {tsChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input className="h-8 text-xs" placeholder="Channel ID (or leave empty for whole-server)"
+                    value={form.notifyChannelId || ''} onChange={(e) => setForm((f) => ({ ...f, notifyChannelId: e.target.value || null }))} />
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Empty = notify on server connect/disconnect. Set = notify only on join/leave of that channel.
+                </p>
+              </div>
+
+              {form.notifyChannelId && (
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Join message</Label>
+                    <Input className="h-8 text-xs" placeholder="{user} a rejoint le canal {channel} du TeamSpeak"
+                      value={form.notifyJoinTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyJoinTemplate: e.target.value || null }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px]">Leave message</Label>
+                    <Input className="h-8 text-xs" placeholder="{user} a quitté le canal {channel} du TeamSpeak"
+                      value={form.notifyLeaveTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyLeaveTemplate: e.target.value || null }))} />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Variables: <span className="font-mono">{'{user}'}</span> and <span className="font-mono">{'{channel}'}</span>.</p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Switch checked={!!form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
             <Label className="text-xs font-normal">Now playing (music)</Label>

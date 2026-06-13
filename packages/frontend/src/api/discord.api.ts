@@ -10,6 +10,9 @@ export interface DiscordSettings {
   statsLiveEnabled: boolean;
   notifyConnections: boolean;
   notifyNowPlaying: boolean;
+  notifyChannelId: string | null;
+  notifyJoinTemplate: string | null;
+  notifyLeaveTemplate: string | null;
   defaultMusicBotId: number | null;
   serverConfigId: number | null;
   virtualServerId: number;
@@ -31,4 +34,5 @@ export const discordApi = {
   guilds: (): Promise<Array<{ id: string; name: string }>> => api.get('/discord/guilds').then((r) => r.data),
   channels: (): Promise<{ text: Array<{ id: string; name: string }>; voice: Array<{ id: string; name: string }> }> =>
     api.get('/discord/channels').then((r) => r.data),
+  tsChannels: (): Promise<Array<{ id: string; name: string }>> => api.get('/discord/ts-channels').then((r) => r.data),
 };
