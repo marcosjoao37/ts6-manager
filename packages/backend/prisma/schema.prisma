@@ -261,3 +261,12 @@ model DiscordSettings {
   virtualServerId        Int      @default(1)
   updatedAt              DateTime @updatedAt
 }
+
+model SpotifySettings {
+  id             Int      @id @default(autoincrement())
+  enabled        Boolean  @default(false)
+  clientId       String?
+  clientSecret   String?
+  maxAlbumTracks Int      @default(50)
+  updatedAt      DateTime @updatedAt
+}

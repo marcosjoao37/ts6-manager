@@ -2,12 +2,12 @@ import type { PrismaClient } from '../../generated/prisma/index.js';
 import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
-import { downloadAndEnqueue } from './music-ops.js';
+import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from './music-ops.js';
 
 const CMD_PREFIX = '!';
 
 const MUSIC_COMMANDS = new Set([
-  'radio', 'play', 'stop', 'pause', 'skip', 'next', 'prev',
+  'radio', 'play', 'spotify', 'stop', 'pause', 'skip', 'next', 'prev',
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
   'stream', 'stopstream', 'viewers',
 ]);
@@ -72,6 +72,9 @@ export class MusicCommandHandler {
           break;
         case 'play':
           await this.handlePlay(bot, userClid, args);
+          break;
+        case 'spotify':
+          await this.handleSpotify(bot, userClid, args);
           break;
         case 'stop':
           this.handleStop(bot, userClid);
@@ -186,6 +189,12 @@ export class MusicCommandHandler {
       return;
     }
 
+    // Spotify links are metadata-only: delegate to the Spotify→YouTube path
+    if (isSpotifyUrl(args)) {
+      await this.handleSpotify(bot, userClid, args);
+      return;
+    }
+
     if (!args.startsWith('http://') && !args.startsWith('https://')) {
       this.reply(bot, userClid, 'Please provide a valid URL. Usage: !play <url>');
       return;
@@ -202,6 +211,34 @@ export class MusicCommandHandler {
       }
     } catch (err: any) {
       this.reply(bot, userClid, `Failed to play: ${err.message}`);
+    }
+  }
+
+  private async handleSpotify(bot: VoiceBot, userClid: number, args: string): Promise<void> {
+    if (!args) {
+      this.reply(bot, userClid, 'Usage: !spotify <lien-track-ou-album-spotify>');
+      return;
+    }
+
+    const config = await loadSpotifyConfig(this.prisma);
+    if (!config) {
+      this.reply(bot, userClid, 'Spotify non configuré (Settings → Spotify).');
+      return;
+    }
+
+    this.reply(bot, userClid, 'Résolution du lien Spotify...');
+
+    try {
+      const result = await enqueueSpotify(this.prisma, bot, config, args);
+      if (result.type === 'album') {
+        this.reply(bot, userClid, `Album "${result.name}" : ${result.added}/${result.total} piste(s) ajoutée(s).`);
+      } else if (result.added > 0) {
+        this.reply(bot, userClid, result.firstStarted ? `Now playing: ${result.name}` : `Queued: ${result.name}`);
+      } else {
+        this.reply(bot, userClid, `Échec : ${result.failed[0] || 'aucune piste ajoutée'}`);
+      }
+    } catch (err: any) {
+      this.reply(bot, userClid, `Échec Spotify : ${err.message}`);
     }
   }
 

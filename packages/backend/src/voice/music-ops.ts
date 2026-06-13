@@ -2,8 +2,96 @@ import type { PrismaClient } from '../../generated/prisma/index.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
 import { downloadYouTube, searchYouTube } from './audio/youtube.js';
+import { decrypt } from '../utils/crypto.js';
+import {
+  isSpotifyUrl,
+  resolveSpotifyInput,
+  findBestYouTubeForSpotify,
+  type SpotifyConfig,
+} from './audio/spotify.js';
+
+export { isSpotifyUrl } from './audio/spotify.js';
 
 export const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
+
+const SPOTIFY_REQUEST_TIMEOUT_MS = 10000;
+
+/** Load Spotify credentials from the DB, or null if disabled / not set. */
+export async function loadSpotifyConfig(prisma: PrismaClient): Promise<(SpotifyConfig & { maxAlbumTracks: number }) | null> {
+  const s = await prisma.spotifySettings.findFirst();
+  if (!s?.enabled || !s.clientId || !s.clientSecret) return null;
+  let clientSecret: string;
+  try {
+    clientSecret = decrypt(s.clientSecret);
+  } catch {
+    return null;
+  }
+  return {
+    clientId: s.clientId,
+    clientSecret,
+    requestTimeoutMs: SPOTIFY_REQUEST_TIMEOUT_MS,
+    maxAlbumTracks: Math.max(1, s.maxAlbumTracks || 50),
+  };
+}
+
+export interface SpotifyEnqueueResult {
+  type: 'track' | 'album';
+  name: string;
+  added: number;
+  total: number;
+  failed: string[];
+  firstStarted: boolean;
+}
+
+/**
+ * Resolve a Spotify track/album link to metadata, match each track on
+ * YouTube, and enqueue. The first track plays if the bot is idle; the rest
+ * queue. Per-track failures are collected, not fatal.
+ */
+export async function enqueueSpotify(
+  prisma: PrismaClient,
+  bot: VoiceBot,
+  config: SpotifyConfig & { maxAlbumTracks: number },
+  url: string,
+): Promise<SpotifyEnqueueResult> {
+  const resolved = await resolveSpotifyInput(url, config);
+  const tracks = resolved.tracks.slice(0, config.maxAlbumTracks);
+
+  const failed: string[] = [];
+  let added = 0;
+  let firstStarted = false;
+
+  for (const track of tracks) {
+    try {
+      const yt = await findBestYouTubeForSpotify(track);
+      const { filePath } = await downloadYouTube(`https://www.youtube.com/watch?v=${yt.id}`, MUSIC_DIR);
+
+      const item: QueueItem = {
+        id: `sp_${track.id}_${yt.id}`,
+        title: track.title,
+        artist: track.artist,
+        duration: track.durationMs ? Math.round(track.durationMs / 1000) : undefined,
+        filePath,
+        source: 'youtube',
+        sourceUrl: track.spotifyUrl,
+      };
+
+      bot.queue.add(item);
+      saveMusicRequest(prisma, bot, item);
+
+      if (!firstStarted && bot.status !== 'playing' && bot.status !== 'paused') {
+        bot.queue.playAt(bot.queue.length - 1);
+        await bot.play(item);
+        firstStarted = true;
+      }
+      added++;
+    } catch (err: any) {
+      failed.push(`${track.artist} - ${track.title}: ${err.message}`);
+    }
+  }
+
+  return { type: resolved.type, name: resolved.name, added, total: tracks.length, failed, firstStarted };
+}
 
 /**
  * Transport-agnostic music operations shared by the TS chat commands

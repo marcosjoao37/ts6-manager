@@ -16,7 +16,7 @@ import type { VoiceBot } from '../voice/voice-bot.js';
 import type { QueueItem } from '../voice/playlist/queue.js';
 import { EventBridge } from '../bot-engine/event-bridge.js';
 import { decrypt } from '../utils/crypto.js';
-import { resolvePlayQuery, downloadAndEnqueue } from '../voice/music-ops.js';
+import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from '../voice/music-ops.js';
 import {
   clientConnectedEmbed,
   clientDisconnectedEmbed,
@@ -243,7 +243,27 @@ export class DiscordBridge {
       case 'play': {
         await i.deferReply();
         const bot = this.musicBot();
-        const url = await resolvePlayQuery(i.options.getString('query', true));
+        const query = i.options.getString('query', true);
+
+        // Spotify links are metadata-only → resolve to YouTube
+        if (isSpotifyUrl(query)) {
+          const config = await loadSpotifyConfig(this.prisma);
+          if (!config) {
+            await i.editReply('Spotify non configuré (Settings → Spotify).');
+            return;
+          }
+          const result = await enqueueSpotify(this.prisma, bot, config, query);
+          if (result.type === 'album') {
+            await i.editReply(`💿 Album **${result.name}** : ${result.added}/${result.total} piste(s) ajoutée(s).`);
+          } else if (result.added > 0) {
+            await i.editReply(result.firstStarted ? `🎵 Lecture : **${result.name}**` : `➕ En file : **${result.name}**`);
+          } else {
+            await i.editReply(`❌ ${result.failed[0] || 'Aucune piste ajoutée'}`);
+          }
+          return;
+        }
+
+        const url = await resolvePlayQuery(query);
         const { item, queued } = await downloadAndEnqueue(this.prisma, bot, url);
         const artist = item.artist && item.artist !== 'Unknown' ? `${item.artist} — ` : '';
         await i.editReply(queued

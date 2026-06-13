@@ -5,6 +5,7 @@ import { authApi } from '@/api/auth.api';
 import { serversApi } from '@/api/servers.api';
 import { settingsApi } from '@/api/settings.api';
 import { discordApi, type DiscordSettings } from '@/api/discord.api';
+import { spotifyApi } from '@/api/spotify.api';
 import { musicBotsApi } from '@/api/music.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { PageLoader } from '@/components/shared/LoadingSpinner';
@@ -18,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare } from 'lucide-react';
+import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare, Music } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Settings() {
@@ -36,6 +37,7 @@ export default function Settings() {
           {isAdmin && <TabsTrigger value="users"><Users className="h-3.5 w-3.5 mr-1" /> Users</TabsTrigger>}
           {isAdmin && <TabsTrigger value="youtube"><Youtube className="h-3.5 w-3.5 mr-1" /> YouTube</TabsTrigger>}
           {isAdmin && <TabsTrigger value="discord"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> Discord</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="spotify"><Music className="h-3.5 w-3.5 mr-1" /> Spotify</TabsTrigger>}
         </TabsList>
 
         {isAdmin && (
@@ -63,6 +65,12 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="discord" className="mt-4">
             <DiscordTab />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="spotify" className="mt-4">
+            <SpotifyTab />
           </TabsContent>
         )}
       </Tabs>
@@ -758,6 +766,90 @@ function DiscordTab() {
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? 'Saving & reconnecting...' : 'Save'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Spotify Tab ─────────────────────────────────────────────
+
+function SpotifyTab() {
+  const qc = useQueryClient();
+  const { data: settings, isLoading } = useQuery({ queryKey: ['spotify-settings'], queryFn: spotifyApi.settings });
+  const [form, setForm] = useState<{ enabled: boolean; clientId: string; clientSecret: string; maxAlbumTracks: number }>({
+    enabled: false, clientId: '', clientSecret: '', maxAlbumTracks: 50,
+  });
+
+  useEffect(() => {
+    if (settings) setForm({
+      enabled: settings.enabled,
+      clientId: settings.clientId || '',
+      clientSecret: '',
+      maxAlbumTracks: settings.maxAlbumTracks,
+    });
+  }, [settings]);
+
+  const save = useMutation({
+    mutationFn: () => spotifyApi.updateSettings({
+      enabled: form.enabled,
+      clientId: form.clientId,
+      clientSecret: form.clientSecret || undefined,
+      maxAlbumTracks: form.maxAlbumTracks,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['spotify-settings'] });
+      toast.success('Spotify settings saved');
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+  });
+
+  if (isLoading || !settings) return <PageLoader />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Spotify</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 max-w-xl">
+        <p className="text-[11px] text-muted-foreground">
+          Spotify doesn't allow audio downloads — these credentials are used only to read track/album
+          metadata from a Spotify link. Playback then finds the matching track on YouTube. Paste a
+          Spotify track or album link into <span className="font-mono">!play</span> /{' '}
+          <span className="font-mono">/play</span> (or <span className="font-mono">!spotify</span>).
+          Create an app on the{' '}
+          <a className="underline" href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">
+            Spotify Developer Dashboard
+          </a>{' '}
+          to get a Client ID and Secret.
+        </p>
+
+        <div className="flex items-center gap-2">
+          <Switch checked={form.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, enabled: v }))} />
+          <Label className="text-xs">Enable Spotify link support</Label>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Client ID</Label>
+          <Input className="h-8 text-xs" value={form.clientId}
+            onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))} />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Client Secret</Label>
+          <Input className="h-8 text-xs" type="password"
+            placeholder={settings.hasClientSecret ? '(unchanged — enter new secret to update)' : 'Spotify client secret'}
+            value={form.clientSecret} onChange={(e) => setForm((f) => ({ ...f, clientSecret: e.target.value }))} />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Max tracks per album</Label>
+          <Input className="h-8 text-xs w-32" type="number" min={1} value={form.maxAlbumTracks}
+            onChange={(e) => setForm((f) => ({ ...f, maxAlbumTracks: parseInt(e.target.value) || 50 }))} />
+        </div>
+
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? 'Saving...' : 'Save'}
         </Button>
       </CardContent>
     </Card>
