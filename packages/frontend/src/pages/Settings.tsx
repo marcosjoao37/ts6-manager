@@ -111,7 +111,7 @@ function AccountTab() {
   };
 
   return (
-    <div className="max-w-md">
+    <div className="max-w-md space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">Change Password</CardTitle>
@@ -138,7 +138,85 @@ function AccountTab() {
           </Button>
         </CardContent>
       </Card>
+
+      <MfaCard />
     </div>
+  );
+}
+
+function MfaCard() {
+  const qc = useQueryClient();
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: authApi.me });
+  const enabled = !!me?.user?.mfaEnabled;
+  const required = !!me?.user?.mfaRequired;
+
+  const [qr, setQr] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [disablePw, setDisablePw] = useState('');
+
+  const setup = useMutation({
+    mutationFn: () => authApi.mfaSetup(),
+    onSuccess: (d) => setQr(d.qrDataUrl),
+    onError: () => toast.error('Failed to start MFA setup'),
+  });
+  const enable = useMutation({
+    mutationFn: () => authApi.mfaEnable(code),
+    onSuccess: (d) => { setRecoveryCodes(d.recoveryCodes); setQr(null); setCode(''); qc.invalidateQueries({ queryKey: ['me'] }); toast.success('MFA enabled'); },
+    onError: () => toast.error('Invalid code'),
+  });
+  const disable = useMutation({
+    mutationFn: () => authApi.mfaDisable(disablePw),
+    onSuccess: () => { setDisablePw(''); setRecoveryCodes(null); qc.invalidateQueries({ queryKey: ['me'] }); toast.success('MFA disabled'); },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to disable MFA'),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-sm font-medium">Two-Factor Authentication (TOTP)</CardTitle>
+        <Badge variant={enabled ? 'default' : 'outline'} className={enabled ? 'bg-emerald-600' : ''}>{enabled ? 'Enabled' : 'Disabled'}</Badge>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {recoveryCodes && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-amber-500 text-xs font-medium"><KeyRound className="h-3.5 w-3.5" /> Recovery codes (shown once)</div>
+            <p className="text-[10px] text-muted-foreground">Each can be used once if you lose your device. Store them somewhere safe.</p>
+            <div className="grid grid-cols-2 gap-1 font-mono-data text-[11px]">{recoveryCodes.map((c) => <span key={c}>{c}</span>)}</div>
+          </div>
+        )}
+
+        {!enabled && !qr && (
+          <>
+            <p className="text-xs text-muted-foreground">Protect your account with an authenticator app (Google Authenticator, Authy, Bitwarden...).</p>
+            <Button size="sm" onClick={() => setup.mutate()} disabled={setup.isPending}>{setup.isPending ? 'Starting...' : 'Enable 2FA'}</Button>
+          </>
+        )}
+
+        {!enabled && qr && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Scan with your authenticator app, then enter the 6-digit code.</p>
+            <img src={qr} alt="TOTP QR code" className="h-44 w-44 rounded bg-white p-2" />
+            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" inputMode="numeric" className="h-8 text-xs w-40 text-center tracking-widest" />
+            <Button size="sm" onClick={() => enable.mutate()} disabled={enable.isPending || code.length < 6}>{enable.isPending ? 'Verifying...' : 'Verify & enable'}</Button>
+          </div>
+        )}
+
+        {enabled && (
+          <div className="space-y-2">
+            {required
+              ? <p className="text-xs text-muted-foreground">2FA is required by an administrator and cannot be disabled.</p>
+              : <>
+                  <p className="text-xs text-muted-foreground">Enter your password to disable 2FA.</p>
+                  <div className="flex items-center gap-2">
+                    <Input type="password" value={disablePw} onChange={(e) => setDisablePw(e.target.value)} placeholder="Password" className="h-8 text-xs w-48" />
+                    <Button size="sm" variant="destructive" onClick={() => disable.mutate()} disabled={disable.isPending || !disablePw}>Disable</Button>
+                  </div>
+                </>}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -318,6 +396,20 @@ function UsersTab() {
     });
   };
 
+  const handleRequireMfa = (userId: number, mfaRequired: boolean) => {
+    updateUser.mutate({ id: userId, data: { mfaRequired } }, {
+      onSuccess: () => toast.success(mfaRequired ? '2FA required for user' : '2FA no longer required'),
+      onError: () => toast.error('Failed to update 2FA requirement'),
+    });
+  };
+
+  const handleResetMfa = (userId: number) => {
+    updateUser.mutate({ id: userId, data: { resetMfa: true } }, {
+      onSuccess: () => toast.success('2FA reset — the user must re-enroll'),
+      onError: () => toast.error('Failed to reset 2FA'),
+    });
+  };
+
   const handleResetPassword = () => {
     if (!resetPwUserId || resetPwValue.length < 6) {
       toast.error('Password must be at least 6 characters');
@@ -346,6 +438,7 @@ function UsersTab() {
               <th className="h-10 px-3 text-left font-medium text-muted-foreground">Display Name</th>
               <th className="h-10 px-3 text-left font-medium text-muted-foreground">Role</th>
               <th className="h-10 px-3 text-left font-medium text-muted-foreground">Status</th>
+              <th className="h-10 px-3 text-left font-medium text-muted-foreground">2FA</th>
               <th className="h-10 px-3 text-right font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -382,6 +475,19 @@ function UsersTab() {
                         onCheckedChange={(v) => handleToggleEnabled(u.id, v)}
                       />
                     )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span title="Require 2FA for this user" className="inline-flex items-center gap-1">
+                        <Switch checked={!!u.mfaRequired} onCheckedChange={(v) => handleRequireMfa(u.id, v)} />
+                        <span className="text-[10px] text-muted-foreground">{u.mfaEnabled ? 'on' : (u.mfaRequired ? 'pending' : 'off')}</span>
+                      </span>
+                      {u.mfaEnabled && (
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5" title="Reset (lost device)" onClick={() => handleResetMfa(u.id)}>
+                          Reset
+                        </Button>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex items-center gap-0.5">

@@ -19,6 +19,12 @@ model User {
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
 
+  mfaEnabled       Boolean @default(false)
+  mfaSecret        String? // encrypted TOTP secret
+  mfaPendingSecret String? // encrypted, during enrollment
+  mfaRecoveryCodes String? // encrypted JSON array of hashed one-time codes
+  mfaRequired      Boolean @default(false) // admin-forced enrollment
+
   serverAccess  UserServerAccess[]
   refreshTokens RefreshToken[]
 }

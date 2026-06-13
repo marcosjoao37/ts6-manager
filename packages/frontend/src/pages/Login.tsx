@@ -1,33 +1,94 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useLogin } from '@/hooks/use-auth';
+import { authApi } from '@/api/auth.api';
 import { useAuthStore } from '@/stores/auth.store';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+
+type Step = 'password' | 'setup' | 'code';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const login = useLogin();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<Step>('password');
+  const [mfaToken, setMfaToken] = useState('');
+  const [qr, setQr] = useState<string | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
+  const { setAuth } = useAuthStore();
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const finish = (data: any) => {
+    setAuth(data.accessToken, data.refreshToken, data.user);
+    navigate('/dashboard');
+  };
+
+  const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    login.mutate({ username, password });
+    setError('');
+    setBusy(true);
+    try {
+      const res = await authApi.login(username, password);
+      if (res.accessToken) return finish(res);
+      setMfaToken(res.mfaToken);
+      if (res.mfaSetupRequired) {
+        const setup = await authApi.mfaSetup(res.mfaToken);
+        setQr(setup.qrDataUrl);
+        setStep('setup');
+      } else {
+        setStep('code'); // mfaRequired
+      }
+    } catch {
+      setError('Invalid credentials. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Forced enrollment at login: confirm the first code, then show recovery codes.
+  const handleEnroll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const res = await authApi.mfaEnable(code, mfaToken);
+      setRecoveryCodes(res.recoveryCodes);
+      setCode('');
+      setStep('code');
+    } catch {
+      setError('Invalid code. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      finish(await authApi.loginMfa(mfaToken, code));
+    } catch {
+      setError('Invalid code. Try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background grid-bg">
-      {/* Ambient glow */}
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-sm mx-4 relative">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-primary/10 border border-primary/20 mb-4">
             <span className="text-primary font-bold text-xl font-mono-data text-glow">TS</span>
@@ -38,57 +99,67 @@ export default function Login() {
 
         <Card className="border-border/50 backdrop-blur-sm">
           <CardHeader className="pb-4">
-            <h2 className="text-sm font-medium text-center text-muted-foreground">Sign in to continue</h2>
+            <h2 className="text-sm font-medium text-center text-muted-foreground">
+              {step === 'password' ? 'Sign in to continue' : step === 'setup' ? 'Set up two-factor authentication' : 'Two-factor authentication'}
+            </h2>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-xs">Username</Label>
-                <Input
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
-                  autoComplete="username"
-                  autoFocus
-                />
+            {error && (
+              <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded-md px-3 py-2 mb-4">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>{error}</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
-              </div>
+            )}
 
-              {login.isError && (
-                <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 rounded-md px-3 py-2">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span>Invalid credentials. Please try again.</span>
+            {step === 'password' && (
+              <form onSubmit={handlePassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-xs">Username</Label>
+                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="admin" autoComplete="username" autoFocus />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-xs">Password</Label>
+                  <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+                </div>
+                <Button type="submit" className="w-full" disabled={busy || !username || !password}>
+                  {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</> : 'Sign In'}
+                </Button>
+              </form>
+            )}
 
-              <Button type="submit" className="w-full" disabled={login.isPending || !username || !password}>
-                {login.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
+            {step === 'setup' && (
+              <form onSubmit={handleEnroll} className="space-y-4">
+                <p className="text-xs text-muted-foreground">Your administrator requires two-factor authentication. Scan this QR code with an authenticator app, then enter the 6-digit code.</p>
+                {qr && <img src={qr} alt="TOTP QR code" className="mx-auto h-44 w-44 rounded bg-white p-2" />}
+                <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" inputMode="numeric" autoComplete="one-time-code" autoFocus className="text-center tracking-widest" />
+                <Button type="submit" className="w-full" disabled={busy || code.length < 6}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify & continue'}
+                </Button>
+              </form>
+            )}
+
+            {step === 'code' && (
+              <form onSubmit={handleCode} className="space-y-4">
+                {recoveryCodes && (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-amber-500 text-xs font-medium"><ShieldCheck className="h-3.5 w-3.5" /> Save your recovery codes</div>
+                    <p className="text-[10px] text-muted-foreground">Each can be used once if you lose your device. They won't be shown again.</p>
+                    <div className="grid grid-cols-2 gap-1 font-mono-data text-[11px]">
+                      {recoveryCodes.map((c) => <span key={c}>{c}</span>)}
+                    </div>
+                  </div>
                 )}
-              </Button>
-            </form>
+                <p className="text-xs text-muted-foreground">Enter the 6-digit code from your authenticator app{recoveryCodes ? ' to finish signing in' : ''}.</p>
+                <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456 or recovery code" inputMode="numeric" autoComplete="one-time-code" autoFocus className="text-center tracking-widest" />
+                <Button type="submit" className="w-full" disabled={busy || code.length < 6}>
+                  {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying...</> : 'Verify'}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
-        <p className="text-center text-[10px] text-muted-foreground/50 mt-6 font-mono-data">
-          TS6 WEBUI v1.0.0
-        </p>
+        <p className="text-center text-[10px] text-muted-foreground/50 mt-6 font-mono-data">TS6 WEBUI v1.0.0</p>
       </div>
     </div>
   );
