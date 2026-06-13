@@ -6,6 +6,7 @@ interface UserInfo {
   username: string;
   displayName: string;
   role: 'admin' | 'viewer';
+  language?: string | null;
 }
 
 interface AuthStore {

@@ -39,7 +39,7 @@ async function issueSession(prisma: any, user: any) {
   return {
     accessToken,
     refreshToken,
-    user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role },
+    user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role, language: user.language },
   };
 }
 
@@ -192,8 +192,21 @@ authRoutes.get('/me', authMiddleware, async (req: Request, res: Response, next) 
         role: user.role,
         mfaEnabled: user.mfaEnabled,
         mfaRequired: user.mfaRequired,
+        language: user.language,
       },
     });
+  } catch (err) { next(err); }
+});
+
+const SUPPORTED_LANGUAGES = ['en', 'fr', 'de', 'es', 'it'];
+
+// PUT /api/auth/language — persist the current user's UI language
+authRoutes.put('/language', authMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    const { language } = req.body;
+    if (!SUPPORTED_LANGUAGES.includes(language)) throw new AppError(400, 'Unsupported language');
+    await req.app.locals.prisma.user.update({ where: { id: req.user!.id }, data: { language } });
+    res.json({ language });
   } catch (err) { next(err); }
 });
 

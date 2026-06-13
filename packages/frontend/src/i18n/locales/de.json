@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "loading": "Wird geladen...",
+    "language": "Sprache"
+  },
+  "nav": {
+    "overview": "Übersicht",
+    "dashboard": "Dashboard",
+    "virtualServers": "Virtuelle Server",
+    "management": "Verwaltung",
+    "channels": "Kanäle",
+    "clients": "Clients",
+    "serverGroups": "Servergruppen",
+    "channelGroups": "Kanalgruppen",
+    "permissions": "Berechtigungen",
+    "security": "Sicherheit",
+    "bans": "Sperren",
+    "tokens": "Token",
+    "content": "Inhalte",
+    "files": "Dateien",
+    "complaints": "Beschwerden",
+    "messages": "Nachrichten",
+    "system": "System",
+    "serverLogs": "Server-Protokolle",
+    "connectionJournal": "Verbindungsprotokoll",
+    "instance": "Instanz",
+    "musicRequests": "Musikanfragen-Verlauf",
+    "automation": "Automatisierung",
+    "botFlows": "Bot-Abläufe",
+    "musicBots": "Musik-Bots",
+    "settings": "Einstellungen",
+    "collapse": "Einklappen",
+    "logout": "Abmelden"
+  },
+  "login": {
+    "appSubtitle": "Server-Administrationsbereich",
+    "signInToContinue": "Zum Fortfahren anmelden",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "signIn": "Anmelden",
+    "signingIn": "Anmeldung...",
+    "invalidCredentials": "Ungültige Anmeldedaten. Bitte erneut versuchen.",
+    "twoFactorTitle": "Zwei-Faktor-Authentifizierung",
+    "twoFactorSetupTitle": "Zwei-Faktor-Authentifizierung einrichten",
+    "setupPrompt": "Ihr Administrator verlangt eine Zwei-Faktor-Authentifizierung. Scannen Sie diesen QR-Code mit einer Authenticator-App und geben Sie dann den 6-stelligen Code ein.",
+    "verifyAndContinue": "Überprüfen & fortfahren",
+    "saveRecoveryCodes": "Speichern Sie Ihre Wiederherstellungscodes",
+    "recoveryCodesHint": "Jeder ist einmalig verwendbar, falls Sie Ihr Gerät verlieren. Sie werden nicht erneut angezeigt.",
+    "enterCode": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.",
+    "enterCodeToFinish": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Anmeldung abzuschließen.",
+    "verify": "Überprüfen",
+    "verifying": "Überprüfung...",
+    "invalidCode": "Ungültiger Code. Erneut versuchen."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "tabs": {
+      "connections": "Verbindungen",
+      "account": "Konto",
+      "users": "Benutzer",
+      "youtube": "YouTube",
+      "discord": "Discord",
+      "spotify": "Spotify"
+    },
+    "account": {
+      "changePassword": "Passwort ändern",
+      "currentPassword": "Aktuelles Passwort",
+      "newPassword": "Neues Passwort",
+      "confirmPassword": "Neues Passwort bestätigen",
+      "changing": "Wird geändert...",
+      "passwordChanged": "Passwort erfolgreich geändert",
+      "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
+      "language": "Sprache der Oberfläche",
+      "languageHint": "Gilt für Ihr Konto auf allen Geräten."
+    }
+  }
+}

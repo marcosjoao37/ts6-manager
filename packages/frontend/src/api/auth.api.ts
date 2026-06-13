@@ -15,6 +15,9 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/auth/password', { currentPassword, newPassword }),
 
+  setLanguage: (language: string) =>
+    api.put('/auth/language', { language }).then((r) => r.data),
+
   // MFA — login second step
   loginMfa: (mfaToken: string, code: string) =>
     api.post('/auth/login/mfa', { mfaToken, code }).then((r) => r.data),

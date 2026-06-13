@@ -24,6 +24,7 @@ model User {
   mfaPendingSecret String? // encrypted, during enrollment
   mfaRecoveryCodes String? // encrypted JSON array of hashed one-time codes
   mfaRequired      Boolean @default(false) // admin-forced enrollment
+  language         String? // UI language (en/fr/de/es/it); null = browser default
 
   serverAccess  UserServerAccess[]
   refreshTokens RefreshToken[]

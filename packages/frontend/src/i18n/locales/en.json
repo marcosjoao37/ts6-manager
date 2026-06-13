@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "loading": "Loading...",
+    "language": "Language"
+  },
+  "nav": {
+    "overview": "Overview",
+    "dashboard": "Dashboard",
+    "virtualServers": "Virtual Servers",
+    "management": "Management",
+    "channels": "Channels",
+    "clients": "Clients",
+    "serverGroups": "Server Groups",
+    "channelGroups": "Channel Groups",
+    "permissions": "Permissions",
+    "security": "Security",
+    "bans": "Bans",
+    "tokens": "Tokens",
+    "content": "Content",
+    "files": "Files",
+    "complaints": "Complaints",
+    "messages": "Messages",
+    "system": "System",
+    "serverLogs": "Server Logs",
+    "connectionJournal": "Connection Journal",
+    "instance": "Instance",
+    "musicRequests": "Music Request History",
+    "automation": "Automation",
+    "botFlows": "Bot Flows",
+    "musicBots": "Music Bots",
+    "settings": "Settings",
+    "collapse": "Collapse",
+    "logout": "Log out"
+  },
+  "login": {
+    "appSubtitle": "Server Administration Panel",
+    "signInToContinue": "Sign in to continue",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signingIn": "Signing in...",
+    "invalidCredentials": "Invalid credentials. Please try again.",
+    "twoFactorTitle": "Two-factor authentication",
+    "twoFactorSetupTitle": "Set up two-factor authentication",
+    "setupPrompt": "Your administrator requires two-factor authentication. Scan this QR code with an authenticator app, then enter the 6-digit code.",
+    "verifyAndContinue": "Verify & continue",
+    "saveRecoveryCodes": "Save your recovery codes",
+    "recoveryCodesHint": "Each can be used once if you lose your device. They won't be shown again.",
+    "enterCode": "Enter the 6-digit code from your authenticator app.",
+    "enterCodeToFinish": "Enter the 6-digit code from your authenticator app to finish signing in.",
+    "verify": "Verify",
+    "verifying": "Verifying...",
+    "invalidCode": "Invalid code. Try again."
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "connections": "Connections",
+      "account": "Account",
+      "users": "Users",
+      "youtube": "YouTube",
+      "discord": "Discord",
+      "spotify": "Spotify"
+    },
+    "account": {
+      "changePassword": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password",
+      "changing": "Changing...",
+      "passwordChanged": "Password changed successfully",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "language": "Interface language",
+      "languageHint": "Applies to your account on every device."
+    }
+  }
+}

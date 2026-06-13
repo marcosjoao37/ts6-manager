@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "loading": "Chargement...",
+    "language": "Langue"
+  },
+  "nav": {
+    "overview": "Vue d'ensemble",
+    "dashboard": "Tableau de bord",
+    "virtualServers": "Serveurs virtuels",
+    "management": "Gestion",
+    "channels": "Salons",
+    "clients": "Clients",
+    "serverGroups": "Groupes de serveur",
+    "channelGroups": "Groupes de salon",
+    "permissions": "Permissions",
+    "security": "Sécurité",
+    "bans": "Bannissements",
+    "tokens": "Jetons",
+    "content": "Contenu",
+    "files": "Fichiers",
+    "complaints": "Plaintes",
+    "messages": "Messages",
+    "system": "Système",
+    "serverLogs": "Journaux serveur",
+    "connectionJournal": "Journal de connexions",
+    "instance": "Instance",
+    "musicRequests": "Historique des requêtes musicales",
+    "automation": "Automatisation",
+    "botFlows": "Flux de bots",
+    "musicBots": "Bots musique",
+    "settings": "Paramètres",
+    "collapse": "Réduire",
+    "logout": "Se déconnecter"
+  },
+  "login": {
+    "appSubtitle": "Panneau d'administration du serveur",
+    "signInToContinue": "Connectez-vous pour continuer",
+    "username": "Nom d'utilisateur",
+    "password": "Mot de passe",
+    "signIn": "Se connecter",
+    "signingIn": "Connexion...",
+    "invalidCredentials": "Identifiants invalides. Veuillez réessayer.",
+    "twoFactorTitle": "Authentification à deux facteurs",
+    "twoFactorSetupTitle": "Configurer l'authentification à deux facteurs",
+    "setupPrompt": "Votre administrateur exige l'authentification à deux facteurs. Scannez ce QR code avec une application d'authentification, puis saisissez le code à 6 chiffres.",
+    "verifyAndContinue": "Vérifier et continuer",
+    "saveRecoveryCodes": "Enregistrez vos codes de récupération",
+    "recoveryCodesHint": "Chacun est utilisable une seule fois en cas de perte de votre appareil. Ils ne seront plus affichés.",
+    "enterCode": "Saisissez le code à 6 chiffres de votre application d'authentification.",
+    "enterCodeToFinish": "Saisissez le code à 6 chiffres de votre application d'authentification pour terminer la connexion.",
+    "verify": "Vérifier",
+    "verifying": "Vérification...",
+    "invalidCode": "Code invalide. Réessayez."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "tabs": {
+      "connections": "Connexions",
+      "account": "Compte",
+      "users": "Utilisateurs",
+      "youtube": "YouTube",
+      "discord": "Discord",
+      "spotify": "Spotify"
+    },
+    "account": {
+      "changePassword": "Changer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le nouveau mot de passe",
+      "changing": "Modification...",
+      "passwordChanged": "Mot de passe changé avec succès",
+      "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+      "language": "Langue de l'interface",
+      "languageHint": "S'applique à votre compte sur tous vos appareils."
+    }
+  }
+}

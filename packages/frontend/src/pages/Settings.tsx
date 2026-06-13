@@ -22,23 +22,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare, Music } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { LANGUAGES, setLanguage } from '@/i18n';
 
 export default function Settings() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Settings</h1>
+      <h1 className="text-xl font-semibold">{t('settings.title')}</h1>
 
       <Tabs defaultValue="account">
         <TabsList>
-          {isAdmin && <TabsTrigger value="connections"><Server className="h-3.5 w-3.5 mr-1" /> Connections</TabsTrigger>}
-          <TabsTrigger value="account"><Lock className="h-3.5 w-3.5 mr-1" /> Account</TabsTrigger>
-          {isAdmin && <TabsTrigger value="users"><Users className="h-3.5 w-3.5 mr-1" /> Users</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="youtube"><Youtube className="h-3.5 w-3.5 mr-1" /> YouTube</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="discord"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> Discord</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="spotify"><Music className="h-3.5 w-3.5 mr-1" /> Spotify</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="connections"><Server className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.connections')}</TabsTrigger>}
+          <TabsTrigger value="account"><Lock className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.account')}</TabsTrigger>
+          {isAdmin && <TabsTrigger value="users"><Users className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.users')}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="youtube"><Youtube className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.youtube')}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="discord"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.discord')}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="spotify"><Music className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.spotify')}</TabsTrigger>}
         </TabsList>
 
         {isAdmin && (
@@ -80,6 +83,7 @@ export default function Settings() {
 }
 
 function AccountTab() {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -94,12 +98,12 @@ function AccountTab() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('settings.account.passwordsDoNotMatch'));
       return;
     }
     changePassword.mutate(undefined, {
       onSuccess: () => {
-        toast.success('Password changed successfully');
+        toast.success(t('settings.account.passwordChanged'));
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -113,35 +117,72 @@ function AccountTab() {
 
   return (
     <div className="max-w-md space-y-4">
+      <LanguageCard />
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Change Password</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('settings.account.changePassword')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <Label className="text-xs">Current Password</Label>
-            <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" />
+            <Label className="text-xs">{t('settings.account.currentPassword')}</Label>
+            <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
           </div>
           <div>
-            <Label className="text-xs">New Password</Label>
-            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 6 characters" />
+            <Label className="text-xs">{t('settings.account.newPassword')}</Label>
+            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
           </div>
           <div>
-            <Label className="text-xs">Confirm New Password</Label>
-            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat new password" />
+            <Label className="text-xs">{t('settings.account.confirmPassword')}</Label>
+            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
           </div>
           <Button
             onClick={handleSubmit}
             disabled={!currentPassword || !newPassword || !confirmPassword || changePassword.isPending}
             className="w-full mt-1"
           >
-            {changePassword.isPending ? 'Changing...' : 'Change Password'}
+            {changePassword.isPending ? t('settings.account.changing') : t('settings.account.changePassword')}
           </Button>
         </CardContent>
       </Card>
 
       <MfaCard />
     </div>
+  );
+}
+
+function LanguageCard() {
+  const { t, i18n } = useTranslation();
+  const { user, setAuth, accessToken, refreshToken } = useAuthStore();
+  const current = LANGUAGES.find((l) => i18n.resolvedLanguage === l.code)?.code ?? 'en';
+
+  const choose = (code: string) => {
+    setLanguage(code);
+    if (accessToken) {
+      authApi.setLanguage(code).then(() => {
+        if (user) setAuth(accessToken, refreshToken!, { ...user, language: code });
+        toast.success(t('common.save'));
+      }).catch(() => { /* ignore */ });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">{t('settings.account.language')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Select value={current} onValueChange={choose}>
+          <SelectTrigger className="h-8 text-xs w-56"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {LANGUAGES.map((l) => (
+              <SelectItem key={l.code} value={l.code}><span className="mr-2">{l.flag}</span>{l.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">{t('settings.account.languageHint')}</p>
+      </CardContent>
+    </Card>
   );
 }
 

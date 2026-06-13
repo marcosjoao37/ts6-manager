@@ -4,6 +4,7 @@ import {
   Lock, Ban, KeyRound, FolderOpen, MessageSquareWarning, Mail,
   ScrollText, Settings, Bot, Cpu, ChevronLeft, ChevronRight, Music, ListMusic, History,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useUiStore } from '@/stores/ui.store';
 import { useAuthStore } from '@/stores/auth.store';
@@ -13,55 +14,55 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const navSections = [
   {
-    label: 'Overview',
+    label: 'nav.overview',
     items: [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { to: '/servers', icon: Server, label: 'Virtual Servers', adminOnly: true },
+      { to: '/dashboard', icon: LayoutDashboard, label: 'nav.dashboard' },
+      { to: '/servers', icon: Server, label: 'nav.virtualServers', adminOnly: true },
     ],
   },
   {
-    label: 'Management',
+    label: 'nav.management',
     items: [
-      { to: '/channels', icon: Hash, label: 'Channels' },
-      { to: '/clients', icon: Users, label: 'Clients' },
-      { to: '/server-groups', icon: Shield, label: 'Server Groups', adminOnly: true },
-      { to: '/channel-groups', icon: ShieldCheck, label: 'Channel Groups', adminOnly: true },
-      { to: '/permissions', icon: Lock, label: 'Permissions', adminOnly: true },
+      { to: '/channels', icon: Hash, label: 'nav.channels' },
+      { to: '/clients', icon: Users, label: 'nav.clients' },
+      { to: '/server-groups', icon: Shield, label: 'nav.serverGroups', adminOnly: true },
+      { to: '/channel-groups', icon: ShieldCheck, label: 'nav.channelGroups', adminOnly: true },
+      { to: '/permissions', icon: Lock, label: 'nav.permissions', adminOnly: true },
     ],
   },
   {
-    label: 'Security',
+    label: 'nav.security',
     adminOnly: true,
     items: [
-      { to: '/bans', icon: Ban, label: 'Bans', adminOnly: true },
-      { to: '/tokens', icon: KeyRound, label: 'Tokens', adminOnly: true },
+      { to: '/bans', icon: Ban, label: 'nav.bans', adminOnly: true },
+      { to: '/tokens', icon: KeyRound, label: 'nav.tokens', adminOnly: true },
     ],
   },
   {
-    label: 'Content',
+    label: 'nav.content',
     adminOnly: true,
     items: [
-      { to: '/files', icon: FolderOpen, label: 'Files', adminOnly: true },
-      { to: '/complaints', icon: MessageSquareWarning, label: 'Complaints', adminOnly: true },
-      { to: '/messages', icon: Mail, label: 'Messages', adminOnly: true },
+      { to: '/files', icon: FolderOpen, label: 'nav.files', adminOnly: true },
+      { to: '/complaints', icon: MessageSquareWarning, label: 'nav.complaints', adminOnly: true },
+      { to: '/messages', icon: Mail, label: 'nav.messages', adminOnly: true },
     ],
   },
   {
-    label: 'System',
+    label: 'nav.system',
     adminOnly: true,
     items: [
-      { to: '/logs', icon: ScrollText, label: 'Server Logs', adminOnly: true },
-      { to: '/journal', icon: History, label: 'Connection Journal', adminOnly: true },
-      { to: '/instance', icon: Cpu, label: 'Instance', adminOnly: true },
-      { to: '/music-requests', icon: ListMusic, label: 'Music Request History', adminOnly: true },
+      { to: '/logs', icon: ScrollText, label: 'nav.serverLogs', adminOnly: true },
+      { to: '/journal', icon: History, label: 'nav.connectionJournal', adminOnly: true },
+      { to: '/instance', icon: Cpu, label: 'nav.instance', adminOnly: true },
+      { to: '/music-requests', icon: ListMusic, label: 'nav.musicRequests', adminOnly: true },
     ],
   },
   {
-    label: 'Automation',
+    label: 'nav.automation',
     adminOnly: true,
     items: [
-      { to: '/bots', icon: Bot, label: 'Bot Flows', adminOnly: true },
-      { to: '/music-bots', icon: Music, label: 'Music Bots', adminOnly: true },
+      { to: '/bots', icon: Bot, label: 'nav.botFlows', adminOnly: true },
+      { to: '/music-bots', icon: Music, label: 'nav.musicBots', adminOnly: true },
     ],
   },
 ];
@@ -70,6 +71,7 @@ export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore();
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const location = useLocation();
+  const { t } = useTranslation();
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -111,7 +113,7 @@ export function Sidebar() {
                     {si > 0 && <Separator className="my-2 bg-sidebar-border" />}
                     {!sidebarCollapsed && (
                       <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-                        {section.label}
+                        {t(section.label)}
                       </p>
                     )}
                     {visibleItems.map((item) => {
@@ -129,7 +131,7 @@ export function Sidebar() {
                           )}
                         >
                           <item.icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
-                          {!sidebarCollapsed && <span>{item.label}</span>}
+                          {!sidebarCollapsed && <span>{t(item.label)}</span>}
                         </NavLink>
                       );
 
@@ -138,7 +140,7 @@ export function Sidebar() {
                           <Tooltip key={item.to}>
                             <TooltipTrigger asChild>{link}</TooltipTrigger>
                             <TooltipContent side="right" className="font-medium">
-                              {item.label}
+                              {t(item.label)}
                             </TooltipContent>
                           </Tooltip>
                         );
@@ -162,7 +164,7 @@ export function Sidebar() {
             )}
           >
             <Settings className="h-4 w-4" />
-            {!sidebarCollapsed && <span>Settings</span>}
+            {!sidebarCollapsed && <span>{t('nav.settings')}</span>}
           </NavLink>
 
           <button
@@ -173,7 +175,7 @@ export function Sidebar() {
             )}
           >
             {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            {!sidebarCollapsed && <span>Collapse</span>}
+            {!sidebarCollapsed && <span>{t('nav.collapse')}</span>}
           </button>
         </div>
       </aside>

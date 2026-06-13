@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Añadir",
+    "loading": "Cargando...",
+    "language": "Idioma"
+  },
+  "nav": {
+    "overview": "Resumen",
+    "dashboard": "Panel",
+    "virtualServers": "Servidores virtuales",
+    "management": "Gestión",
+    "channels": "Canales",
+    "clients": "Clientes",
+    "serverGroups": "Grupos de servidor",
+    "channelGroups": "Grupos de canal",
+    "permissions": "Permisos",
+    "security": "Seguridad",
+    "bans": "Baneos",
+    "tokens": "Tokens",
+    "content": "Contenido",
+    "files": "Archivos",
+    "complaints": "Quejas",
+    "messages": "Mensajes",
+    "system": "Sistema",
+    "serverLogs": "Registros del servidor",
+    "connectionJournal": "Registro de conexiones",
+    "instance": "Instancia",
+    "musicRequests": "Historial de peticiones musicales",
+    "automation": "Automatización",
+    "botFlows": "Flujos de bots",
+    "musicBots": "Bots de música",
+    "settings": "Ajustes",
+    "collapse": "Contraer",
+    "logout": "Cerrar sesión"
+  },
+  "login": {
+    "appSubtitle": "Panel de administración del servidor",
+    "signInToContinue": "Inicia sesión para continuar",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión...",
+    "invalidCredentials": "Credenciales inválidas. Inténtalo de nuevo.",
+    "twoFactorTitle": "Autenticación de dos factores",
+    "twoFactorSetupTitle": "Configurar la autenticación de dos factores",
+    "setupPrompt": "Tu administrador requiere autenticación de dos factores. Escanea este código QR con una app de autenticación e introduce el código de 6 dígitos.",
+    "verifyAndContinue": "Verificar y continuar",
+    "saveRecoveryCodes": "Guarda tus códigos de recuperación",
+    "recoveryCodesHint": "Cada uno se puede usar una vez si pierdes tu dispositivo. No se volverán a mostrar.",
+    "enterCode": "Introduce el código de 6 dígitos de tu app de autenticación.",
+    "enterCodeToFinish": "Introduce el código de 6 dígitos de tu app de autenticación para terminar de iniciar sesión.",
+    "verify": "Verificar",
+    "verifying": "Verificando...",
+    "invalidCode": "Código inválido. Inténtalo de nuevo."
+  },
+  "settings": {
+    "title": "Ajustes",
+    "tabs": {
+      "connections": "Conexiones",
+      "account": "Cuenta",
+      "users": "Usuarios",
+      "youtube": "YouTube",
+      "discord": "Discord",
+      "spotify": "Spotify"
+    },
+    "account": {
+      "changePassword": "Cambiar contraseña",
+      "currentPassword": "Contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "confirmPassword": "Confirmar nueva contraseña",
+      "changing": "Cambiando...",
+      "passwordChanged": "Contraseña cambiada correctamente",
+      "passwordsDoNotMatch": "Las contraseñas no coinciden",
+      "language": "Idioma de la interfaz",
+      "languageHint": "Se aplica a tu cuenta en todos los dispositivos."
+    }
+  }
+}

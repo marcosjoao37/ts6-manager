@@ -1,0 +1,82 @@
+{
+  "common": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "add": "Aggiungi",
+    "loading": "Caricamento...",
+    "language": "Lingua"
+  },
+  "nav": {
+    "overview": "Panoramica",
+    "dashboard": "Dashboard",
+    "virtualServers": "Server virtuali",
+    "management": "Gestione",
+    "channels": "Canali",
+    "clients": "Client",
+    "serverGroups": "Gruppi server",
+    "channelGroups": "Gruppi canale",
+    "permissions": "Permessi",
+    "security": "Sicurezza",
+    "bans": "Ban",
+    "tokens": "Token",
+    "content": "Contenuti",
+    "files": "File",
+    "complaints": "Reclami",
+    "messages": "Messaggi",
+    "system": "Sistema",
+    "serverLogs": "Log del server",
+    "connectionJournal": "Registro connessioni",
+    "instance": "Istanza",
+    "musicRequests": "Cronologia richieste musicali",
+    "automation": "Automazione",
+    "botFlows": "Flussi bot",
+    "musicBots": "Bot musicali",
+    "settings": "Impostazioni",
+    "collapse": "Comprimi",
+    "logout": "Disconnetti"
+  },
+  "login": {
+    "appSubtitle": "Pannello di amministrazione del server",
+    "signInToContinue": "Accedi per continuare",
+    "username": "Nome utente",
+    "password": "Password",
+    "signIn": "Accedi",
+    "signingIn": "Accesso in corso...",
+    "invalidCredentials": "Credenziali non valide. Riprova.",
+    "twoFactorTitle": "Autenticazione a due fattori",
+    "twoFactorSetupTitle": "Configura l'autenticazione a due fattori",
+    "setupPrompt": "Il tuo amministratore richiede l'autenticazione a due fattori. Scansiona questo codice QR con un'app di autenticazione e inserisci il codice a 6 cifre.",
+    "verifyAndContinue": "Verifica e continua",
+    "saveRecoveryCodes": "Salva i tuoi codici di recupero",
+    "recoveryCodesHint": "Ognuno è utilizzabile una volta se perdi il dispositivo. Non verranno più mostrati.",
+    "enterCode": "Inserisci il codice a 6 cifre della tua app di autenticazione.",
+    "enterCodeToFinish": "Inserisci il codice a 6 cifre della tua app di autenticazione per completare l'accesso.",
+    "verify": "Verifica",
+    "verifying": "Verifica in corso...",
+    "invalidCode": "Codice non valido. Riprova."
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "tabs": {
+      "connections": "Connessioni",
+      "account": "Account",
+      "users": "Utenti",
+      "youtube": "YouTube",
+      "discord": "Discord",
+      "spotify": "Spotify"
+    },
+    "account": {
+      "changePassword": "Cambia password",
+      "currentPassword": "Password attuale",
+      "newPassword": "Nuova password",
+      "confirmPassword": "Conferma nuova password",
+      "changing": "Modifica in corso...",
+      "passwordChanged": "Password cambiata con successo",
+      "passwordsDoNotMatch": "Le password non corrispondono",
+      "language": "Lingua dell'interfaccia",
+      "languageHint": "Si applica al tuo account su tutti i dispositivi."
+    }
+  }
+}
