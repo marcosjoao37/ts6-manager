@@ -15,6 +15,7 @@ import {
   X, Check, Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 // Permission categories based on TS3 naming convention
 const PERM_CATEGORIES: Record<string, string> = {
@@ -73,6 +74,7 @@ const LAYERS: { key: PermLayer; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function Permissions() {
+  const { t } = useTranslation();
   const { selectedConfigId: c, selectedSid: s } = useServerStore();
   const qc = useQueryClient();
 
@@ -243,14 +245,14 @@ export default function Permissions() {
       }
     },
     onSuccess: () => {
-      toast.success('Permissions saved');
+      toast.success(t('permissions.toastSaved'));
       setChanges(new Map());
       qc.invalidateQueries({ queryKey: ['entity-perms', c, s, layer, entityId] });
     },
-    onError: () => toast.error('Failed to save permissions'),
+    onError: () => toast.error(t('permissions.toastSaveError')),
   });
 
-  if (!c || !s) return <EmptyState icon={Lock} title="No server selected" />;
+  if (!c || !s) return <EmptyState icon={Lock} title={t('permissions.noServerSelected')} />;
   if (loadingDefs) return <PageLoader />;
 
   const entities = (() => {
@@ -280,15 +282,15 @@ export default function Permissions() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Permissions</h1>
+        <h1 className="text-xl font-semibold">{t('permissions.title')}</h1>
         {changes.size > 0 && (
           <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="font-mono-data">{changes.size} change(s)</Badge>
+            <Badge variant="secondary" className="font-mono-data">{t('permissions.changeCount', { count: changes.size })}</Badge>
             <Button variant="outline" size="sm" onClick={() => setChanges(new Map())}>
-              <X className="h-3.5 w-3.5 mr-1" /> Discard
+              <X className="h-3.5 w-3.5 mr-1" /> {t('permissions.discard')}
             </Button>
             <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              <Save className="h-3.5 w-3.5 mr-1" /> Save
+              <Save className="h-3.5 w-3.5 mr-1" /> {t('permissions.save')}
             </Button>
           </div>
         )}
@@ -296,7 +298,7 @@ export default function Permissions() {
 
       {/* Layer Tabs */}
       <div className="flex gap-1 p-1 bg-muted/30 rounded-lg w-fit">
-        {LAYERS.map(({ key, label, icon: Icon }) => (
+        {LAYERS.map(({ key, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setLayer(key)}
@@ -308,7 +310,7 @@ export default function Permissions() {
             )}
           >
             <Icon className="h-3.5 w-3.5" />
-            {label}
+            {t(`permissions.layer_${key}`)}
           </button>
         ))}
       </div>
@@ -318,7 +320,7 @@ export default function Permissions() {
         <Card className="col-span-3">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Select {LAYERS.find((l) => l.key === layer)?.label.replace(/s$/, '')}
+              {t('permissions.selectEntity', { entity: t(`permissions.layerSingular_${layer}`) })}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -340,7 +342,7 @@ export default function Permissions() {
                   </button>
                 ))}
                 {entities.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No entities found</p>
+                  <p className="text-xs text-muted-foreground text-center py-4">{t('permissions.noEntitiesFound')}</p>
                 )}
               </div>
             </ScrollArea>
@@ -352,13 +354,13 @@ export default function Permissions() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {entityId ? `Permissions` : 'Select an entity'}
+                {entityId ? t('permissions.editorTitle') : t('permissions.selectAnEntity')}
               </CardTitle>
               {entityId && (
                 <div className="relative w-64">
                   <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="Search permissions..."
+                    placeholder={t('permissions.searchPlaceholder')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-7 h-8 text-xs"
@@ -371,7 +373,7 @@ export default function Permissions() {
             <ScrollArea className="h-[500px]">
               {!entityId ? (
                 <div className="flex items-center justify-center h-[400px]">
-                  <p className="text-sm text-muted-foreground">Select an entity from the left panel</p>
+                  <p className="text-sm text-muted-foreground">{t('permissions.selectFromLeftPanel')}</p>
                 </div>
               ) : loadingPerms ? (
                 <div className="flex items-center justify-center h-[400px]">
@@ -386,17 +388,17 @@ export default function Permissions() {
                         className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded"
                       >
                         {expandedCats.has(catKey) ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                        {PERM_CATEGORIES[catKey] || catKey}
+                        {PERM_CATEGORIES[catKey] ? t(`permissions.category_${catKey}`) : catKey}
                         <Badge variant="secondary" className="text-[9px] h-4 ml-1">{perms.length}</Badge>
                       </button>
                       {expandedCats.has(catKey) && (
                         <div className="ml-4 border-l border-border/50 pl-2">
                           {/* Header */}
                           <div className="grid grid-cols-12 gap-2 px-2 py-1 text-[10px] text-muted-foreground uppercase tracking-wider">
-                            <div className="col-span-5">Permission</div>
-                            <div className="col-span-2 text-center">Value</div>
-                            <div className="col-span-1 text-center">Skip</div>
-                            <div className="col-span-1 text-center">Negate</div>
+                            <div className="col-span-5">{t('permissions.colPermission')}</div>
+                            <div className="col-span-2 text-center">{t('permissions.colValue')}</div>
+                            <div className="col-span-1 text-center">{t('permissions.colSkip')}</div>
+                            <div className="col-span-1 text-center">{t('permissions.colNegate')}</div>
                             <div className="col-span-3"></div>
                           </div>
                           {perms.map((perm) => {
@@ -464,7 +466,7 @@ export default function Permissions() {
                                           ? 'bg-amber-500/20 border-amber-500 text-amber-400'
                                           : 'border-border/50',
                                       )}
-                                      title="Skip"
+                                      title={t('permissions.colSkip')}
                                     >
                                       {isSet && effective?.permskip ? 'S' : ''}
                                     </button>
@@ -484,7 +486,7 @@ export default function Permissions() {
                                           ? 'bg-destructive/20 border-destructive text-destructive'
                                           : 'border-border/50',
                                       )}
-                                      title="Negate"
+                                      title={t('permissions.colNegate')}
                                     >
                                       {isSet && effective?.permnegated ? 'N' : ''}
                                     </button>
@@ -495,13 +497,13 @@ export default function Permissions() {
                                     <button
                                       onClick={() => removePerm(perm.permsid)}
                                       className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                      title="Remove permission"
+                                      title={t('permissions.removePermission')}
                                     >
                                       <Minus className="h-3 w-3" />
                                     </button>
                                   )}
                                   {isChanged && (
-                                    <span className="text-[9px] text-primary font-mono-data">modified</span>
+                                    <span className="text-[9px] text-primary font-mono-data">{t('permissions.modified')}</span>
                                   )}
                                 </div>
                               </div>
@@ -513,7 +515,7 @@ export default function Permissions() {
                   ))}
                   {categories.size === 0 && (
                     <div className="flex items-center justify-center h-[300px]">
-                      <p className="text-sm text-muted-foreground">No permissions match your search</p>
+                      <p className="text-sm text-muted-foreground">{t('permissions.noMatch')}</p>
                     </div>
                   )}
                 </div>

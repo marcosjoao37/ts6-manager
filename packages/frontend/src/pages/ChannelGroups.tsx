@@ -6,22 +6,24 @@ import { PageLoader } from '@/components/shared/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function ChannelGroups() {
+  const { t } = useTranslation();
   const { selectedConfigId, selectedSid } = useServerStore();
   const { data, isLoading } = useChannelGroups();
 
-  if (!selectedConfigId || !selectedSid) return <EmptyState icon={ShieldCheck} title="No server selected" />;
+  if (!selectedConfigId || !selectedSid) return <EmptyState icon={ShieldCheck} title={t('channelGroups.noServerSelected')} />;
   if (isLoading) return <PageLoader />;
 
   const groups = Array.isArray(data) ? data : [];
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold">Channel Groups</h1>
+      <h1 className="text-xl font-semibold">{t('channelGroups.title')}</h1>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Groups ({groups.length})</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">{t('channelGroups.groupsCount', { count: groups.length })}</CardTitle>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[500px]">
@@ -33,8 +35,8 @@ export default function ChannelGroups() {
                     <span className="text-sm font-medium">{g.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-[10px] font-mono-data">CGID: {g.cgid}</Badge>
-                    <Badge variant="outline" className="text-[10px] font-mono-data">Type: {g.type}</Badge>
+                    <Badge variant="secondary" className="text-[10px] font-mono-data">{t('channelGroups.cgidLabel', { cgid: g.cgid })}</Badge>
+                    <Badge variant="outline" className="text-[10px] font-mono-data">{t('channelGroups.typeLabel', { type: g.type })}</Badge>
                   </div>
                 </div>
               ))}
