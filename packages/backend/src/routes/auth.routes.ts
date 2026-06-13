@@ -55,13 +55,12 @@ function verifyChangeToken(token: string): number {
 }
 
 /**
- * Final login step after password (and MFA) succeeded: if the account must
- * change its password first, return a change challenge instead of a session.
+ * Gating applied once the password (and any forced password change) is done:
+ * require the MFA second factor / enrollment, otherwise issue the session.
  */
-async function finishLogin(prisma: any, user: any) {
-  if (user.mustChangePassword) {
-    return { mustChangePassword: true, changeToken: signChangeToken(user.id) };
-  }
+async function gateAfterPassword(prisma: any, user: any) {
+  if (user.mfaEnabled) return { mfaRequired: true, mfaToken: signMfaChallenge(user.id) };
+  if (user.mfaRequired) return { mfaSetupRequired: true, mfaToken: signMfaChallenge(user.id) };
   return issueSession(prisma, user);
 }
 
@@ -92,18 +91,13 @@ authRoutes.post('/login', async (req: Request, res: Response, next) => {
 
     journal?.recordWebLogin(user.username, req.ip || '', true);
 
-    // MFA gate: don't issue tokens until the second factor is verified.
-    if (user.mfaEnabled) {
-      res.json({ mfaRequired: true, mfaToken: signMfaChallenge(user.id) });
-      return;
-    }
-    if (user.mfaRequired) {
-      // Admin-forced but not yet set up — the client must enroll first.
-      res.json({ mfaSetupRequired: true, mfaToken: signMfaChallenge(user.id) });
+    // Forced password change comes first — before MFA enrollment.
+    if (user.mustChangePassword) {
+      res.json({ mustChangePassword: true, changeToken: signChangeToken(user.id) });
       return;
     }
 
-    res.json(await finishLogin(prisma, user));
+    res.json(await gateAfterPassword(prisma, user));
   } catch (err) { next(err); }
 });
 
@@ -132,7 +126,7 @@ authRoutes.post('/login/mfa', async (req: Request, res: Response, next) => {
       });
     }
 
-    res.json(await finishLogin(prisma, user));
+    res.json(await issueSession(prisma, user));
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
       return next(new AppError(401, 'MFA session expired, please log in again'));
@@ -142,7 +136,7 @@ authRoutes.post('/login/mfa', async (req: Request, res: Response, next) => {
 });
 
 // Forced password change at login: verify current password, set the new one
-// (policy-checked), clear the flag, then issue the session.
+// (policy-checked), clear the flag, then continue to MFA / issue the session.
 authRoutes.post('/login/change-password', async (req: Request, res: Response, next) => {
   try {
     const { changeToken, currentPassword, newPassword } = req.body;
@@ -164,9 +158,9 @@ authRoutes.post('/login/change-password', async (req: Request, res: Response, ne
       where: { id: user.id },
       data: { passwordHash, mustChangePassword: false },
     });
-    // Invalidate any existing refresh tokens, then start a fresh session
+    // Invalidate any existing refresh tokens, then continue to MFA / session
     await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
-    res.json(await issueSession(prisma, updated));
+    res.json(await gateAfterPassword(prisma, updated));
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
       return next(new AppError(401, 'Session expired, please log in again'));

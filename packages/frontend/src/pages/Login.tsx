@@ -41,11 +41,19 @@ export default function Login() {
     navigate('/dashboard');
   };
 
-  // Route an auth response: full session, forced password change, or MFA.
-  const proceed = (res: any): boolean => {
-    if (res.accessToken) { finish(res); return true; }
-    if (res.mustChangePassword) { setChangeToken(res.changeToken); setCurPw(password); setStep('changePassword'); return true; }
-    return false;
+  // Route any auth response to the right step: forced password change first,
+  // then MFA (enrollment or code), otherwise a full session.
+  const routeAuth = async (res: any) => {
+    if (res.mustChangePassword) { setChangeToken(res.changeToken); setCurPw(password); setNewPw(''); setConfirmPw(''); setStep('changePassword'); return; }
+    if (res.accessToken) { finish(res); return; }
+    setMfaToken(res.mfaToken);
+    if (res.mfaSetupRequired) {
+      const setup = await authApi.mfaSetup(res.mfaToken);
+      setQr(setup.qrDataUrl);
+      setStep('setup');
+    } else {
+      setStep('code'); // mfaRequired
+    }
   };
 
   const handlePassword = async (e: React.FormEvent) => {
@@ -53,16 +61,7 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      const res = await authApi.login(username, password);
-      if (proceed(res)) return;
-      setMfaToken(res.mfaToken);
-      if (res.mfaSetupRequired) {
-        const setup = await authApi.mfaSetup(res.mfaToken);
-        setQr(setup.qrDataUrl);
-        setStep('setup');
-      } else {
-        setStep('code'); // mfaRequired
-      }
+      await routeAuth(await authApi.login(username, password));
     } catch {
       setError(t('login.invalidCredentials'));
     } finally {
@@ -76,7 +75,7 @@ export default function Login() {
     if (newPw !== confirmPw) { setError(t('login.passwordsDoNotMatch')); return; }
     setBusy(true);
     try {
-      finish(await authApi.loginChangePassword(changeToken, curPw, newPw));
+      await routeAuth(await authApi.loginChangePassword(changeToken, curPw, newPw));
     } catch (err: any) {
       setError(err.response?.data?.error || t('login.changeFailed'));
     } finally {
@@ -106,8 +105,7 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      const res = await authApi.loginMfa(mfaToken, code);
-      if (proceed(res)) return;
+      finish(await authApi.loginMfa(mfaToken, code));
     } catch {
       setError(t('login.invalidCode'));
     } finally {
