@@ -385,7 +385,7 @@ function ConnectionsTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowAdd(false); setEditId(null); resetForm(); }}>{t('settings.connections.cancel')}</Button>
-            <Button onClick={handleSave} disabled={!form.name || !form.host || !form.apiKey}>{editId ? t('settings.connections.update') : t('settings.connections.addShort')}</Button>
+            <Button onClick={handleSave} disabled={!form.name || !form.host || (!editId && !form.apiKey)}>{editId ? t('settings.connections.update') : t('settings.connections.addShort')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -915,15 +915,15 @@ function DiscordTab() {
                 <div className="grid grid-cols-1 gap-2">
                   <div className="space-y-1">
                     <Label className="text-[11px]">{t('settings.discord.joinMessage')}</Label>
-                    <Input className="h-8 text-xs" placeholder="{user} a rejoint le canal {channel} du TeamSpeak"
+                    <Input className="h-8 text-xs" placeholder="{user} a rejoint le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)"
                       value={form.notifyJoinTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyJoinTemplate: e.target.value || null }))} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[11px]">{t('settings.discord.leaveMessage')}</Label>
-                    <Input className="h-8 text-xs" placeholder="{user} a quitté le canal {channel} du TeamSpeak"
+                    <Input className="h-8 text-xs" placeholder="{user} a quitté le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)"
                       value={form.notifyLeaveTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyLeaveTemplate: e.target.value || null }))} />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{t('settings.discord.templateVariables')} <span className="font-mono">{'{user}'}</span> {t('settings.discord.and')} <span className="font-mono">{'{channel}'}</span>.</p>
+                  <p className="text-[10px] text-muted-foreground">{t('settings.discord.templateVariables')} <span className="font-mono">{'{user}'}</span>, <span className="font-mono">{'{channel}'}</span> {t('settings.discord.and')} <span className="font-mono">{'{TotalMembersOfChannel}'}</span>.</p>
                 </div>
               )}
             </div>

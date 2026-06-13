@@ -20,7 +20,6 @@ import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, 
 import {
   clientConnectedEmbed,
   clientDisconnectedEmbed,
-  channelPresenceEmbed,
   renderTemplate,
   nowPlayingEmbed,
   statsEmbed,
@@ -541,11 +540,28 @@ export class DiscordBridge {
 
   private async notifyChannel(kind: 'join' | 'leave', user: string, channelId: string): Promise<void> {
     const channel = await this.resolveChannelName(channelId);
+    const totalMembers = await this.countChannelMembers(channelId);
     const template = kind === 'join'
       ? (this.settings?.notifyJoinTemplate || DEFAULT_JOIN_TEMPLATE)
       : (this.settings?.notifyLeaveTemplate || DEFAULT_LEAVE_TEMPLATE);
-    const message = renderTemplate(template, { user, channel });
-    await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [channelPresenceEmbed(message, kind)] });
+    const message = renderTemplate(template, { user, channel, totalMembers });
+    // Plain text message (no embed) per design.
+    await this.postToChannel(this.settings?.notificationsChannelId, { content: message });
+  }
+
+  /** Number of real clients currently in the given TS channel. */
+  private async countChannelMembers(channelId: string): Promise<number> {
+    const settings = this.settings;
+    if (!settings?.serverConfigId) return 0;
+    try {
+      const client = await this.pool.getOrLoad(settings.serverConfigId);
+      const list = await client.execute(settings.virtualServerId, 'clientlist');
+      return (Array.isArray(list) ? list : []).filter(
+        (c: any) => String(c.cid) === channelId && String(c.client_type) === '0',
+      ).length;
+    } catch {
+      return 0;
+    }
   }
 
   /** Nickname from the in-memory map, falling back to a WebQuery clientlist lookup. */

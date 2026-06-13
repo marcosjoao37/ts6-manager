@@ -8,6 +8,8 @@ import {
   formatDuration,
   formatUptime,
   formatBytes,
+  renderTemplate,
+  DEFAULT_JOIN_TEMPLATE,
 } from './embeds.js';
 
 describe('discord embeds', () => {
@@ -43,6 +45,14 @@ describe('discord embeds', () => {
     const embed = queueEmbed(items, 2);
     expect(embed.description).toContain('▶ **3.** Track 2');
     expect(embed.description).toContain('… et 5 de plus');
+  });
+
+  it('renders join/leave templates with user, channel and member count', () => {
+    const out = renderTemplate(DEFAULT_JOIN_TEMPLATE, { user: 'Alice', channel: 'Lobby', totalMembers: 3 });
+    expect(out).toBe('Alice a rejoint le canal Lobby du TeamSpeak (3 connectés)');
+    // custom template, all tokens incl. the {{...}} form and aliases
+    expect(renderTemplate('{user}/{channel}/{{TotalMembersOfChannel}}', { user: 'Bob', channel: 'X', totalMembers: 7 }))
+      .toBe('Bob/X/7');
   });
 
   it('formatters', () => {
