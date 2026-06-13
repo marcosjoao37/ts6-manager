@@ -14,6 +14,10 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-secret-change-me-in-production}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - TS_ALLOW_SELF_SIGNED=${TS_ALLOW_SELF_SIGNED:-false}
+      # Reverse-proxy hops in front of the backend (real client IP from XFF).
+      # 1 = the bundled frontend nginx only; raise it by 1 per extra proxy
+      # (e.g. 2 behind a WAF/CDN like SafeLine).
+      - TRUST_PROXY=${TRUST_PROXY:-1}
       - JWT_ACCESS_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}

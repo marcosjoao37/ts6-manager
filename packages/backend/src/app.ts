@@ -42,8 +42,9 @@ import { ensureConnection } from './middleware/ensure-connection.js';
 export function createApp(): Express {
   const app = express();
 
-  // Trust first proxy (nginx / Coolify reverse proxy)
-  app.set('trust proxy', 1);
+  // Trust the reverse-proxy chain so req.ip reflects the real client from
+  // X-Forwarded-For (configurable via TRUST_PROXY; default 1 = frontend nginx).
+  app.set('trust proxy', config.trustProxy);
 
   app.use(helmet());
   app.use(cors({ origin: config.frontendUrl, credentials: true }));
