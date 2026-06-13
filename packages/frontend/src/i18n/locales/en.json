@@ -76,7 +76,30 @@
       "passwordChanged": "Password changed successfully",
       "passwordsDoNotMatch": "Passwords do not match",
       "language": "Interface language",
-      "languageHint": "Applies to your account on every device."
+      "languageHint": "Applies to your account on every device.",
+      "passwordTooShort": "New password must be at least 6 characters",
+      "mfa": {
+        "title": "Two-Factor Authentication (TOTP)",
+        "on": "Enabled",
+        "off": "Disabled",
+        "recoveryTitle": "Recovery codes (shown once)",
+        "recoveryHint": "Each can be used once if you lose your device. Store them somewhere safe.",
+        "intro": "Protect your account with an authenticator app (Google Authenticator, Authy, Bitwarden...).",
+        "starting": "Starting...",
+        "enable": "Enable 2FA",
+        "scanPrompt": "Scan with your authenticator app, then enter the 6-digit code.",
+        "verifying": "Verifying...",
+        "verifyEnable": "Verify & enable",
+        "requiredNote": "2FA is required by an administrator and cannot be disabled.",
+        "disablePrompt": "Enter your password to disable 2FA.",
+        "passwordPlaceholder": "Password",
+        "disable": "Disable",
+        "setupFailed": "Failed to start MFA setup",
+        "enabledToast": "MFA enabled",
+        "invalidCode": "Invalid code",
+        "disabledToast": "MFA disabled",
+        "disableFailed": "Failed to disable MFA"
+      }
     },
     "connections": {
       "subtitle": "Manage TeamSpeak server connections",

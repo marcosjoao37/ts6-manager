@@ -76,7 +76,30 @@
       "passwordChanged": "Mot de passe changé avec succès",
       "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
       "language": "Langue de l'interface",
-      "languageHint": "S'applique à votre compte sur tous vos appareils."
+      "languageHint": "S'applique à votre compte sur tous vos appareils.",
+      "passwordTooShort": "Le nouveau mot de passe doit contenir au moins 6 caractères",
+      "mfa": {
+        "title": "Authentification à deux facteurs (TOTP)",
+        "on": "Activée",
+        "off": "Désactivée",
+        "recoveryTitle": "Codes de récupération (affichés une seule fois)",
+        "recoveryHint": "Chacun est utilisable une fois en cas de perte de votre appareil. Conservez-les en lieu sûr.",
+        "intro": "Protégez votre compte avec une application d'authentification (Google Authenticator, Authy, Bitwarden...).",
+        "starting": "Démarrage...",
+        "enable": "Activer le 2FA",
+        "scanPrompt": "Scannez avec votre application d'authentification, puis saisissez le code à 6 chiffres.",
+        "verifying": "Vérification...",
+        "verifyEnable": "Vérifier et activer",
+        "requiredNote": "Le 2FA est imposé par un administrateur et ne peut pas être désactivé.",
+        "disablePrompt": "Saisissez votre mot de passe pour désactiver le 2FA.",
+        "passwordPlaceholder": "Mot de passe",
+        "disable": "Désactiver",
+        "setupFailed": "Échec du démarrage de la configuration MFA",
+        "enabledToast": "MFA activé",
+        "invalidCode": "Code invalide",
+        "disabledToast": "MFA désactivé",
+        "disableFailed": "Échec de la désactivation du MFA"
+      }
     },
     "connections": {
       "subtitle": "Gérer les connexions aux serveurs TeamSpeak",

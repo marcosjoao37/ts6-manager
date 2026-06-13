@@ -94,7 +94,7 @@ function AccountTab() {
 
   const handleSubmit = () => {
     if (newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
+      toast.error(t('settings.account.passwordTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -187,6 +187,7 @@ function LanguageCard() {
 }
 
 function MfaCard() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: authApi.me });
   const enabled = !!me?.user?.mfaEnabled;
@@ -200,59 +201,59 @@ function MfaCard() {
   const setup = useMutation({
     mutationFn: () => authApi.mfaSetup(),
     onSuccess: (d) => setQr(d.qrDataUrl),
-    onError: () => toast.error('Failed to start MFA setup'),
+    onError: () => toast.error(t('settings.account.mfa.setupFailed')),
   });
   const enable = useMutation({
     mutationFn: () => authApi.mfaEnable(code),
-    onSuccess: (d) => { setRecoveryCodes(d.recoveryCodes); setQr(null); setCode(''); qc.invalidateQueries({ queryKey: ['me'] }); toast.success('MFA enabled'); },
-    onError: () => toast.error('Invalid code'),
+    onSuccess: (d) => { setRecoveryCodes(d.recoveryCodes); setQr(null); setCode(''); qc.invalidateQueries({ queryKey: ['me'] }); toast.success(t('settings.account.mfa.enabledToast')); },
+    onError: () => toast.error(t('settings.account.mfa.invalidCode')),
   });
   const disable = useMutation({
     mutationFn: () => authApi.mfaDisable(disablePw),
-    onSuccess: () => { setDisablePw(''); setRecoveryCodes(null); qc.invalidateQueries({ queryKey: ['me'] }); toast.success('MFA disabled'); },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to disable MFA'),
+    onSuccess: () => { setDisablePw(''); setRecoveryCodes(null); qc.invalidateQueries({ queryKey: ['me'] }); toast.success(t('settings.account.mfa.disabledToast')); },
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.account.mfa.disableFailed')),
   });
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-sm font-medium">Two-Factor Authentication (TOTP)</CardTitle>
-        <Badge variant={enabled ? 'default' : 'outline'} className={enabled ? 'bg-emerald-600' : ''}>{enabled ? 'Enabled' : 'Disabled'}</Badge>
+        <CardTitle className="text-sm font-medium">{t('settings.account.mfa.title')}</CardTitle>
+        <Badge variant={enabled ? 'default' : 'outline'} className={enabled ? 'bg-emerald-600' : ''}>{enabled ? t('settings.account.mfa.on') : t('settings.account.mfa.off')}</Badge>
       </CardHeader>
       <CardContent className="space-y-3">
         {recoveryCodes && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
-            <div className="flex items-center gap-2 text-amber-500 text-xs font-medium"><KeyRound className="h-3.5 w-3.5" /> Recovery codes (shown once)</div>
-            <p className="text-[10px] text-muted-foreground">Each can be used once if you lose your device. Store them somewhere safe.</p>
+            <div className="flex items-center gap-2 text-amber-500 text-xs font-medium"><KeyRound className="h-3.5 w-3.5" /> {t('settings.account.mfa.recoveryTitle')}</div>
+            <p className="text-[10px] text-muted-foreground">{t('settings.account.mfa.recoveryHint')}</p>
             <div className="grid grid-cols-2 gap-1 font-mono-data text-[11px]">{recoveryCodes.map((c) => <span key={c}>{c}</span>)}</div>
           </div>
         )}
 
         {!enabled && !qr && (
           <>
-            <p className="text-xs text-muted-foreground">Protect your account with an authenticator app (Google Authenticator, Authy, Bitwarden...).</p>
-            <Button size="sm" onClick={() => setup.mutate()} disabled={setup.isPending}>{setup.isPending ? 'Starting...' : 'Enable 2FA'}</Button>
+            <p className="text-xs text-muted-foreground">{t('settings.account.mfa.intro')}</p>
+            <Button size="sm" onClick={() => setup.mutate()} disabled={setup.isPending}>{setup.isPending ? t('settings.account.mfa.starting') : t('settings.account.mfa.enable')}</Button>
           </>
         )}
 
         {!enabled && qr && (
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Scan with your authenticator app, then enter the 6-digit code.</p>
+            <p className="text-xs text-muted-foreground">{t('settings.account.mfa.scanPrompt')}</p>
             <img src={qr} alt="TOTP QR code" className="h-44 w-44 rounded bg-white p-2" />
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" inputMode="numeric" className="h-8 text-xs w-40 text-center tracking-widest" />
-            <Button size="sm" onClick={() => enable.mutate()} disabled={enable.isPending || code.length < 6}>{enable.isPending ? 'Verifying...' : 'Verify & enable'}</Button>
+            <Button size="sm" onClick={() => enable.mutate()} disabled={enable.isPending || code.length < 6}>{enable.isPending ? t('settings.account.mfa.verifying') : t('settings.account.mfa.verifyEnable')}</Button>
           </div>
         )}
 
         {enabled && (
           <div className="space-y-2">
             {required
-              ? <p className="text-xs text-muted-foreground">2FA is required by an administrator and cannot be disabled.</p>
+              ? <p className="text-xs text-muted-foreground">{t('settings.account.mfa.requiredNote')}</p>
               : <>
-                  <p className="text-xs text-muted-foreground">Enter your password to disable 2FA.</p>
+                  <p className="text-xs text-muted-foreground">{t('settings.account.mfa.disablePrompt')}</p>
                   <div className="flex items-center gap-2">
-                    <Input type="password" value={disablePw} onChange={(e) => setDisablePw(e.target.value)} placeholder="Password" className="h-8 text-xs w-48" />
-                    <Button size="sm" variant="destructive" onClick={() => disable.mutate()} disabled={disable.isPending || !disablePw}>Disable</Button>
+                    <Input type="password" value={disablePw} onChange={(e) => setDisablePw(e.target.value)} placeholder={t('settings.account.mfa.passwordPlaceholder')} className="h-8 text-xs w-48" />
+                    <Button size="sm" variant="destructive" onClick={() => disable.mutate()} disabled={disable.isPending || !disablePw}>{t('settings.account.mfa.disable')}</Button>
                   </div>
                 </>}
           </div>

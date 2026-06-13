@@ -76,7 +76,30 @@
       "passwordChanged": "Passwort erfolgreich geändert",
       "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
       "language": "Sprache der Oberfläche",
-      "languageHint": "Gilt für Ihr Konto auf allen Geräten."
+      "languageHint": "Gilt für Ihr Konto auf allen Geräten.",
+      "passwordTooShort": "Das neue Passwort muss mindestens 6 Zeichen lang sein",
+      "mfa": {
+        "title": "Zwei-Faktor-Authentifizierung (TOTP)",
+        "on": "Aktiviert",
+        "off": "Deaktiviert",
+        "recoveryTitle": "Wiederherstellungscodes (einmalig angezeigt)",
+        "recoveryHint": "Jeder ist einmal verwendbar, falls Sie Ihr Gerät verlieren. Bewahren Sie sie sicher auf.",
+        "intro": "Schützen Sie Ihr Konto mit einer Authenticator-App (Google Authenticator, Authy, Bitwarden...).",
+        "starting": "Wird gestartet...",
+        "enable": "2FA aktivieren",
+        "scanPrompt": "Mit Ihrer Authenticator-App scannen und dann den 6-stelligen Code eingeben.",
+        "verifying": "Überprüfung...",
+        "verifyEnable": "Überprüfen & aktivieren",
+        "requiredNote": "2FA wird von einem Administrator verlangt und kann nicht deaktiviert werden.",
+        "disablePrompt": "Geben Sie Ihr Passwort ein, um 2FA zu deaktivieren.",
+        "passwordPlaceholder": "Passwort",
+        "disable": "Deaktivieren",
+        "setupFailed": "MFA-Einrichtung konnte nicht gestartet werden",
+        "enabledToast": "MFA aktiviert",
+        "invalidCode": "Ungültiger Code",
+        "disabledToast": "MFA deaktiviert",
+        "disableFailed": "MFA konnte nicht deaktiviert werden"
+      }
     },
     "connections": {
       "subtitle": "TeamSpeak-Serververbindungen verwalten",

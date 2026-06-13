@@ -76,7 +76,30 @@
       "passwordChanged": "Contraseña cambiada correctamente",
       "passwordsDoNotMatch": "Las contraseñas no coinciden",
       "language": "Idioma de la interfaz",
-      "languageHint": "Se aplica a tu cuenta en todos los dispositivos."
+      "languageHint": "Se aplica a tu cuenta en todos los dispositivos.",
+      "passwordTooShort": "La nueva contraseña debe tener al menos 6 caracteres",
+      "mfa": {
+        "title": "Autenticación de dos factores (TOTP)",
+        "on": "Activada",
+        "off": "Desactivada",
+        "recoveryTitle": "Códigos de recuperación (se muestran una vez)",
+        "recoveryHint": "Cada uno se puede usar una vez si pierdes tu dispositivo. Guárdalos en un lugar seguro.",
+        "intro": "Protege tu cuenta con una app de autenticación (Google Authenticator, Authy, Bitwarden...).",
+        "starting": "Iniciando...",
+        "enable": "Activar 2FA",
+        "scanPrompt": "Escanea con tu app de autenticación e introduce el código de 6 dígitos.",
+        "verifying": "Verificando...",
+        "verifyEnable": "Verificar y activar",
+        "requiredNote": "Un administrador exige el 2FA y no se puede desactivar.",
+        "disablePrompt": "Introduce tu contraseña para desactivar el 2FA.",
+        "passwordPlaceholder": "Contraseña",
+        "disable": "Desactivar",
+        "setupFailed": "No se pudo iniciar la configuración de MFA",
+        "enabledToast": "MFA activado",
+        "invalidCode": "Código inválido",
+        "disabledToast": "MFA desactivado",
+        "disableFailed": "No se pudo desactivar el MFA"
+      }
     },
     "connections": {
       "subtitle": "Gestionar las conexiones a servidores TeamSpeak",
