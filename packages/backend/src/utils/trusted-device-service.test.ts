@@ -20,7 +20,7 @@ describe('resolveTrustedCookie', () => {
   });
 
   it('returns the user for a valid, unexpired token', async () => {
-    const { selector, verifier, cookieValue, verifierHash } = mintTrustedToken();
+    const { selector, cookieValue, verifierHash } = mintTrustedToken();
     const user = { id: 7, username: 'alice', enabled: true };
     const prisma = fakePrisma({
       id: 1, selector, verifierHash,
