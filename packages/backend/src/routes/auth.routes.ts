@@ -11,6 +11,8 @@ import { encrypt, decrypt } from '../utils/crypto.js';
 import { generateMfaSecret, buildOtpAuthUrl, verifyTotp, generateRecoveryCodes, consumeRecoveryCode } from '../utils/mfa.js';
 import { isIpWebBanned } from '../utils/web-ban.js';
 import QRCode from 'qrcode';
+import { createTrustedDevice, clearTrustedCookie, resolveTrustedCookie } from '../utils/trusted-device-service.js';
+import { TRUSTED_COOKIE_NAME } from '../utils/trusted-device.js';
 
 export const authRoutes: Router = Router();
 
@@ -64,6 +66,24 @@ async function gateAfterPassword(prisma: any, user: any) {
   return issueSession(prisma, user);
 }
 
+// If the client asked to trust this device, mint a trusted-device cookie.
+// Safe no-op when trustDevice is falsy.
+async function maybeTrustDevice(prisma: any, req: Request, res: Response, userId: number, trustDevice: unknown) {
+  if (trustDevice === true) {
+    await createTrustedDevice(prisma, res, userId, req.headers['user-agent'], req.ip);
+  }
+}
+
+// An account is eligible for cookie auto-login only if it's fully provisioned:
+// enabled, not IP-banned, no forced password change, and MFA already set up if required.
+async function trustedLoginAllowed(prisma: any, user: any, ip: string): Promise<boolean> {
+  if (!user || !user.enabled) return false;
+  if (await isIpWebBanned(prisma, ip)) return false;
+  if (user.mustChangePassword) return false;
+  if (user.mfaRequired && !user.mfaEnabled) return false;
+  return true;
+}
+
 authRoutes.post('/login', async (req: Request, res: Response, next) => {
   const journal = req.app.locals.connectionJournal;
   try {
@@ -97,7 +117,9 @@ authRoutes.post('/login', async (req: Request, res: Response, next) => {
       return;
     }
 
-    res.json(await gateAfterPassword(prisma, user));
+    const result = await gateAfterPassword(prisma, user);
+    if ((result as any).accessToken) await maybeTrustDevice(prisma, req, res, user.id, req.body.trustDevice);
+    res.json(result);
   } catch (err) { next(err); }
 });
 
@@ -126,6 +148,7 @@ authRoutes.post('/login/mfa', async (req: Request, res: Response, next) => {
       });
     }
 
+    await maybeTrustDevice(prisma, req, res, user.id, req.body.trustDevice);
     res.json(await issueSession(prisma, user));
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
@@ -158,15 +181,49 @@ authRoutes.post('/login/change-password', async (req: Request, res: Response, ne
       where: { id: user.id },
       data: { passwordHash, mustChangePassword: false },
     });
-    // Invalidate any existing refresh tokens, then continue to MFA / session
+    // Invalidate any existing refresh tokens and trusted devices, then continue to MFA / session
     await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
-    res.json(await gateAfterPassword(prisma, updated));
+    await prisma.trustedDevice.deleteMany({ where: { userId: user.id } });
+    clearTrustedCookie(res);
+    const result = await gateAfterPassword(prisma, updated);
+    if ((result as any).accessToken) await maybeTrustDevice(prisma, req, res, user.id, req.body.trustDevice);
+    res.json(result);
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
       return next(new AppError(401, 'Session expired, please log in again'));
     }
     next(err);
   }
+});
+
+// Recognize a trusted device WITHOUT issuing a session. Returns the display
+// identity so the login screen can offer "Continue as X".
+authRoutes.get('/trusted/peek', async (req: Request, res: Response, next) => {
+  try {
+    const prisma = req.app.locals.prisma;
+    const user = await resolveTrustedCookie(prisma, req.cookies?.[TRUSTED_COOKIE_NAME]);
+    if (!user || !(await trustedLoginAllowed(prisma, user, req.ip || ''))) {
+      clearTrustedCookie(res);
+      res.json({ trusted: false });
+      return;
+    }
+    res.json({ trusted: true, username: user.username, displayName: user.displayName });
+  } catch (err) { next(err); }
+});
+
+// Exchange a valid trusted-device cookie for a full session (bypasses password + MFA).
+authRoutes.post('/trusted/session', async (req: Request, res: Response, next) => {
+  const journal = req.app.locals.connectionJournal;
+  try {
+    const prisma = req.app.locals.prisma;
+    const user = await resolveTrustedCookie(prisma, req.cookies?.[TRUSTED_COOKIE_NAME]);
+    if (!user || !(await trustedLoginAllowed(prisma, user, req.ip || ''))) {
+      clearTrustedCookie(res);
+      throw new AppError(401, 'Trusted device not recognized');
+    }
+    journal?.recordWebLogin(user.username, req.ip || '', true);
+    res.json(await issueSession(prisma, user));
+  } catch (err) { next(err); }
 });
 
 authRoutes.post('/refresh', async (req: Request, res: Response, next) => {
@@ -250,6 +307,53 @@ authRoutes.get('/me', authMiddleware, async (req: Request, res: Response, next) 
         language: user.language,
       },
     });
+  } catch (err) { next(err); }
+});
+
+// List the current user's trusted devices. `current` flags the calling device.
+authRoutes.get('/trusted', authMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    const prisma = req.app.locals.prisma;
+    const split = (req.cookies?.[TRUSTED_COOKIE_NAME] || '').split('.')[0] || null;
+    const devices = await prisma.trustedDevice.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({
+      devices: devices.map((d: any) => ({
+        id: d.id,
+        createdAt: d.createdAt,
+        lastUsedAt: d.lastUsedAt,
+        expiresAt: d.expiresAt,
+        userAgent: d.userAgent,
+        ipAddress: d.ipAddress,
+        current: split !== null && d.selector === split,
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+// Revoke ALL trusted devices for the current user.
+authRoutes.delete('/trusted', authMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    await req.app.locals.prisma.trustedDevice.deleteMany({ where: { userId: req.user!.id } });
+    clearTrustedCookie(res);
+    res.status(204).send();
+  } catch (err) { next(err); }
+});
+
+// Revoke a single trusted device by id (must belong to the current user).
+authRoutes.delete('/trusted/:id', authMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) throw new AppError(400, 'Invalid id');
+    const prisma = req.app.locals.prisma;
+    const device = await prisma.trustedDevice.findUnique({ where: { id } });
+    if (!device || device.userId !== req.user!.id) throw new AppError(404, 'Not found');
+    const isCurrent = (req.cookies?.[TRUSTED_COOKIE_NAME] || '').split('.')[0] === device.selector;
+    await prisma.trustedDevice.delete({ where: { id } });
+    if (isCurrent) clearTrustedCookie(res);
+    res.status(204).send();
   } catch (err) { next(err); }
 });
 
@@ -361,8 +465,10 @@ authRoutes.put('/password', authMiddleware, async (req: Request, res: Response, 
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
 
-    // Revoke all refresh tokens on password change
+    // Revoke all refresh tokens AND trusted devices on password change
     await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+    await prisma.trustedDevice.deleteMany({ where: { userId: user.id } });
+    clearTrustedCookie(res);
 
     res.status(204).send();
   } catch (err) { next(err); }
