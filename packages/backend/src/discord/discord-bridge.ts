@@ -170,6 +170,14 @@ export class DiscordBridge {
     };
   }
 
+  /** Guilds the bot is a member of — lets the UI offer a picker instead of a raw ID field. */
+  listGuilds(): Array<{ id: string; name: string }> {
+    if (!this.client?.isReady()) return [];
+    return this.client.guilds.cache
+      .map((g) => ({ id: g.id, name: g.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   /** Text + voice channels of the configured guild, for the settings UI dropdowns. */
   listChannels(): { text: Array<{ id: string; name: string }>; voice: Array<{ id: string; name: string }> } {
     const guild = this.guild();

@@ -68,6 +68,12 @@ discordRoutes.get('/status', (req: Request, res: Response) => {
   res.json(bridge?.getStatus() ?? { enabled: false, running: false, error: 'Bridge not initialized', guildName: null, warnings: [] });
 });
 
+// GET /api/discord/guilds — servers the bot has been invited to
+discordRoutes.get('/guilds', (req: Request, res: Response) => {
+  const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;
+  res.json(bridge?.listGuilds() ?? []);
+});
+
 // GET /api/discord/channels — text + voice channels of the configured guild
 discordRoutes.get('/channels', (req: Request, res: Response) => {
   const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;

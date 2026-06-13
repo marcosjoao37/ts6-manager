@@ -26,6 +26,7 @@ export const discordApi = {
   updateSettings: (data: Partial<DiscordSettings> & { botToken?: string }) =>
     api.put('/discord/settings', data, { timeout: 30000 }).then((r) => r.data),
   status: (): Promise<DiscordStatus> => api.get('/discord/status').then((r) => r.data),
+  guilds: (): Promise<Array<{ id: string; name: string }>> => api.get('/discord/guilds').then((r) => r.data),
   channels: (): Promise<{ text: Array<{ id: string; name: string }>; voice: Array<{ id: string; name: string }> }> =>
     api.get('/discord/channels').then((r) => r.data),
 };

@@ -599,10 +599,20 @@ function YouTubeTab() {
 function DiscordTab() {
   const qc = useQueryClient();
   const { data: settings, isLoading } = useQuery({ queryKey: ['discord-settings'], queryFn: discordApi.settings });
-  const { data: status } = useQuery({ queryKey: ['discord-status'], queryFn: discordApi.status, refetchInterval: 10000 });
+  const { data: status } = useQuery({
+    queryKey: ['discord-status'],
+    queryFn: discordApi.status,
+    // Poll fast while the bridge is connecting so the badge reacts promptly
+    refetchInterval: (q) => (q.state.data?.running ? 15000 : 3000),
+  });
   const { data: channels } = useQuery({
     queryKey: ['discord-channels'],
     queryFn: discordApi.channels,
+    enabled: !!status?.running,
+  });
+  const { data: guilds = [] } = useQuery({
+    queryKey: ['discord-guilds'],
+    queryFn: discordApi.guilds,
     enabled: !!status?.running,
   });
   const { data: bots } = useQuery({ queryKey: ['music-bots'], queryFn: musicBotsApi.list });
@@ -684,9 +694,20 @@ function DiscordTab() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Guild ID (your Discord server)</Label>
-          <Input className="h-8 text-xs" placeholder="e.g. 123456789012345678"
-            value={form.guildId || ''} onChange={(e) => setForm((f) => ({ ...f, guildId: e.target.value || null }))} />
+          <Label className="text-xs">Discord server</Label>
+          {guilds.length > 0 ? (
+            <Select value={form.guildId || 'none'} onValueChange={(v) => setForm((f) => ({ ...f, guildId: v === 'none' ? null : v }))}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a server..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— None —</SelectItem>
+                {guilds.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input className="h-8 text-xs" placeholder="Guild ID (save the token first to pick from a list)"
+              value={form.guildId || ''} onChange={(e) => setForm((f) => ({ ...f, guildId: e.target.value || null }))} />
+          )}
+          <p className="text-[10px] text-muted-foreground">Servers the bot has been invited to — save the token and enable first, the list appears once connected.</p>
         </div>
 
         {channelField('Notifications channel', 'notificationsChannelId', 'TS connect/disconnect events and now-playing announcements', textChannels)}
