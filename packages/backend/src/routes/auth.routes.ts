@@ -44,6 +44,7 @@ async function issueSession(prisma: any, user: any) {
 }
 
 authRoutes.post('/login', async (req: Request, res: Response, next) => {
+  const journal = req.app.locals.connectionJournal;
   try {
     const { username, password } = req.body;
     if (!username || !password) throw new AppError(400, 'Username and password required');
@@ -51,10 +52,18 @@ authRoutes.post('/login', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const user = await prisma.user.findUnique({ where: { username } });
 
-    if (!user || !user.enabled) throw new AppError(401, 'Invalid credentials');
+    if (!user || !user.enabled) {
+      journal?.recordWebLogin(String(username), req.ip || '', false);
+      throw new AppError(401, 'Invalid credentials');
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new AppError(401, 'Invalid credentials');
+    if (!valid) {
+      journal?.recordWebLogin(user.username, req.ip || '', false);
+      throw new AppError(401, 'Invalid credentials');
+    }
+
+    journal?.recordWebLogin(user.username, req.ip || '', true);
 
     // MFA gate: don't issue tokens until the second factor is verified.
     if (user.mfaEnabled) {

@@ -279,3 +279,17 @@ model SpotifySettings {
   maxAlbumTracks Int      @default(50)
   updatedAt      DateTime @updatedAt
 }
+
+model ConnectionLog {
+  id             Int      @id @default(autoincrement())
+  source         String   // 'web' | 'teamspeak'
+  login          String
+  ip             String
+  country        String?  // ISO code, null for LAN/unknown
+  success        Boolean  @default(true)
+  isBot          Boolean  @default(false)
+  serverConfigId Int?
+  createdAt      DateTime @default(now())
+
+  @@index([source, createdAt])
+}

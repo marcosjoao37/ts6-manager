@@ -6,6 +6,7 @@ import { serversApi } from '@/api/servers.api';
 import { settingsApi } from '@/api/settings.api';
 import { discordApi, type DiscordSettings } from '@/api/discord.api';
 import { spotifyApi } from '@/api/spotify.api';
+import { journalApi } from '@/api/journal.api';
 import { musicBotsApi } from '@/api/music.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { PageLoader } from '@/components/shared/LoadingSpinner';
@@ -424,6 +425,7 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       <PasswordPolicyCard />
+      <JournalRetentionCard />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Manage webapp users and roles</p>
@@ -1049,6 +1051,41 @@ function PasswordPolicyCard() {
         </p>
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? 'Saving...' : 'Save policy'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Journal Retention Card ──────────────────────────────────
+
+function JournalRetentionCard() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['journal-retention'], queryFn: journalApi.retention });
+  const [days, setDays] = useState(90);
+
+  useEffect(() => { if (data) setDays(data.retentionDays); }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => journalApi.updateRetention(days),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['journal-retention'] }); toast.success('Retention saved'); },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Connection journal</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 max-w-xl">
+        <div className="flex items-center gap-3">
+          <Label className="text-xs w-40">Retention (days)</Label>
+          <Input className="h-8 text-xs w-24" type="number" min={0} max={3650} value={days}
+            onChange={(e) => setDays(parseInt(e.target.value) || 0)} />
+        </div>
+        <p className="text-[10px] text-muted-foreground">Entries older than this are purged daily. Set to 0 to keep everything.</p>
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? 'Saving...' : 'Save'}
         </Button>
       </CardContent>
     </Card>
