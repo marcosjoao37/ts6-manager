@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { AppError } from '../middleware/error-handler.js';
-import { validatePassword } from '../utils/validate-password.js';
+import { validatePassword, loadPasswordPolicy } from '../utils/validate-password.js';
 
 export const setupRoutes: Router = Router();
 
@@ -26,7 +26,7 @@ setupRoutes.post('/init', async (req: Request, res: Response, next) => {
     const { username, password, displayName } = req.body;
     if (!username || !password) throw new AppError(400, 'Username and password are required');
 
-    const pwError = validatePassword(password);
+    const pwError = validatePassword(password, await loadPasswordPolicy(prisma));
     if (pwError) throw new AppError(400, pwError);
 
     const passwordHash = await bcrypt.hash(password, 12);

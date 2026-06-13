@@ -331,6 +331,8 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
+      <PasswordPolicyCard />
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Manage webapp users and roles</p>
         <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1" /> Add User</Button>
@@ -894,6 +896,53 @@ function SpotifyTab() {
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? 'Saving...' : 'Save'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Password Policy Card ────────────────────────────────────
+
+function PasswordPolicyCard() {
+  const qc = useQueryClient();
+  const { data: policy } = useQuery({ queryKey: ['password-policy'], queryFn: usersApi.passwordPolicy });
+  const [minLength, setMinLength] = useState(12);
+  const [requireComplexity, setRequireComplexity] = useState(true);
+
+  useEffect(() => {
+    if (policy) { setMinLength(policy.minLength); setRequireComplexity(policy.requireComplexity); }
+  }, [policy]);
+
+  const save = useMutation({
+    mutationFn: () => usersApi.updatePasswordPolicy({ minLength, requireComplexity }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['password-policy'] }); toast.success('Password policy saved'); },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Password policy</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 max-w-xl">
+        <div className="flex items-center gap-3">
+          <Label className="text-xs w-40">Minimum length</Label>
+          <Input className="h-8 text-xs w-24" type="number" min={1} max={128} value={minLength}
+            onChange={(e) => setMinLength(parseInt(e.target.value) || 1)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch checked={requireComplexity} onCheckedChange={setRequireComplexity} />
+          <Label className="text-xs font-normal">
+            Obligation d'utiliser un mot de passe robuste
+            <span className="text-muted-foreground"> (une majuscule, une minuscule, un chiffre, un caractère spécial)</span>
+          </Label>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Applied when creating a user, changing your password, and when an admin resets a password.
+        </p>
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? 'Saving...' : 'Save policy'}
         </Button>
       </CardContent>
     </Card>

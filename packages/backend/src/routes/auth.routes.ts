@@ -6,7 +6,7 @@ import { nanoid } from 'nanoid';
 import { config } from '../config.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { AppError } from '../middleware/error-handler.js';
-import { validatePassword } from '../utils/validate-password.js';
+import { validatePassword, loadPasswordPolicy } from '../utils/validate-password.js';
 
 export const authRoutes: Router = Router();
 
@@ -139,10 +139,9 @@ authRoutes.put('/password', authMiddleware, async (req: Request, res: Response, 
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) throw new AppError(400, 'Both passwords required');
 
-    const pwError = validatePassword(newPassword);
-    if (pwError) throw new AppError(400, pwError);
-
     const prisma = req.app.locals.prisma;
+    const pwError = validatePassword(newPassword, await loadPasswordPolicy(prisma));
+    if (pwError) throw new AppError(400, pwError);
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user) throw new AppError(404, 'User not found');
 
