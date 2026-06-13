@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { requireRole } from '../middleware/rbac.js';
 import { AppError } from '../middleware/error-handler.js';
 import { RETENTION_KEY, DEFAULT_RETENTION_DAYS } from '../connection-journal.js';
+import { buildJournalQuery } from './journal-query.js';
 
 export const journalRoutes: Router = Router();
 
@@ -33,22 +34,23 @@ journalRoutes.put('/retention', async (req: Request, res: Response, next) => {
 journalRoutes.get('/', async (req: Request, res: Response, next) => {
   try {
     const prisma = req.app.locals.prisma;
-    const source = req.query.source === 'teamspeak' ? 'teamspeak' : 'web';
-    const hideBots = req.query.hideBots === 'true';
     const page = Math.max(1, parseInt(String(req.query.page)) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit)) || 50));
 
-    const where: any = { source };
-    if (source === 'teamspeak' && hideBots) where.isBot = false;
+    const { where, orderBy } = buildJournalQuery({
+      source: String(req.query.source || ''),
+      hideBots: String(req.query.hideBots || ''),
+      login: req.query.login ? String(req.query.login) : undefined,
+      ip: req.query.ip ? String(req.query.ip) : undefined,
+      country: req.query.country ? String(req.query.country) : undefined,
+      result: req.query.result ? String(req.query.result) : undefined,
+      sort: req.query.sort ? String(req.query.sort) : undefined,
+      dir: req.query.dir ? String(req.query.dir) : undefined,
+    });
 
     const [total, entries] = await Promise.all([
       prisma.connectionLog.count({ where }),
-      prisma.connectionLog.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
+      prisma.connectionLog.findMany({ where, orderBy, skip: (page - 1) * limit, take: limit }),
     ]);
 
     res.json({ entries, total, page, limit });

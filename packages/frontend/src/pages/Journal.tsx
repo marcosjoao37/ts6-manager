@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { journalApi, type ConnectionLogEntry } from '@/api/journal.api';
 import { PageLoader } from '@/components/shared/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, ChevronRight, Globe, MessagesSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Globe, MessagesSquare, ArrowUp, ArrowDown, X } from 'lucide-react';
 
-// ISO 3166-1 alpha-2 → regional-indicator emoji flag.
+type SortField = 'createdAt' | 'login' | 'ip' | 'country' | 'success';
+
 function flag(country: string | null): string {
   if (!country || country.length !== 2) return '';
   return String.fromCodePoint(...[...country.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
@@ -23,18 +26,22 @@ function countryName(country: string | null): string {
 }
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' });
+  return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' });
 }
 
 function LocationCell({ e }: { e: ConnectionLogEntry }) {
-  if (e.country) {
-    return <span title={countryName(e.country)}>{flag(e.country)} {e.country}</span>;
-  }
+  if (e.country) return <span title={countryName(e.country)}>{flag(e.country)} {e.country}</span>;
   if (e.ip && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|::1)/.test(e.ip)) {
     return <Badge variant="outline" className="text-[10px]">LAN</Badge>;
   }
   return <span className="text-muted-foreground">—</span>;
+}
+
+// Debounce a value to avoid a request per keystroke on text filters.
+function useDebounced<T>(value: T, ms = 350): T {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
 }
 
 const PAGE_SIZE = 50;
@@ -43,10 +50,30 @@ export default function Journal() {
   const [source, setSource] = useState<'web' | 'teamspeak'>('web');
   const [page, setPage] = useState(1);
   const [hideBots, setHideBots] = useState(true);
+  const [sort, setSort] = useState<SortField>('createdAt');
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc');
+
+  const [loginF, setLoginF] = useState('');
+  const [ipF, setIpF] = useState('');
+  const [countryF, setCountryF] = useState('');
+  const [resultF, setResultF] = useState<'all' | 'success' | 'failed'>('all');
+
+  const login = useDebounced(loginF);
+  const ip = useDebounced(ipF);
+  const country = useDebounced(countryF);
+
+  // Reset to page 1 whenever a filter, sort or tab changes.
+  useEffect(() => { setPage(1); }, [source, hideBots, sort, dir, login, ip, country, resultF]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['journal', source, page, hideBots],
-    queryFn: () => journalApi.list({ source, page, limit: PAGE_SIZE, hideBots }),
+    queryKey: ['journal', source, page, hideBots, sort, dir, login, ip, country, resultF],
+    queryFn: () => journalApi.list({
+      source, page, limit: PAGE_SIZE, hideBots, sort, dir,
+      login: login || undefined,
+      ip: ip || undefined,
+      country: country || undefined,
+      result: source === 'web' && resultF !== 'all' ? resultF : undefined,
+    }),
     refetchInterval: 15000,
   });
 
@@ -54,26 +81,48 @@ export default function Journal() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const switchSource = (s: 'web' | 'teamspeak') => { setSource(s); setPage(1); };
+  const toggleSort = (field: SortField) => {
+    if (sort === field) setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSort(field); setDir(field === 'createdAt' ? 'desc' : 'asc'); }
+  };
+
+  const SortHead = ({ field, label }: { field: SortField; label: string }) => (
+    <th className="h-10 px-3 text-left font-medium text-muted-foreground">
+      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort(field)}>
+        {label}
+        {sort === field && (dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+      </button>
+    </th>
+  );
+
+  const hasFilters = loginF || ipF || countryF || resultF !== 'all';
+  const resetFilters = () => { setLoginF(''); setIpF(''); setCountryF(''); setResultF('all'); };
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Connection Journal</h1>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Tabs value={source} onValueChange={(v) => switchSource(v as any)}>
+        <Tabs value={source} onValueChange={(v) => { setSource(v as any); resetFilters(); }}>
           <TabsList>
             <TabsTrigger value="web"><Globe className="h-3.5 w-3.5 mr-1" /> Web</TabsTrigger>
             <TabsTrigger value="teamspeak"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> TeamSpeak</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        {source === 'teamspeak' && (
-          <div className="flex items-center gap-2">
-            <Switch checked={hideBots} onCheckedChange={(v) => { setHideBots(v); setPage(1); }} />
-            <Label className="text-xs font-normal">Hide bots</Label>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetFilters}>
+              <X className="h-3.5 w-3.5 mr-1" /> Reset filters
+            </Button>
+          )}
+          {source === 'teamspeak' && (
+            <div className="flex items-center gap-2">
+              <Switch checked={hideBots} onCheckedChange={setHideBots} />
+              <Label className="text-xs font-normal">Hide bots</Label>
+            </div>
+          )}
+        </div>
       </div>
 
       {isLoading ? <PageLoader /> : (
@@ -81,11 +130,29 @@ export default function Journal() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="h-10 px-3 text-left font-medium text-muted-foreground">Login</th>
-                <th className="h-10 px-3 text-left font-medium text-muted-foreground">Date / Time</th>
-                <th className="h-10 px-3 text-left font-medium text-muted-foreground">IP</th>
-                <th className="h-10 px-3 text-left font-medium text-muted-foreground">Location</th>
-                {source === 'web' && <th className="h-10 px-3 text-left font-medium text-muted-foreground">Result</th>}
+                <SortHead field="login" label="Login" />
+                <SortHead field="createdAt" label="Date / Time" />
+                <SortHead field="ip" label="IP" />
+                <SortHead field="country" label="Location" />
+                {source === 'web' && <SortHead field="success" label="Result" />}
+              </tr>
+              <tr className="border-b border-border bg-background">
+                <th className="px-2 py-1.5"><Input value={loginF} onChange={(e) => setLoginF(e.target.value)} placeholder="Filter…" className="h-7 text-xs" /></th>
+                <th></th>
+                <th className="px-2 py-1.5"><Input value={ipF} onChange={(e) => setIpF(e.target.value)} placeholder="Filter…" className="h-7 text-xs" /></th>
+                <th className="px-2 py-1.5"><Input value={countryF} onChange={(e) => setCountryF(e.target.value)} placeholder="ISO or LAN" className="h-7 text-xs" /></th>
+                {source === 'web' && (
+                  <th className="px-2 py-1.5">
+                    <Select value={resultF} onValueChange={(v) => setResultF(v as any)}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="success">Success</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
