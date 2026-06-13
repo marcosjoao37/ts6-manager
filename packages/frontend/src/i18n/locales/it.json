@@ -287,7 +287,8 @@
       "savingReconnecting": "Salvataggio e riconnessione...",
       "toastSaved": "Impostazioni Discord salvate",
       "toastSaveFailed": "Salvataggio non riuscito",
-      "toastSavedButError": "Salvato, ma: {{error}}"
+      "toastSavedButError": "Salvato, ma: {{error}}",
+      "embedStyle": "Stile embed (scheda colorata) invece di un messaggio semplice"
     },
     "spotify": {
       "title": "Spotify",

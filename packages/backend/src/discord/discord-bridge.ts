@@ -20,6 +20,8 @@ import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, 
 import {
   clientConnectedEmbed,
   clientDisconnectedEmbed,
+  channelPresenceEmbed,
+  actionEmoji,
   renderTemplate,
   nowPlayingEmbed,
   statsEmbed,
@@ -567,9 +569,11 @@ export class DiscordBridge {
     const template = kind === 'join'
       ? (this.settings?.notifyJoinTemplate || DEFAULT_JOIN_TEMPLATE)
       : (this.settings?.notifyLeaveTemplate || DEFAULT_LEAVE_TEMPLATE);
-    const message = renderTemplate(template, { user, channel, totalMembers });
-    // Plain text message (no embed) per design.
-    await this.postToChannel(this.settings?.notificationsChannelId, { content: message });
+    const message = renderTemplate(template, { user, channel, totalMembers, action: actionEmoji(kind) });
+    const payload = this.settings?.notifyEmbed
+      ? { embeds: [channelPresenceEmbed(message, kind)] }
+      : { content: message };
+    await this.postToChannel(this.settings?.notificationsChannelId, payload);
   }
 
   /** Number of real clients currently in the given TS channel. */

@@ -914,17 +914,21 @@ function DiscordTab() {
 
               {form.notifyChannelId && (
                 <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={!!form.notifyEmbed} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyEmbed: v }))} />
+                    <Label className="text-xs font-normal">{t('settings.discord.embedStyle')}</Label>
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-[11px]">{t('settings.discord.joinMessage')}</Label>
-                    <Input className="h-8 text-xs" placeholder="{user} a rejoint le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)"
+                    <Input className="h-8 text-xs" placeholder="{action} {user} a rejoint le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)"
                       value={form.notifyJoinTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyJoinTemplate: e.target.value || null }))} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[11px]">{t('settings.discord.leaveMessage')}</Label>
-                    <Input className="h-8 text-xs" placeholder="{user} a quitté le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)"
+                    <Input className="h-8 text-xs" placeholder="{action} {user} a quitté le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)"
                       value={form.notifyLeaveTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyLeaveTemplate: e.target.value || null }))} />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{t('settings.discord.templateVariables')} <span className="font-mono">{'{user}'}</span>, <span className="font-mono">{'{channel}'}</span> {t('settings.discord.and')} <span className="font-mono">{'{TotalMembersOfChannel}'}</span>.</p>
+                  <p className="text-[10px] text-muted-foreground">{t('settings.discord.templateVariables')} <span className="font-mono">{'{action}'}</span>, <span className="font-mono">{'{user}'}</span>, <span className="font-mono">{'{channel}'}</span> {t('settings.discord.and')} <span className="font-mono">{'{TotalMembersOfChannel}'}</span>.</p>
                 </div>
               )}
             </div>

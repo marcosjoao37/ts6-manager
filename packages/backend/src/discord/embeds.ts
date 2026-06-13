@@ -38,25 +38,32 @@ export function clientDisconnectedEmbed(nickname: string) {
   };
 }
 
-/** Channel join/leave notification from a rendered message template. */
+/** Green/red status emoji for a join/leave action (the {action} variable). */
+export function actionEmoji(kind: 'join' | 'leave'): string {
+  return kind === 'join' ? '🟢' : '🔴';
+}
+
+/** Channel join/leave notification (embed style) from an already-rendered message. */
 export function channelPresenceEmbed(message: string, kind: 'join' | 'leave') {
   return {
     color: kind === 'join' ? COLORS.green : COLORS.red,
-    description: `${kind === 'join' ? '🟢' : '🔴'} ${message}`,
+    description: message,
     timestamp: new Date().toISOString(),
   };
 }
 
-/** Render a notification template, substituting {user}, {channel} and {TotalMembersOfChannel}. */
-export function renderTemplate(template: string, vars: { user: string; channel: string; totalMembers: number }): string {
+/** Render a notification template, substituting {user}, {channel}, {TotalMembersOfChannel} and {action}. */
+export function renderTemplate(template: string, vars: { user: string; channel: string; totalMembers: number; action: string }): string {
   return template
+    .replace(/\{\{?\s*action\s*\}?\}/gi, vars.action)
     .replace(/\{\{?\s*user\s*\}?\}/gi, vars.user)
     .replace(/\{\{?\s*(channel|canal)\s*\}?\}/gi, vars.channel)
-    .replace(/\{\{?\s*(TotalMembersOfChannel|totalMembers|members)\s*\}?\}/gi, String(vars.totalMembers));
+    .replace(/\{\{?\s*(TotalMembersOfChannel|totalMembers|members)\s*\}?\}/gi, String(vars.totalMembers))
+    .trim();
 }
 
-export const DEFAULT_JOIN_TEMPLATE = '{user} a rejoint le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)';
-export const DEFAULT_LEAVE_TEMPLATE = '{user} a quitté le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)';
+export const DEFAULT_JOIN_TEMPLATE = '{action} {user} a rejoint le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)';
+export const DEFAULT_LEAVE_TEMPLATE = '{action} {user} a quitté le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)';
 
 export function nowPlayingEmbed(botName: string, item: { title: string; artist?: string; duration?: number }) {
   const artist = item.artist && item.artist !== 'Unknown' ? `${item.artist} — ` : '';

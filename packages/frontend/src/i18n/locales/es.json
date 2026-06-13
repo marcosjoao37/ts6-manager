@@ -287,7 +287,8 @@
       "savingReconnecting": "Guardando y reconectando...",
       "toastSaved": "Configuración de Discord guardada",
       "toastSaveFailed": "Error al guardar",
-      "toastSavedButError": "Guardado, pero: {{error}}"
+      "toastSavedButError": "Guardado, pero: {{error}}",
+      "embedStyle": "Estilo embed (tarjeta de color) en lugar de un mensaje simple"
     },
     "spotify": {
       "title": "Spotify",

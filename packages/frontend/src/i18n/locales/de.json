@@ -287,7 +287,8 @@
       "savingReconnecting": "Speichern & neu verbinden...",
       "toastSaved": "Discord-Einstellungen gespeichert",
       "toastSaveFailed": "Speichern fehlgeschlagen",
-      "toastSavedButError": "Gespeichert, aber: {{error}}"
+      "toastSavedButError": "Gespeichert, aber: {{error}}",
+      "embedStyle": "Embed-Stil (farbige Karte) statt einer einfachen Nachricht"
     },
     "spotify": {
       "title": "Spotify",

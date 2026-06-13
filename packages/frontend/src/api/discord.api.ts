@@ -13,6 +13,7 @@ export interface DiscordSettings {
   notifyChannelId: string | null;
   notifyJoinTemplate: string | null;
   notifyLeaveTemplate: string | null;
+  notifyEmbed: boolean;
   flowMessageTrigger: boolean;
   defaultMusicBotId: number | null;
   serverConfigId: number | null;

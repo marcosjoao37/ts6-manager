@@ -264,6 +264,7 @@ model DiscordSettings {
   notifyChannelId        String?
   notifyJoinTemplate     String?
   notifyLeaveTemplate    String?
+  notifyEmbed            Boolean  @default(false)
   flowMessageTrigger     Boolean  @default(false)
   statsMessageId         String?
   voiceChannelId         String?

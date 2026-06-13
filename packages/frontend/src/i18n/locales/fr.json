@@ -287,7 +287,8 @@
       "savingReconnecting": "Enregistrement et reconnexion...",
       "toastSaved": "Paramètres Discord enregistrés",
       "toastSaveFailed": "Échec de l'enregistrement",
-      "toastSavedButError": "Enregistré, mais : {{error}}"
+      "toastSavedButError": "Enregistré, mais : {{error}}",
+      "embedStyle": "Style embed (carte colorée) au lieu d'un message simple"
     },
     "spotify": {
       "title": "Spotify",
