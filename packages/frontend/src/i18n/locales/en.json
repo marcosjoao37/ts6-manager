@@ -64,7 +64,11 @@
     "changeAndContinue": "Change & continue",
     "changingPassword": "Changing...",
     "passwordsDoNotMatch": "Passwords do not match",
-    "changeFailed": "Could not change the password"
+    "changeFailed": "Could not change the password",
+    "trustDevice": "This is a trusted computer",
+    "trustDeviceInfo": "For 30 days, this device will sign you in automatically — no password and no two-factor code. Only use this on a private device you control. You can revoke it anytime from Settings → Account.",
+    "continueAs": "Continue as {{name}}",
+    "useAnotherAccount": "Sign in with a different account"
   },
   "settings": {
     "title": "Settings",
@@ -108,6 +112,20 @@
         "invalidCode": "Invalid code",
         "disabledToast": "MFA disabled",
         "disableFailed": "Failed to disable MFA"
+      },
+      "trustedDevices": {
+        "title": "Trusted devices",
+        "description": "Devices that sign in automatically for 30 days without a password or two-factor code.",
+        "empty": "No trusted devices.",
+        "thisDevice": "This device",
+        "added": "Added",
+        "lastUsed": "Last used",
+        "expires": "Expires",
+        "revoke": "Revoke",
+        "revokeAll": "Revoke all",
+        "revoked": "Trusted device revoked",
+        "revokedAll": "All trusted devices revoked",
+        "revokeError": "Could not revoke the device"
       }
     },
     "connections": {

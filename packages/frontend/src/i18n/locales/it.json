@@ -64,7 +64,11 @@
     "changeAndContinue": "Cambia e continua",
     "changingPassword": "Modifica in corso...",
     "passwordsDoNotMatch": "Le password non corrispondono",
-    "changeFailed": "Impossibile cambiare la password"
+    "changeFailed": "Impossibile cambiare la password",
+    "trustDevice": "Questo è un computer attendibile",
+    "trustDeviceInfo": "Per 30 giorni questo dispositivo effettuerà l'accesso automaticamente, senza password né codice a due fattori. Usalo solo su un dispositivo privato che controlli. Puoi revocarlo in qualsiasi momento da Impostazioni → Account.",
+    "continueAs": "Continua come {{name}}",
+    "useAnotherAccount": "Accedi con un altro account"
   },
   "settings": {
     "title": "Impostazioni",
@@ -108,6 +112,20 @@
         "invalidCode": "Codice non valido",
         "disabledToast": "MFA disattivato",
         "disableFailed": "Impossibile disattivare il MFA"
+      },
+      "trustedDevices": {
+        "title": "Dispositivi attendibili",
+        "description": "Dispositivi che accedono automaticamente per 30 giorni, senza password né codice a due fattori.",
+        "empty": "Nessun dispositivo attendibile.",
+        "thisDevice": "Questo dispositivo",
+        "added": "Aggiunto",
+        "lastUsed": "Ultimo utilizzo",
+        "expires": "Scade",
+        "revoke": "Revoca",
+        "revokeAll": "Revoca tutti",
+        "revoked": "Dispositivo attendibile revocato",
+        "revokedAll": "Tutti i dispositivi attendibili sono stati revocati",
+        "revokeError": "Impossibile revocare il dispositivo"
       }
     },
     "connections": {
