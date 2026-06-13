@@ -8,6 +8,7 @@ import { VoiceBotManager } from './voice/voice-bot-manager.js';
 import { MusicCommandHandler } from './voice/music-command-handler.js';
 import { DiscordBridge } from './discord/discord-bridge.js';
 import { ConnectionJournal } from './connection-journal.js';
+import { applyTrustProxy, loadTrustProxy } from './routes/settings.routes.js';
 import { config } from './config.js';
 import { setYtCookieFile } from './voice/audio/youtube.js';
 import jwt from 'jsonwebtoken';
@@ -53,6 +54,9 @@ async function main() {
   const prisma = new PrismaClient();
   const app = createApp();
   const server = createServer(app);
+
+  // Apply the WebUI-configured reverse-proxy hop count (real client IP from XFF)
+  applyTrustProxy(app, await loadTrustProxy(prisma));
 
   // YouTube/batch downloads run inside the HTTP request; Node's default
   // 5-minute request timeout kills long playlist imports mid-flight while the

@@ -16,3 +16,10 @@ export const settingsApi = {
 
   deleteYtCookies: () => api.delete('/settings/yt-cookies').then((r) => r.data),
 };
+
+export const proxyApi = {
+  get: (): Promise<{ trustHops: number; detectedIp: string }> =>
+    api.get('/settings/proxy').then((r) => r.data),
+  update: (trustHops: number) =>
+    api.put('/settings/proxy', { trustHops }).then((r) => r.data),
+};

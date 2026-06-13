@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/api/bots.api';
 import { authApi } from '@/api/auth.api';
 import { serversApi } from '@/api/servers.api';
-import { settingsApi } from '@/api/settings.api';
+import { settingsApi, proxyApi } from '@/api/settings.api';
 import { discordApi, type DiscordSettings } from '@/api/discord.api';
 import { spotifyApi } from '@/api/spotify.api';
 import { journalApi } from '@/api/journal.api';
@@ -425,6 +425,7 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       <PasswordPolicyCard />
+      <ReverseProxyCard />
       <JournalRetentionCard />
 
       <div className="flex items-center justify-between">
@@ -1084,6 +1085,49 @@ function JournalRetentionCard() {
             onChange={(e) => setDays(parseInt(e.target.value) || 0)} />
         </div>
         <p className="text-[10px] text-muted-foreground">Entries older than this are purged daily. Set to 0 to keep everything.</p>
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? 'Saving...' : 'Save'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Reverse Proxy Card ──────────────────────────────────────
+
+function ReverseProxyCard() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['proxy-settings'], queryFn: proxyApi.get });
+  const [hops, setHops] = useState(1);
+
+  useEffect(() => { if (data) setHops(data.trustHops); }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => proxyApi.update(hops),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['proxy-settings'] }); toast.success('Proxy setting saved'); },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Reverse proxy / client IP</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 max-w-xl">
+        <p className="text-[11px] text-muted-foreground">
+          Number of reverse proxies in front of the backend, so the real client IP is read from
+          X-Forwarded-For (connection journal, rate limiting). 1 = the built-in frontend nginx only;
+          add 1 per extra proxy/WAF (e.g. 2 behind SafeLine).
+        </p>
+        <div className="flex items-center gap-3">
+          <Label className="text-xs w-40">Trusted proxy hops</Label>
+          <Input className="h-8 text-xs w-24" type="number" min={0} max={16} value={hops}
+            onChange={(e) => setHops(parseInt(e.target.value) || 0)} />
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Detected IP for your current request: <span className="font-mono-data">{data?.detectedIp || '—'}</span>.
+          Adjust the hop count and save until this shows your real public IP (save reloads it).
+        </p>
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? 'Saving...' : 'Save'}
         </Button>
