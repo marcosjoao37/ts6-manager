@@ -420,5 +420,80 @@
     "linesCount": "{{count}} Zeilen",
     "empty": "Keine Protokolleinträge gefunden.",
     "entriesShown": "{{count}} Einträge angezeigt"
+  },
+  "botList": {
+    "title": "Bot-Abläufe",
+    "fromTemplate": "Aus Vorlage",
+    "newBot": "Neuer Bot",
+    "emptyTitle": "Noch keine Bot-Abläufe",
+    "emptyDescription": "Erstellen Sie Ihren ersten Automatisierungsablauf, um zu beginnen.",
+    "noDescription": "Keine Beschreibung",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "serverBadge": "Server Nr. {{id}}",
+    "updated": "Aktualisiert {{time}}",
+    "editFlow": "Ablauf bearbeiten",
+    "newBotDialogTitle": "Neuer Bot-Ablauf",
+    "nameLabel": "Name",
+    "namePlaceholder": "Meine Automatisierung",
+    "descriptionLabel": "Beschreibung",
+    "descriptionPlaceholder": "Was macht dieser Bot?",
+    "cancel": "Abbrechen",
+    "create": "Erstellen",
+    "deleteTitle": "Bot löschen?",
+    "deleteDescription": "Dadurch werden dieser Bot-Ablauf und sein gesamter Ausführungsverlauf dauerhaft gelöscht.",
+    "selectServerFirst": "Bitte wählen Sie zuerst einen Server aus",
+    "botCreated": "Bot erstellt",
+    "createFailed": "Bot konnte nicht erstellt werden",
+    "botEnabled": "Bot aktiviert",
+    "botDisabled": "Bot deaktiviert",
+    "botCreatedFromTemplate": "Bot „{{name}}“ aus Vorlage erstellt",
+    "createFromTemplateFailed": "Bot konnte nicht aus Vorlage erstellt werden",
+    "botDeleted": "Bot gelöscht"
+  },
+  "notFound": {
+    "heading": "Seite nicht gefunden",
+    "message": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "backToDashboard": "Zurück zum Dashboard"
+  },
+  "setup": {
+    "title": "Ersteinrichtung",
+    "subtitle": "Erstellen Sie Ihr Administratorkonto",
+    "cardDescription": "Dies ist die erste Einrichtung. Erstellen Sie ein Administratorkonto, um zu beginnen.",
+    "usernameLabel": "Benutzername",
+    "usernamePlaceholder": "admin",
+    "displayNameLabel": "Anzeigename",
+    "displayNamePlaceholder": "Administrator",
+    "passwordLabel": "Passwort",
+    "passwordPlaceholder": "Min. 8 Zeichen, Großbuchstabe, Kleinbuchstabe, Ziffer",
+    "confirmPasswordLabel": "Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Passwort wiederholen",
+    "creatingAccount": "Konto wird erstellt...",
+    "createButton": "Administratorkonto erstellen",
+    "errorPasswordsMismatch": "Die Passwörter stimmen nicht überein",
+    "errorSetupFailed": "Einrichtung fehlgeschlagen"
+  },
+  "shared": {
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen",
+    "processing": "Wird verarbeitet...",
+    "loading": "WIRD GELADEN..."
+  },
+  "virtualServers": {
+    "title": "Virtuelle Server",
+    "noServerSelected": "Kein Server ausgewählt",
+    "serverCount": "{{count}} Server",
+    "sidLabel": "SID: {{sid}}",
+    "portLabel": "Port: {{port}}",
+    "start": "Starten",
+    "stop": "Stoppen",
+    "serverStarted": "Server gestartet",
+    "serverStopped": "Server gestoppt",
+    "startFailed": "Server konnte nicht gestartet werden",
+    "stopFailed": "Server konnte nicht gestoppt werden"
+  },
+  "widget": {
+    "loading": "Wird geladen...",
+    "notAvailable": "Widget nicht verfügbar"
   }
 }

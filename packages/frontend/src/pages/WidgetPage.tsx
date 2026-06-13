@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import type { WidgetData } from '@ts6/common';
 import { WidgetRenderer } from '@/components/widget/WidgetRenderer';
 
 export default function WidgetPage() {
   const { token } = useParams<{ token: string }>();
+  const { t } = useTranslation();
 
   useEffect(() => {
     document.title = 'TS Server Widget';
@@ -32,7 +34,7 @@ export default function WidgetPage() {
         height: '100vh', background: '#0f1117', color: '#8b949e',
         fontFamily: "'Segoe UI', sans-serif", fontSize: '13px',
       }}>
-        Loading...
+        {t('widget.loading')}
       </div>
     );
   }
@@ -44,7 +46,7 @@ export default function WidgetPage() {
         height: '100vh', background: '#0f1117', color: '#8b949e',
         fontFamily: "'Segoe UI', sans-serif", fontSize: '13px',
       }}>
-        Widget not available
+        {t('widget.notAvailable')}
       </div>
     );
   }

@@ -420,5 +420,80 @@
     "linesCount": "{{count}} lines",
     "empty": "No log entries found.",
     "entriesShown": "{{count}} entries shown"
+  },
+  "botList": {
+    "title": "Bot Flows",
+    "fromTemplate": "From Template",
+    "newBot": "New Bot",
+    "emptyTitle": "No bot flows yet",
+    "emptyDescription": "Create your first automation flow to get started.",
+    "noDescription": "No description",
+    "active": "Active",
+    "inactive": "Inactive",
+    "serverBadge": "Server #{{id}}",
+    "updated": "Updated {{time}}",
+    "editFlow": "Edit Flow",
+    "newBotDialogTitle": "New Bot Flow",
+    "nameLabel": "Name",
+    "namePlaceholder": "My Automation",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "What does this bot do?",
+    "cancel": "Cancel",
+    "create": "Create",
+    "deleteTitle": "Delete Bot?",
+    "deleteDescription": "This will permanently delete this bot flow and all its execution history.",
+    "selectServerFirst": "Please select a server first",
+    "botCreated": "Bot created",
+    "createFailed": "Failed to create bot",
+    "botEnabled": "Bot enabled",
+    "botDisabled": "Bot disabled",
+    "botCreatedFromTemplate": "Bot '{{name}}' created from template",
+    "createFromTemplateFailed": "Failed to create bot from template",
+    "botDeleted": "Bot deleted"
+  },
+  "notFound": {
+    "heading": "Page Not Found",
+    "message": "The page you're looking for doesn't exist or has been moved.",
+    "backToDashboard": "Back to Dashboard"
+  },
+  "setup": {
+    "title": "Initial Setup",
+    "subtitle": "Create your administrator account",
+    "cardDescription": "This is the first time setup. Create an admin account to get started.",
+    "usernameLabel": "Username",
+    "usernamePlaceholder": "admin",
+    "displayNameLabel": "Display Name",
+    "displayNamePlaceholder": "Administrator",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Min. 8 chars, uppercase, lowercase, digit",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Repeat password",
+    "creatingAccount": "Creating account...",
+    "createButton": "Create Admin Account",
+    "errorPasswordsMismatch": "Passwords do not match",
+    "errorSetupFailed": "Setup failed"
+  },
+  "shared": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "processing": "Processing...",
+    "loading": "LOADING..."
+  },
+  "virtualServers": {
+    "title": "Virtual Servers",
+    "noServerSelected": "No server selected",
+    "serverCount": "{{count}} server(s)",
+    "sidLabel": "SID: {{sid}}",
+    "portLabel": "Port: {{port}}",
+    "start": "Start",
+    "stop": "Stop",
+    "serverStarted": "Server started",
+    "serverStopped": "Server stopped",
+    "startFailed": "Failed to start server",
+    "stopFailed": "Failed to stop server"
+  },
+  "widget": {
+    "loading": "Loading...",
+    "notAvailable": "Widget not available"
   }
 }

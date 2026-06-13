@@ -420,5 +420,80 @@
     "linesCount": "{{count}} lignes",
     "empty": "Aucune entrée de journal trouvée.",
     "entriesShown": "{{count}} entrées affichées"
+  },
+  "botList": {
+    "title": "Flux de bots",
+    "fromTemplate": "À partir d'un modèle",
+    "newBot": "Nouveau bot",
+    "emptyTitle": "Aucun flux de bot pour le moment",
+    "emptyDescription": "Créez votre premier flux d'automatisation pour commencer.",
+    "noDescription": "Aucune description",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "serverBadge": "Serveur n°{{id}}",
+    "updated": "Mis à jour {{time}}",
+    "editFlow": "Modifier le flux",
+    "newBotDialogTitle": "Nouveau flux de bot",
+    "nameLabel": "Nom",
+    "namePlaceholder": "Mon automatisation",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Que fait ce bot ?",
+    "cancel": "Annuler",
+    "create": "Créer",
+    "deleteTitle": "Supprimer le bot ?",
+    "deleteDescription": "Cela supprimera définitivement ce flux de bot et tout son historique d'exécution.",
+    "selectServerFirst": "Veuillez d'abord sélectionner un serveur",
+    "botCreated": "Bot créé",
+    "createFailed": "Échec de la création du bot",
+    "botEnabled": "Bot activé",
+    "botDisabled": "Bot désactivé",
+    "botCreatedFromTemplate": "Bot « {{name}} » créé à partir du modèle",
+    "createFromTemplateFailed": "Échec de la création du bot à partir du modèle",
+    "botDeleted": "Bot supprimé"
+  },
+  "notFound": {
+    "heading": "Page introuvable",
+    "message": "La page que vous recherchez n'existe pas ou a été déplacée.",
+    "backToDashboard": "Retour au tableau de bord"
+  },
+  "setup": {
+    "title": "Configuration initiale",
+    "subtitle": "Créez votre compte administrateur",
+    "cardDescription": "Il s'agit de la première configuration. Créez un compte administrateur pour commencer.",
+    "usernameLabel": "Nom d'utilisateur",
+    "usernamePlaceholder": "admin",
+    "displayNameLabel": "Nom d'affichage",
+    "displayNamePlaceholder": "Administrateur",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Min. 8 caractères, majuscule, minuscule, chiffre",
+    "confirmPasswordLabel": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Répétez le mot de passe",
+    "creatingAccount": "Création du compte...",
+    "createButton": "Créer le compte administrateur",
+    "errorPasswordsMismatch": "Les mots de passe ne correspondent pas",
+    "errorSetupFailed": "Échec de la configuration"
+  },
+  "shared": {
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "processing": "Traitement en cours...",
+    "loading": "CHARGEMENT..."
+  },
+  "virtualServers": {
+    "title": "Serveurs virtuels",
+    "noServerSelected": "Aucun serveur sélectionné",
+    "serverCount": "{{count}} serveur(s)",
+    "sidLabel": "SID : {{sid}}",
+    "portLabel": "Port : {{port}}",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "serverStarted": "Serveur démarré",
+    "serverStopped": "Serveur arrêté",
+    "startFailed": "Échec du démarrage du serveur",
+    "stopFailed": "Échec de l'arrêt du serveur"
+  },
+  "widget": {
+    "loading": "Chargement...",
+    "notAvailable": "Widget non disponible"
   }
 }

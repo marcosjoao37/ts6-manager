@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -14,8 +15,9 @@ interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   open, onOpenChange, title, description,
-  confirmLabel = 'Confirm', destructive, onConfirm, loading,
+  confirmLabel, destructive, onConfirm, loading,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -25,14 +27,14 @@ export function ConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
+            {t('shared.cancel')}
           </Button>
           <Button
             variant={destructive ? 'destructive' : 'default'}
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Processing...' : confirmLabel}
+            {loading ? t('shared.processing') : (confirmLabel ?? t('shared.confirm'))}
           </Button>
         </DialogFooter>
       </DialogContent>

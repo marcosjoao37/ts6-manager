@@ -420,5 +420,80 @@
     "linesCount": "{{count}} líneas",
     "empty": "No se encontraron entradas de registro.",
     "entriesShown": "{{count}} entradas mostradas"
+  },
+  "botList": {
+    "title": "Flujos de bots",
+    "fromTemplate": "Desde plantilla",
+    "newBot": "Nuevo bot",
+    "emptyTitle": "Aún no hay flujos de bots",
+    "emptyDescription": "Cree su primer flujo de automatización para empezar.",
+    "noDescription": "Sin descripción",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "serverBadge": "Servidor n.º {{id}}",
+    "updated": "Actualizado {{time}}",
+    "editFlow": "Editar flujo",
+    "newBotDialogTitle": "Nuevo flujo de bot",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Mi automatización",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "¿Qué hace este bot?",
+    "cancel": "Cancelar",
+    "create": "Crear",
+    "deleteTitle": "¿Eliminar bot?",
+    "deleteDescription": "Esto eliminará permanentemente este flujo de bot y todo su historial de ejecución.",
+    "selectServerFirst": "Por favor, seleccione primero un servidor",
+    "botCreated": "Bot creado",
+    "createFailed": "No se pudo crear el bot",
+    "botEnabled": "Bot activado",
+    "botDisabled": "Bot desactivado",
+    "botCreatedFromTemplate": "Bot «{{name}}» creado desde la plantilla",
+    "createFromTemplateFailed": "No se pudo crear el bot desde la plantilla",
+    "botDeleted": "Bot eliminado"
+  },
+  "notFound": {
+    "heading": "Página no encontrada",
+    "message": "La página que buscas no existe o ha sido movida.",
+    "backToDashboard": "Volver al panel"
+  },
+  "setup": {
+    "title": "Configuración inicial",
+    "subtitle": "Cree su cuenta de administrador",
+    "cardDescription": "Esta es la primera configuración. Cree una cuenta de administrador para comenzar.",
+    "usernameLabel": "Nombre de usuario",
+    "usernamePlaceholder": "admin",
+    "displayNameLabel": "Nombre para mostrar",
+    "displayNamePlaceholder": "Administrador",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "Mín. 8 caracteres, mayúscula, minúscula, dígito",
+    "confirmPasswordLabel": "Confirmar contraseña",
+    "confirmPasswordPlaceholder": "Repita la contraseña",
+    "creatingAccount": "Creando cuenta...",
+    "createButton": "Crear cuenta de administrador",
+    "errorPasswordsMismatch": "Las contraseñas no coinciden",
+    "errorSetupFailed": "Error en la configuración"
+  },
+  "shared": {
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "processing": "Procesando...",
+    "loading": "CARGANDO..."
+  },
+  "virtualServers": {
+    "title": "Servidores virtuales",
+    "noServerSelected": "Ningún servidor seleccionado",
+    "serverCount": "{{count}} servidor(es)",
+    "sidLabel": "SID: {{sid}}",
+    "portLabel": "Puerto: {{port}}",
+    "start": "Iniciar",
+    "stop": "Detener",
+    "serverStarted": "Servidor iniciado",
+    "serverStopped": "Servidor detenido",
+    "startFailed": "Error al iniciar el servidor",
+    "stopFailed": "Error al detener el servidor"
+  },
+  "widget": {
+    "loading": "Cargando...",
+    "notAvailable": "Widget no disponible"
   }
 }
