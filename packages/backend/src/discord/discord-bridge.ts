@@ -479,16 +479,19 @@ export class DiscordBridge {
     // flows no longer use, which would silently kill a shared subscription.
     this.eventBridge = new EventBridge(this.prisma);
     this.eventBridge.on('tsEvent', (_configId, _sid, eventName, data) => {
+      if (eventName === 'notifycliententerview' || eventName === 'notifyclientmoved' || eventName === 'notifyclientleftview') {
+        console.log(`[Discord] TS event ${eventName}: clid=${data.clid} ctid=${data.ctid ?? ''} cfid=${data.cfid ?? ''} type=${data.client_type ?? ''}`);
+      }
       this.onTsEvent(eventName, data).catch((err) => {
         console.error(`[Discord] TS event handling failed: ${err.message}`);
       });
     });
     await this.eventBridge.connectServer(settings.serverConfigId, settings.virtualServerId);
+    console.log(`[Discord] TS presence bridge active: server=${settings.serverConfigId} sid=${settings.virtualServerId} watchedChannel=${settings.notifyChannelId ?? '(whole server)'} notifChannel=${settings.notificationsChannelId}`);
 
     // Seed the nickname/channel maps with clients already connected before the
-    // bridge started, so a disconnect from the watched channel by a pre-existing
-    // member still produces a leave notification.
-    await this.seedClientState();
+    // bridge started (non-blocking: must never gate the event subscription).
+    this.seedClientState().catch(() => { });
   }
 
   /** Populate clientNicknames/clientChannels from the current clientlist. */
@@ -573,6 +576,7 @@ export class DiscordBridge {
     const payload = this.settings?.notifyEmbed
       ? { embeds: [channelPresenceEmbed(message, kind)] }
       : { content: message };
+    console.log(`[Discord] notify ${kind} → channel=${this.settings?.notificationsChannelId} embed=${!!this.settings?.notifyEmbed} msg="${message}"`);
     await this.postToChannel(this.settings?.notificationsChannelId, payload);
   }
 
@@ -714,9 +718,14 @@ export class DiscordBridge {
   }
 
   private async postToChannel(channelId: string | null | undefined, payload: any): Promise<void> {
-    if (!channelId || !this.client?.isReady()) return;
-    const channel = await this.client.channels.fetch(channelId).catch(() => null);
-    if (!channel || !channel.isSendable()) return;
+    if (!channelId) { console.warn('[Discord] postToChannel skipped: no channel configured'); return; }
+    if (!this.client?.isReady()) { console.warn('[Discord] postToChannel skipped: client not ready'); return; }
+    const channel = await this.client.channels.fetch(channelId).catch((err) => {
+      console.warn(`[Discord] postToChannel: cannot fetch channel ${channelId}: ${err.message}`);
+      return null;
+    });
+    if (!channel) return;
+    if (!channel.isSendable()) { console.warn(`[Discord] postToChannel: channel ${channelId} is not sendable (permissions?)`); return; }
     await channel.send(payload);
   }
 }
