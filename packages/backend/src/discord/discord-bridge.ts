@@ -400,7 +400,8 @@ export class DiscordBridge {
 
   private async startTsEventBridge(): Promise<void> {
     const settings = this.settings;
-    if (!settings?.notificationsChannelId) return;
+    if (!settings?.notifyConnections) return; // connect/disconnect notifications disabled
+    if (!settings.notificationsChannelId) return;
     if (!settings.serverConfigId) {
       this.warnings.push('Notifications enabled but no TS server configured');
       return;
@@ -444,6 +445,7 @@ export class DiscordBridge {
   private attachNowPlaying(botId: number, bot: VoiceBot): void {
     if (this.nowPlayingListeners.has(botId)) return;
     const listener = (item: QueueItem) => {
+      if (!this.settings?.notifyNowPlaying) return; // now-playing notifications disabled
       this.postToChannel(this.settings?.notificationsChannelId, {
         embeds: [nowPlayingEmbed(bot.currentConfig.name, item)],
       }).catch(() => { });

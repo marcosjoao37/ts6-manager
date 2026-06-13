@@ -710,13 +710,25 @@ function DiscordTab() {
           <p className="text-[10px] text-muted-foreground">Servers the bot has been invited to — save the token and enable first, the list appears once connected.</p>
         </div>
 
-        {channelField('Notifications channel', 'notificationsChannelId', 'TS connect/disconnect events and now-playing announcements', textChannels)}
+        {channelField('Notifications channel', 'notificationsChannelId', 'Target for connect/disconnect and now-playing notifications below', textChannels)}
         {channelField('Stats channel', 'statsChannelId', 'Target for the auto-updated stats panel', textChannels)}
         {channelField('Voice channel (music relay)', 'voiceChannelId', 'The bot joins this voice channel and streams the music bot audio — /join and /leave override it', voiceChannels)}
 
-        <div className="flex items-center gap-2">
-          <Switch checked={!!form.statsLiveEnabled} onCheckedChange={(v) => setForm((f) => ({ ...f, statsLiveEnabled: v }))} />
-          <Label className="text-xs">Live stats panel (edited every 60s)</Label>
+        <div className="space-y-2 pt-1">
+          <Label className="text-xs font-medium">Notifications</Label>
+          <div className="flex items-center gap-2">
+            <Switch checked={!!form.notifyConnections} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyConnections: v }))} />
+            <Label className="text-xs font-normal">TS connect / disconnect</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={!!form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
+            <Label className="text-xs font-normal">Now playing (music)</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={!!form.statsLiveEnabled} onCheckedChange={(v) => setForm((f) => ({ ...f, statsLiveEnabled: v }))} />
+            <Label className="text-xs font-normal">Live stats panel (edited every 60s)</Label>
+          </div>
+          <p className="text-[10px] text-muted-foreground">The /stats command stays available regardless of these toggles.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

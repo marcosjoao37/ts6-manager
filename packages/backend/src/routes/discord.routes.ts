@@ -25,6 +25,8 @@ discordRoutes.get('/settings', async (req: Request, res: Response, next) => {
       statsChannelId: s.statsChannelId,
       voiceChannelId: s.voiceChannelId,
       statsLiveEnabled: s.statsLiveEnabled,
+      notifyConnections: s.notifyConnections,
+      notifyNowPlaying: s.notifyNowPlaying,
       defaultMusicBotId: s.defaultMusicBotId,
       serverConfigId: s.serverConfigId,
       virtualServerId: s.virtualServerId,
@@ -38,7 +40,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreateSettings(prisma);
 
-    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
+    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
 
     const data: any = {};
     if (enabled !== undefined) data.enabled = !!enabled;
@@ -49,6 +51,8 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     if (statsChannelId !== undefined) data.statsChannelId = statsChannelId || null;
     if (voiceChannelId !== undefined) data.voiceChannelId = voiceChannelId || null;
     if (statsLiveEnabled !== undefined) data.statsLiveEnabled = !!statsLiveEnabled;
+    if (notifyConnections !== undefined) data.notifyConnections = !!notifyConnections;
+    if (notifyNowPlaying !== undefined) data.notifyNowPlaying = !!notifyNowPlaying;
     if (defaultMusicBotId !== undefined) data.defaultMusicBotId = defaultMusicBotId ? parseInt(defaultMusicBotId) : null;
     if (serverConfigId !== undefined) data.serverConfigId = serverConfigId ? parseInt(serverConfigId) : null;
     if (virtualServerId !== undefined) data.virtualServerId = parseInt(virtualServerId) || 1;

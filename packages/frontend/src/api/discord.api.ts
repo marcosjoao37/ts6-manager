@@ -8,6 +8,8 @@ export interface DiscordSettings {
   statsChannelId: string | null;
   voiceChannelId: string | null;
   statsLiveEnabled: boolean;
+  notifyConnections: boolean;
+  notifyNowPlaying: boolean;
   defaultMusicBotId: number | null;
   serverConfigId: number | null;
   virtualServerId: number;
