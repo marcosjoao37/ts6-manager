@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { journalApi, type ConnectionLogEntry } from '@/api/journal.api';
 import { PageLoader } from '@/components/shared/LoadingSpinner';
@@ -30,9 +31,10 @@ function formatDate(iso: string): string {
 }
 
 function LocationCell({ e }: { e: ConnectionLogEntry }) {
+  const { t } = useTranslation();
   if (e.country) return <span title={countryName(e.country)}>{flag(e.country)} {e.country}</span>;
   if (e.ip && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|::1)/.test(e.ip)) {
-    return <Badge variant="outline" className="text-[10px]">LAN</Badge>;
+    return <Badge variant="outline" className="text-[10px]">{t('journal.lan')}</Badge>;
   }
   return <span className="text-muted-foreground">—</span>;
 }
@@ -47,6 +49,7 @@ function useDebounced<T>(value: T, ms = 350): T {
 const PAGE_SIZE = 50;
 
 export default function Journal() {
+  const { t } = useTranslation();
   const [source, setSource] = useState<'web' | 'teamspeak'>('web');
   const [page, setPage] = useState(1);
   const [hideBots, setHideBots] = useState(true);
@@ -100,26 +103,26 @@ export default function Journal() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Connection Journal</h1>
+      <h1 className="text-xl font-semibold">{t('journal.title')}</h1>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Tabs value={source} onValueChange={(v) => { setSource(v as any); resetFilters(); }}>
           <TabsList>
-            <TabsTrigger value="web"><Globe className="h-3.5 w-3.5 mr-1" /> Web</TabsTrigger>
-            <TabsTrigger value="teamspeak"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> TeamSpeak</TabsTrigger>
+            <TabsTrigger value="web"><Globe className="h-3.5 w-3.5 mr-1" /> {t('journal.tabWeb')}</TabsTrigger>
+            <TabsTrigger value="teamspeak"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> {t('journal.tabTeamSpeak')}</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div className="flex items-center gap-3">
           {hasFilters && (
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetFilters}>
-              <X className="h-3.5 w-3.5 mr-1" /> Reset filters
+              <X className="h-3.5 w-3.5 mr-1" /> {t('journal.resetFilters')}
             </Button>
           )}
           {source === 'teamspeak' && (
             <div className="flex items-center gap-2">
               <Switch checked={hideBots} onCheckedChange={setHideBots} />
-              <Label className="text-xs font-normal">Hide bots</Label>
+              <Label className="text-xs font-normal">{t('journal.hideBots')}</Label>
             </div>
           )}
         </div>
@@ -130,25 +133,25 @@ export default function Journal() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <SortHead field="login" label="Login" />
-                <SortHead field="createdAt" label="Date / Time" />
-                <SortHead field="ip" label="IP" />
-                <SortHead field="country" label="Location" />
-                {source === 'web' && <SortHead field="success" label="Result" />}
+                <SortHead field="login" label={t('journal.colLogin')} />
+                <SortHead field="createdAt" label={t('journal.colDateTime')} />
+                <SortHead field="ip" label={t('journal.colIp')} />
+                <SortHead field="country" label={t('journal.colLocation')} />
+                {source === 'web' && <SortHead field="success" label={t('journal.colResult')} />}
               </tr>
               <tr className="border-b border-border bg-background">
-                <th className="px-2 py-1.5"><Input value={loginF} onChange={(e) => setLoginF(e.target.value)} placeholder="Filter…" className="h-7 text-xs" /></th>
+                <th className="px-2 py-1.5"><Input value={loginF} onChange={(e) => setLoginF(e.target.value)} placeholder={t('journal.filterPlaceholder')} className="h-7 text-xs" /></th>
                 <th></th>
-                <th className="px-2 py-1.5"><Input value={ipF} onChange={(e) => setIpF(e.target.value)} placeholder="Filter…" className="h-7 text-xs" /></th>
-                <th className="px-2 py-1.5"><Input value={countryF} onChange={(e) => setCountryF(e.target.value)} placeholder="ISO or LAN" className="h-7 text-xs" /></th>
+                <th className="px-2 py-1.5"><Input value={ipF} onChange={(e) => setIpF(e.target.value)} placeholder={t('journal.filterPlaceholder')} className="h-7 text-xs" /></th>
+                <th className="px-2 py-1.5"><Input value={countryF} onChange={(e) => setCountryF(e.target.value)} placeholder={t('journal.filterCountryPlaceholder')} className="h-7 text-xs" /></th>
                 {source === 'web' && (
                   <th className="px-2 py-1.5">
                     <Select value={resultF} onValueChange={(v) => setResultF(v as any)}>
                       <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="success">Success</SelectItem>
-                        <SelectItem value="failed">Failed</SelectItem>
+                        <SelectItem value="all">{t('journal.resultAll')}</SelectItem>
+                        <SelectItem value="success">{t('journal.resultSuccess')}</SelectItem>
+                        <SelectItem value="failed">{t('journal.resultFailed')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </th>
@@ -157,12 +160,12 @@ export default function Journal() {
             </thead>
             <tbody>
               {entries.length === 0 ? (
-                <tr><td colSpan={5} className="px-3 py-8 text-center text-xs text-muted-foreground">No entries.</td></tr>
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-xs text-muted-foreground">{t('journal.noEntries')}</td></tr>
               ) : entries.map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                   <td className="px-3 py-2.5">
                     {e.login}
-                    {e.isBot && <Badge variant="outline" className="ml-2 text-[10px]">bot</Badge>}
+                    {e.isBot && <Badge variant="outline" className="ml-2 text-[10px]">{t('journal.bot')}</Badge>}
                   </td>
                   <td className="px-3 py-2.5 font-mono-data text-xs">{formatDate(e.createdAt)}</td>
                   <td className="px-3 py-2.5 font-mono-data text-xs">{e.ip || '—'}</td>
@@ -170,8 +173,8 @@ export default function Journal() {
                   {source === 'web' && (
                     <td className="px-3 py-2.5">
                       {e.success
-                        ? <span className="text-xs text-emerald-400">Success</span>
-                        : <span className="text-xs text-destructive">Failed</span>}
+                        ? <span className="text-xs text-emerald-400">{t('journal.success')}</span>
+                        : <span className="text-xs text-destructive">{t('journal.failed')}</span>}
                     </td>
                   )}
                 </tr>
@@ -182,7 +185,7 @@ export default function Journal() {
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{total} entr{total === 1 ? 'y' : 'ies'}</span>
+        <span className="text-xs text-muted-foreground">{t('journal.entryCount', { count: total })}</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             <ChevronLeft className="h-4 w-4" />

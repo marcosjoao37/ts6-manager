@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { logsApi } from '@/api/bans.api';
 import { useServerStore } from '@/stores/server.store';
@@ -27,6 +28,7 @@ function parseLevel(line: string): string {
 }
 
 export default function ServerLogs() {
+  const { t } = useTranslation();
   const { selectedConfigId: c, selectedSid: s } = useServerStore();
   const [lines, setLines] = useState('100');
   const [filter, setFilter] = useState('');
@@ -52,40 +54,40 @@ export default function ServerLogs() {
       });
   }, [data, filter, levelFilter]);
 
-  if (!c || !s) return <EmptyState icon={ScrollText} title="No server selected" />;
+  if (!c || !s) return <EmptyState icon={ScrollText} title={t('serverLogs.noServerSelected')} />;
   if (isLoading) return <PageLoader />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Server Logs</h1>
+        <h1 className="text-xl font-semibold">{t('serverLogs.title')}</h1>
         <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw className={cn('h-4 w-4 mr-1', isFetching && 'animate-spin')} /> Refresh
+          <RefreshCw className={cn('h-4 w-4 mr-1', isFetching && 'animate-spin')} /> {t('serverLogs.refresh')}
         </Button>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Filter logs..." value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-8 h-9" />
+          <Input placeholder={t('serverLogs.filterPlaceholder')} value={filter} onChange={(e) => setFilter(e.target.value)} className="pl-8 h-9" />
         </div>
         <Select value={levelFilter} onValueChange={setLevelFilter}>
           <SelectTrigger className="w-[130px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Levels</SelectItem>
-            <SelectItem value="ERROR">Error</SelectItem>
-            <SelectItem value="WARNING">Warning</SelectItem>
-            <SelectItem value="INFO">Info</SelectItem>
-            <SelectItem value="DEBUG">Debug</SelectItem>
+            <SelectItem value="ALL">{t('serverLogs.levelAll')}</SelectItem>
+            <SelectItem value="ERROR">{t('serverLogs.levelError')}</SelectItem>
+            <SelectItem value="WARNING">{t('serverLogs.levelWarning')}</SelectItem>
+            <SelectItem value="INFO">{t('serverLogs.levelInfo')}</SelectItem>
+            <SelectItem value="DEBUG">{t('serverLogs.levelDebug')}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={lines} onValueChange={setLines}>
           <SelectTrigger className="w-[120px] h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="50">50 lines</SelectItem>
-            <SelectItem value="100">100 lines</SelectItem>
-            <SelectItem value="250">250 lines</SelectItem>
-            <SelectItem value="500">500 lines</SelectItem>
+            <SelectItem value="50">{t('serverLogs.linesCount', { count: 50 })}</SelectItem>
+            <SelectItem value="100">{t('serverLogs.linesCount', { count: 100 })}</SelectItem>
+            <SelectItem value="250">{t('serverLogs.linesCount', { count: 250 })}</SelectItem>
+            <SelectItem value="500">{t('serverLogs.linesCount', { count: 500 })}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -94,7 +96,7 @@ export default function ServerLogs() {
         <ScrollArea className="h-[calc(100vh-260px)]">
           <div className="p-3 space-y-0.5">
             {logs.length === 0 ? (
-              <p className="text-center text-muted-foreground text-sm py-10">No log entries found.</p>
+              <p className="text-center text-muted-foreground text-sm py-10">{t('serverLogs.empty')}</p>
             ) : (
               logs.map((entry, i) => (
                 <div key={i} className="flex items-start gap-2 py-0.5 group hover:bg-muted/10 rounded px-1">
@@ -111,7 +113,7 @@ export default function ServerLogs() {
         </ScrollArea>
       </div>
 
-      <p className="text-xs text-muted-foreground">{logs.length} entries shown</p>
+      <p className="text-xs text-muted-foreground">{t('serverLogs.entriesShown', { count: logs.length })}</p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { filesApi } from '@/api/files.api';
 import { channelsApi } from '@/api/channels.api';
@@ -27,6 +28,7 @@ interface FileEntry {
 }
 
 export default function Files() {
+  const { t } = useTranslation();
   const { selectedConfigId: c, selectedSid: s } = useServerStore();
   const qc = useQueryClient();
 
@@ -76,22 +78,22 @@ export default function Files() {
   const mkdirMutation = useMutation({
     mutationFn: (dirname: string) => filesApi.createDir(c!, s!, selectedCid!, dirname),
     onSuccess: () => {
-      toast.success('Directory created');
+      toast.success(t('files.toastDirCreated'));
       setShowMkdir(false);
       setNewDirName('');
       qc.invalidateQueries({ queryKey: ['files', c, s, selectedCid, currentPath] });
     },
-    onError: () => toast.error('Failed to create directory'),
+    onError: () => toast.error(t('files.toastDirCreateFailed')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (name: string) => filesApi.delete(c!, s!, selectedCid!, name),
     onSuccess: () => {
-      toast.success('File deleted');
+      toast.success(t('files.toastFileDeleted'));
       setDeleteTarget(null);
       qc.invalidateQueries({ queryKey: ['files', c, s, selectedCid, currentPath] });
     },
-    onError: () => toast.error('Failed to delete file'),
+    onError: () => toast.error(t('files.toastFileDeleteFailed')),
   });
 
   const navigateTo = (entry: FileEntry) => {
@@ -131,15 +133,15 @@ export default function Files() {
   // Breadcrumb parts
   const pathParts = currentPath.split('/').filter(Boolean);
 
-  if (!c || !s) return <EmptyState icon={FolderOpen} title="No server selected" />;
+  if (!c || !s) return <EmptyState icon={FolderOpen} title={t('files.noServerSelected')} />;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">File Browser</h1>
+        <h1 className="text-xl font-semibold">{t('files.title')}</h1>
         {selectedCid && (
           <Button size="sm" onClick={() => setShowMkdir(true)}>
-            <FolderPlus className="h-4 w-4 mr-1" /> New Folder
+            <FolderPlus className="h-4 w-4 mr-1" /> {t('files.newFolder')}
           </Button>
         )}
       </div>
@@ -149,7 +151,7 @@ export default function Files() {
         <Card className="col-span-3">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Hash className="h-3.5 w-3.5" /> Channels
+              <Hash className="h-3.5 w-3.5" /> {t('files.channels')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -170,7 +172,7 @@ export default function Files() {
                   </button>
                 ))}
                 {channels.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No channels</p>
+                  <p className="text-xs text-muted-foreground text-center py-4">{t('files.noChannels')}</p>
                 )}
               </div>
             </ScrollArea>
@@ -205,7 +207,7 @@ export default function Files() {
               </div>
               {selectedCid && (
                 <Badge variant="secondary" className="text-[10px] font-mono-data">
-                  {files.length} item(s)
+                  {t('files.itemCount', { count: files.length })}
                 </Badge>
               )}
             </div>
@@ -213,7 +215,7 @@ export default function Files() {
           <CardContent className="p-0">
             {!selectedCid ? (
               <div className="flex items-center justify-center h-[400px]">
-                <p className="text-sm text-muted-foreground">Select a channel to browse files</p>
+                <p className="text-sm text-muted-foreground">{t('files.selectChannelPrompt')}</p>
               </div>
             ) : loadingFiles ? (
               <div className="flex items-center justify-center h-[400px]">
@@ -222,31 +224,31 @@ export default function Files() {
             ) : filesError ? (
               <div className="flex flex-col items-center justify-center h-[400px] gap-3 px-8">
                 <AlertTriangle className="h-8 w-8 text-amber-400" />
-                <p className="text-sm font-medium text-foreground">File Browser Unavailable</p>
+                <p className="text-sm font-medium text-foreground">{t('files.browserUnavailable')}</p>
                 <p className="text-xs text-muted-foreground text-center max-w-md">
                   {(filesError as any)?.response?.data?.error?.includes('SSH credentials not configured')
-                    ? 'File browsing requires SSH access because the TeamSpeak WebQuery HTTP API does not support file transfer commands. Please configure SSH credentials (username & password) in the server settings.'
+                    ? t('files.errorSshNotConfigured')
                     : (filesError as any)?.response?.data?.error?.includes('SSH')
-                      ? 'Could not connect to TeamSpeak server via SSH. Please check the SSH credentials and port in server settings.'
-                      : (filesError as any)?.response?.data?.details || (filesError as any)?.response?.data?.error || 'Failed to load files. Ensure SSH credentials are configured in server settings.'}
+                      ? t('files.errorSshConnect')
+                      : (filesError as any)?.response?.data?.details || (filesError as any)?.response?.data?.error || t('files.errorLoadFailed')}
                 </p>
                 {(filesError as any)?.response?.data?.code != null && (
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">TS3 error code: {(filesError as any).response.data.code}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">{t('files.ts3ErrorCode', { code: (filesError as any).response.data.code })}</p>
                 )}
               </div>
             ) : (
               <ScrollArea className="h-[460px]">
                 {/* File table header */}
                 <div className="grid grid-cols-12 gap-2 px-4 py-2 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-border">
-                  <div className="col-span-6">Name</div>
-                  <div className="col-span-2 text-right">Size</div>
-                  <div className="col-span-3">Modified</div>
+                  <div className="col-span-6">{t('files.colName')}</div>
+                  <div className="col-span-2 text-right">{t('files.colSize')}</div>
+                  <div className="col-span-3">{t('files.colModified')}</div>
                   <div className="col-span-1"></div>
                 </div>
 
                 {files.length === 0 ? (
                   <div className="flex items-center justify-center h-[350px]">
-                    <EmptyState icon={FolderOpen} title="Empty directory" description="No files in this directory." />
+                    <EmptyState icon={FolderOpen} title={t('files.emptyDirTitle')} description={t('files.emptyDirDescription')} />
                   </div>
                 ) : (
                   <div className="divide-y divide-border/50">
@@ -293,20 +295,20 @@ export default function Files() {
 
       {/* Info notice */}
       <p className="text-xs text-muted-foreground text-center">
-        File upload/download is not available via WebQuery API. Use the TS3 client for file transfers.
+        {t('files.uploadNotice')}
       </p>
 
       {/* Create Directory Dialog */}
       <Dialog open={showMkdir} onOpenChange={setShowMkdir}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Create Directory</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('files.createDirTitle')}</DialogTitle></DialogHeader>
           <div>
-            <Label className="text-xs">Directory Name</Label>
-            <Input value={newDirName} onChange={(e) => setNewDirName(e.target.value)} placeholder="New Folder" autoFocus />
+            <Label className="text-xs">{t('files.dirNameLabel')}</Label>
+            <Input value={newDirName} onChange={(e) => setNewDirName(e.target.value)} placeholder={t('files.dirNamePlaceholder')} autoFocus />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMkdir(false)}>Cancel</Button>
-            <Button onClick={handleMkdir} disabled={mkdirMutation.isPending || !newDirName.trim()}>Create</Button>
+            <Button variant="outline" onClick={() => setShowMkdir(false)}>{t('files.cancel')}</Button>
+            <Button onClick={handleMkdir} disabled={mkdirMutation.isPending || !newDirName.trim()}>{t('files.create')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -315,9 +317,9 @@ export default function Files() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
-        title="Delete File"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={t('files.deleteFileTitle')}
+        description={t('files.deleteFileDescription', { name: deleteTarget?.name })}
+        confirmLabel={t('files.delete')}
         destructive
         onConfirm={handleDelete}
         loading={deleteMutation.isPending}
