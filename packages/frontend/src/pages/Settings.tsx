@@ -415,7 +415,9 @@ function UsersTab() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [resetPwUserId, setResetPwUserId] = useState<number | null>(null);
   const [resetPwValue, setResetPwValue] = useState('');
-  const [form, setForm] = useState({ username: '', password: '', displayName: '', role: 'viewer' });
+  const [resetPwMustChange, setResetPwMustChange] = useState(false);
+  const emptyForm = { username: '', password: '', displayName: '', role: 'viewer', mfaRequired: false, mustChangePassword: false };
+  const [form, setForm] = useState(emptyForm);
 
   const userList = useMemo(() => (Array.isArray(users) ? users : []), [users]);
 
@@ -423,7 +425,7 @@ function UsersTab() {
 
   const handleCreate = () => {
     createUser.mutate(form, {
-      onSuccess: () => { toast.success(t('settings.users.toastCreated')); setShowAdd(false); setForm({ username: '', password: '', displayName: '', role: 'viewer' }); },
+      onSuccess: () => { toast.success(t('settings.users.toastCreated')); setShowAdd(false); setForm(emptyForm); },
       onError: () => toast.error(t('settings.users.toastCreateFailed')),
     });
   };
@@ -461,8 +463,8 @@ function UsersTab() {
       toast.error(t('settings.users.passwordMinError'));
       return;
     }
-    updateUser.mutate({ id: resetPwUserId, data: { password: resetPwValue } }, {
-      onSuccess: () => { toast.success(t('settings.users.toastPasswordReset')); setResetPwUserId(null); setResetPwValue(''); },
+    updateUser.mutate({ id: resetPwUserId, data: { password: resetPwValue, mustChangePassword: resetPwMustChange } }, {
+      onSuccess: () => { toast.success(t('settings.users.toastPasswordReset')); setResetPwUserId(null); setResetPwValue(''); setResetPwMustChange(false); },
       onError: () => toast.error(t('settings.users.toastPasswordResetFailed')),
     });
   };
@@ -572,6 +574,14 @@ function UsersTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.mfaRequired} onCheckedChange={(v) => setForm({ ...form, mfaRequired: v })} />
+              <Label className="text-xs font-normal">{t('settings.users.requireMfa')}</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={form.mustChangePassword} onCheckedChange={(v) => setForm({ ...form, mustChangePassword: v })} />
+              <Label className="text-xs font-normal">{t('settings.users.mustChangePassword')}</Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>{t('settings.users.cancel')}</Button>
@@ -581,7 +591,7 @@ function UsersTab() {
       </Dialog>
 
       {/* Reset Password Dialog */}
-      <Dialog open={resetPwUserId !== null} onOpenChange={(v) => { if (!v) { setResetPwUserId(null); setResetPwValue(''); } }}>
+      <Dialog open={resetPwUserId !== null} onOpenChange={(v) => { if (!v) { setResetPwUserId(null); setResetPwValue(''); setResetPwMustChange(false); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm">{t('settings.users.resetPasswordDialogTitle')}</DialogTitle>
@@ -593,6 +603,10 @@ function UsersTab() {
             <div>
               <Label className="text-xs">{t('settings.users.newPassword')}</Label>
               <Input type="password" value={resetPwValue} onChange={(e) => setResetPwValue(e.target.value)} placeholder={t('settings.users.minCharsPlaceholder')} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={resetPwMustChange} onCheckedChange={setResetPwMustChange} />
+              <Label className="text-xs font-normal">{t('settings.users.mustChangePassword')}</Label>
             </div>
           </div>
           <DialogFooter>

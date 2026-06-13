@@ -22,6 +22,10 @@ export const authApi = {
   loginMfa: (mfaToken: string, code: string) =>
     api.post('/auth/login/mfa', { mfaToken, code }).then((r) => r.data),
 
+  // Forced password change at login
+  loginChangePassword: (changeToken: string, currentPassword: string, newPassword: string) =>
+    api.post('/auth/login/change-password', { changeToken, currentPassword, newPassword }).then((r) => r.data),
+
   // MFA — enrollment. mfaToken is only needed during admin-forced setup at
   // login; from the Account tab the session cookie/header authorizes it.
   mfaSetup: (mfaToken?: string) =>

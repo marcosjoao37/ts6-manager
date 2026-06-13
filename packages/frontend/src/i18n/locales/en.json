@@ -55,7 +55,16 @@
     "enterCodeToFinish": "Enter the 6-digit code from your authenticator app to finish signing in.",
     "verify": "Verify",
     "verifying": "Verifying...",
-    "invalidCode": "Invalid code. Try again."
+    "invalidCode": "Invalid code. Try again.",
+    "changePasswordTitle": "Change your password",
+    "changePasswordPrompt": "You must set a new password before continuing.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "changeAndContinue": "Change & continue",
+    "changingPassword": "Changing...",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "changeFailed": "Could not change the password"
   },
   "settings": {
     "title": "Settings",
@@ -216,7 +225,9 @@
         "saving": "Saving...",
         "toastSaved": "Retention saved",
         "toastSaveFailed": "Failed to save"
-      }
+      },
+      "requireMfa": "Require MFA (enroll at first login)",
+      "mustChangePassword": "Change password at next logon"
     },
     "youtube": {
       "title": "YouTube Cookies",

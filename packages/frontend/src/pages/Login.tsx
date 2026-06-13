@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
 import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 
-type Step = 'password' | 'setup' | 'code';
+type Step = 'password' | 'setup' | 'code' | 'changePassword';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -20,6 +20,10 @@ export default function Login() {
   const [code, setCode] = useState('');
   const [step, setStep] = useState<Step>('password');
   const [mfaToken, setMfaToken] = useState('');
+  const [changeToken, setChangeToken] = useState('');
+  const [curPw, setCurPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
   const [qr, setQr] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [error, setError] = useState('');
@@ -37,13 +41,20 @@ export default function Login() {
     navigate('/dashboard');
   };
 
+  // Route an auth response: full session, forced password change, or MFA.
+  const proceed = (res: any): boolean => {
+    if (res.accessToken) { finish(res); return true; }
+    if (res.mustChangePassword) { setChangeToken(res.changeToken); setCurPw(password); setStep('changePassword'); return true; }
+    return false;
+  };
+
   const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
       const res = await authApi.login(username, password);
-      if (res.accessToken) return finish(res);
+      if (proceed(res)) return;
       setMfaToken(res.mfaToken);
       if (res.mfaSetupRequired) {
         const setup = await authApi.mfaSetup(res.mfaToken);
@@ -54,6 +65,20 @@ export default function Login() {
       }
     } catch {
       setError(t('login.invalidCredentials'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (newPw !== confirmPw) { setError(t('login.passwordsDoNotMatch')); return; }
+    setBusy(true);
+    try {
+      finish(await authApi.loginChangePassword(changeToken, curPw, newPw));
+    } catch (err: any) {
+      setError(err.response?.data?.error || t('login.changeFailed'));
     } finally {
       setBusy(false);
     }
@@ -81,7 +106,8 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      finish(await authApi.loginMfa(mfaToken, code));
+      const res = await authApi.loginMfa(mfaToken, code);
+      if (proceed(res)) return;
     } catch {
       setError(t('login.invalidCode'));
     } finally {
@@ -106,7 +132,10 @@ export default function Login() {
         <Card className="border-border/50 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <h2 className="text-sm font-medium text-center text-muted-foreground">
-              {step === 'password' ? t('login.signInToContinue') : step === 'setup' ? t('login.twoFactorSetupTitle') : t('login.twoFactorTitle')}
+              {step === 'password' ? t('login.signInToContinue')
+                : step === 'setup' ? t('login.twoFactorSetupTitle')
+                : step === 'changePassword' ? t('login.changePasswordTitle')
+                : t('login.twoFactorTitle')}
             </h2>
           </CardHeader>
           <CardContent>
@@ -159,6 +188,27 @@ export default function Login() {
                 <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456 / recovery code" inputMode="numeric" autoComplete="one-time-code" autoFocus className="text-center tracking-widest" />
                 <Button type="submit" className="w-full" disabled={busy || code.length < 6}>
                   {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.verifying')}</> : t('login.verify')}
+                </Button>
+              </form>
+            )}
+
+            {step === 'changePassword' && (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <p className="text-xs text-muted-foreground">{t('login.changePasswordPrompt')}</p>
+                <div className="space-y-2">
+                  <Label className="text-xs">{t('login.currentPassword')}</Label>
+                  <Input type="password" value={curPw} onChange={(e) => setCurPw(e.target.value)} autoComplete="current-password" autoFocus />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">{t('login.newPassword')}</Label>
+                  <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">{t('login.confirmPassword')}</Label>
+                  <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" />
+                </div>
+                <Button type="submit" className="w-full" disabled={busy || !curPw || !newPw || !confirmPw}>
+                  {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.changingPassword')}</> : t('login.changeAndContinue')}
                 </Button>
               </form>
             )}

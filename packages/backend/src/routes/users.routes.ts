@@ -54,7 +54,11 @@ userRoutes.post('/', async (req: Request, res: Response, next) => {
     if (!VALID_ROLES.includes(assignedRole)) throw new AppError(400, `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
-      data: { username, passwordHash, displayName, role: assignedRole },
+      data: {
+        username, passwordHash, displayName, role: assignedRole,
+        mfaRequired: !!req.body.mfaRequired,
+        mustChangePassword: !!req.body.mustChangePassword,
+      },
     });
 
     res.status(201).json({ id: user.id, username: user.username });
@@ -78,6 +82,7 @@ userRoutes.put('/:userId', async (req: Request, res: Response, next) => {
       if (pwError) throw new AppError(400, pwError);
       data.passwordHash = await bcrypt.hash(req.body.password, 12);
     }
+    if (req.body.mustChangePassword !== undefined) data.mustChangePassword = !!req.body.mustChangePassword;
     // Admin MFA controls
     if (req.body.mfaRequired !== undefined) data.mfaRequired = !!req.body.mfaRequired;
     if (req.body.resetMfa) {

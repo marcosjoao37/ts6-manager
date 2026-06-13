@@ -55,7 +55,16 @@
     "enterCodeToFinish": "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein, um die Anmeldung abzuschließen.",
     "verify": "Überprüfen",
     "verifying": "Überprüfung...",
-    "invalidCode": "Ungültiger Code. Erneut versuchen."
+    "invalidCode": "Ungültiger Code. Erneut versuchen.",
+    "changePasswordTitle": "Passwort ändern",
+    "changePasswordPrompt": "Sie müssen ein neues Passwort festlegen, bevor Sie fortfahren.",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmPassword": "Neues Passwort bestätigen",
+    "changeAndContinue": "Ändern & fortfahren",
+    "changingPassword": "Wird geändert...",
+    "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
+    "changeFailed": "Passwort konnte nicht geändert werden"
   },
   "settings": {
     "title": "Einstellungen",
@@ -216,7 +225,9 @@
         "saving": "Wird gespeichert...",
         "toastSaved": "Aufbewahrung gespeichert",
         "toastSaveFailed": "Speichern fehlgeschlagen"
-      }
+      },
+      "requireMfa": "MFA erforderlich (Einrichtung bei der ersten Anmeldung)",
+      "mustChangePassword": "Passwort bei der nächsten Anmeldung ändern"
     },
     "youtube": {
       "title": "YouTube-Cookies",

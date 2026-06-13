@@ -55,7 +55,16 @@
     "enterCodeToFinish": "Saisissez le code à 6 chiffres de votre application d'authentification pour terminer la connexion.",
     "verify": "Vérifier",
     "verifying": "Vérification...",
-    "invalidCode": "Code invalide. Réessayez."
+    "invalidCode": "Code invalide. Réessayez.",
+    "changePasswordTitle": "Changez votre mot de passe",
+    "changePasswordPrompt": "Vous devez définir un nouveau mot de passe avant de continuer.",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "changeAndContinue": "Changer et continuer",
+    "changingPassword": "Modification...",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+    "changeFailed": "Impossible de changer le mot de passe"
   },
   "settings": {
     "title": "Paramètres",
@@ -216,7 +225,9 @@
         "saving": "Enregistrement...",
         "toastSaved": "Conservation enregistrée",
         "toastSaveFailed": "Échec de l'enregistrement"
-      }
+      },
+      "requireMfa": "Exiger le MFA (enrôlement à la 1re connexion)",
+      "mustChangePassword": "Changer le mot de passe à la prochaine connexion"
     },
     "youtube": {
       "title": "Cookies YouTube",

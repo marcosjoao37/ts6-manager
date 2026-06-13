@@ -44,6 +44,27 @@ async function issueSession(prisma: any, user: any) {
   };
 }
 
+// Short-lived token proving auth fully passed, scoped to the forced password change.
+function signChangeToken(userId: number): string {
+  return jwt.sign({ pwchange: true, id: userId }, config.jwtSecret, { expiresIn: '10m' } as jwt.SignOptions);
+}
+function verifyChangeToken(token: string): number {
+  const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as any;
+  if (!payload?.pwchange || !payload.id) throw new AppError(401, 'Invalid session');
+  return payload.id;
+}
+
+/**
+ * Final login step after password (and MFA) succeeded: if the account must
+ * change its password first, return a change challenge instead of a session.
+ */
+async function finishLogin(prisma: any, user: any) {
+  if (user.mustChangePassword) {
+    return { mustChangePassword: true, changeToken: signChangeToken(user.id) };
+  }
+  return issueSession(prisma, user);
+}
+
 authRoutes.post('/login', async (req: Request, res: Response, next) => {
   const journal = req.app.locals.connectionJournal;
   try {
@@ -82,7 +103,7 @@ authRoutes.post('/login', async (req: Request, res: Response, next) => {
       return;
     }
 
-    res.json(await issueSession(prisma, user));
+    res.json(await finishLogin(prisma, user));
   } catch (err) { next(err); }
 });
 
@@ -111,10 +132,44 @@ authRoutes.post('/login/mfa', async (req: Request, res: Response, next) => {
       });
     }
 
-    res.json(await issueSession(prisma, user));
+    res.json(await finishLogin(prisma, user));
   } catch (err) {
     if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
       return next(new AppError(401, 'MFA session expired, please log in again'));
+    }
+    next(err);
+  }
+});
+
+// Forced password change at login: verify current password, set the new one
+// (policy-checked), clear the flag, then issue the session.
+authRoutes.post('/login/change-password', async (req: Request, res: Response, next) => {
+  try {
+    const { changeToken, currentPassword, newPassword } = req.body;
+    if (!changeToken || !currentPassword || !newPassword) throw new AppError(400, 'All fields required');
+
+    const userId = verifyChangeToken(changeToken);
+    const prisma = req.app.locals.prisma;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.enabled) throw new AppError(401, 'Invalid session');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new AppError(401, 'Current password is incorrect');
+
+    const pwError = validatePassword(newPassword, await loadPasswordPolicy(prisma));
+    if (pwError) throw new AppError(400, pwError);
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, mustChangePassword: false },
+    });
+    // Invalidate any existing refresh tokens, then start a fresh session
+    await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+    res.json(await issueSession(prisma, updated));
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
+      return next(new AppError(401, 'Session expired, please log in again'));
     }
     next(err);
   }
