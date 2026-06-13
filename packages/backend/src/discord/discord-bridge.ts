@@ -383,6 +383,7 @@ export class DiscordBridge {
       case 'stats': {
         await i.deferReply();
         await i.editReply({ embeds: [statsEmbed(await this.fetchStats())] });
+        this.scheduleAutoDelete(() => i.deleteReply());
         break;
       }
       case 'join': {
@@ -726,6 +727,14 @@ export class DiscordBridge {
     });
     if (!channel) return;
     if (!channel.isSendable()) { console.warn(`[Discord] postToChannel: channel ${channelId} is not sendable (permissions?)`); return; }
-    await channel.send(payload);
+    const sent = await channel.send(payload);
+    this.scheduleAutoDelete(() => sent.delete());
+  }
+
+  /** If auto-delete is enabled, remove the message after the configured delay. */
+  private scheduleAutoDelete(remove: () => Promise<unknown>): void {
+    const secs = this.settings?.notifAutoDeleteSeconds || 0;
+    if (secs <= 0) return;
+    setTimeout(() => { remove().catch(() => { /* already gone */ }); }, secs * 1000);
   }
 }

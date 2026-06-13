@@ -289,7 +289,9 @@
       "toastSaved": "Discord settings saved",
       "toastSaveFailed": "Failed to save",
       "toastSavedButError": "Saved, but: {{error}}",
-      "embedStyle": "Embed style (colored card) instead of a plain message"
+      "embedStyle": "Embed style (colored card) instead of a plain message",
+      "autoDelete": "Auto-delete notifications after (seconds)",
+      "autoDeleteHint": "0 = keep messages. Removes join/leave, now-playing and /stats messages after the delay to avoid channel clutter (the live stats panel is not affected)."
     },
     "spotify": {
       "title": "Spotify",

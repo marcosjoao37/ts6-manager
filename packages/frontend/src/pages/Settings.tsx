@@ -942,6 +942,13 @@ function DiscordTab() {
             <Label className="text-xs font-normal">{t('settings.discord.liveStatsPanel')}</Label>
           </div>
           <p className="text-[10px] text-muted-foreground">{t('settings.discord.statsCommandHint')}</p>
+          <div className="flex items-center gap-3 pt-1">
+            <Label className="text-xs font-normal w-56">{t('settings.discord.autoDelete')}</Label>
+            <Input className="h-8 text-xs w-24" type="number" min={0} max={86400}
+              value={form.notifAutoDeleteSeconds ?? 0}
+              onChange={(e) => setForm((f) => ({ ...f, notifAutoDeleteSeconds: parseInt(e.target.value) || 0 }))} />
+          </div>
+          <p className="text-[10px] text-muted-foreground">{t('settings.discord.autoDeleteHint')}</p>
         </div>
 
         <div className="space-y-2 pt-1">

@@ -289,7 +289,9 @@
       "toastSaved": "Configuración de Discord guardada",
       "toastSaveFailed": "Error al guardar",
       "toastSavedButError": "Guardado, pero: {{error}}",
-      "embedStyle": "Estilo embed (tarjeta de color) en lugar de un mensaje simple"
+      "embedStyle": "Estilo embed (tarjeta de color) en lugar de un mensaje simple",
+      "autoDelete": "Eliminar notificaciones automáticamente tras (segundos)",
+      "autoDeleteHint": "0 = conservar los mensajes. Elimina los mensajes de entrada/salida, now-playing y /stats tras el tiempo indicado para evitar saturar el canal (el panel de estadísticas en vivo no se ve afectado)."
     },
     "spotify": {
       "title": "Spotify",

@@ -265,6 +265,7 @@ model DiscordSettings {
   notifyJoinTemplate     String?
   notifyLeaveTemplate    String?
   notifyEmbed            Boolean  @default(false)
+  notifAutoDeleteSeconds Int      @default(0) // 0 = keep messages
   flowMessageTrigger     Boolean  @default(false)
   statsMessageId         String?
   voiceChannelId         String?

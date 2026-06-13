@@ -31,6 +31,7 @@ discordRoutes.get('/settings', async (req: Request, res: Response, next) => {
       notifyJoinTemplate: s.notifyJoinTemplate,
       notifyLeaveTemplate: s.notifyLeaveTemplate,
       notifyEmbed: s.notifyEmbed,
+      notifAutoDeleteSeconds: s.notifAutoDeleteSeconds,
       flowMessageTrigger: s.flowMessageTrigger,
       defaultMusicBotId: s.defaultMusicBotId,
       serverConfigId: s.serverConfigId,
@@ -45,7 +46,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreateSettings(prisma);
 
-    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, notifyEmbed, flowMessageTrigger, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
+    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, notifyEmbed, notifAutoDeleteSeconds, flowMessageTrigger, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
 
     const data: any = {};
     if (enabled !== undefined) data.enabled = !!enabled;
@@ -62,6 +63,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     if (notifyJoinTemplate !== undefined) data.notifyJoinTemplate = notifyJoinTemplate || null;
     if (notifyLeaveTemplate !== undefined) data.notifyLeaveTemplate = notifyLeaveTemplate || null;
     if (notifyEmbed !== undefined) data.notifyEmbed = !!notifyEmbed;
+    if (notifAutoDeleteSeconds !== undefined) data.notifAutoDeleteSeconds = Math.max(0, Math.min(86400, parseInt(notifAutoDeleteSeconds) || 0));
     if (flowMessageTrigger !== undefined) data.flowMessageTrigger = !!flowMessageTrigger;
     if (defaultMusicBotId !== undefined) data.defaultMusicBotId = defaultMusicBotId ? parseInt(defaultMusicBotId) : null;
     if (serverConfigId !== undefined) data.serverConfigId = serverConfigId ? parseInt(serverConfigId) : null;

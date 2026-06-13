@@ -14,6 +14,7 @@ export interface DiscordSettings {
   notifyJoinTemplate: string | null;
   notifyLeaveTemplate: string | null;
   notifyEmbed: boolean;
+  notifAutoDeleteSeconds: number;
   flowMessageTrigger: boolean;
   defaultMusicBotId: number | null;
   serverConfigId: number | null;

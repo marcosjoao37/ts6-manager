@@ -289,7 +289,9 @@
       "toastSaved": "Discord-Einstellungen gespeichert",
       "toastSaveFailed": "Speichern fehlgeschlagen",
       "toastSavedButError": "Gespeichert, aber: {{error}}",
-      "embedStyle": "Embed-Stil (farbige Karte) statt einer einfachen Nachricht"
+      "embedStyle": "Embed-Stil (farbige Karte) statt einer einfachen Nachricht",
+      "autoDelete": "Benachrichtigungen automatisch löschen nach (Sekunden)",
+      "autoDeleteHint": "0 = Nachrichten behalten. Entfernt Join/Leave-, Now-Playing- und /stats-Nachrichten nach der Verzögerung, um den Kanal sauber zu halten (das Live-Statspanel ist nicht betroffen)."
     },
     "spotify": {
       "title": "Spotify",
