@@ -38,12 +38,13 @@ export default function Login() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
 
   useEffect(() => {
+    if (isAuthenticated) return; // already signed in — no need to peek
     authApi.trustedPeek()
       .then((res) => {
         if (res.trusted) { setTrustedName(res.displayName || res.username); setStep('trusted'); }
       })
       .catch(() => { /* no trusted device */ });
-  }, []);
+  }, [isAuthenticated]);
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
@@ -155,8 +156,7 @@ export default function Login() {
         <Card className="border-border/50 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <h2 className="text-sm font-medium text-center text-muted-foreground">
-              {step === 'trusted' ? t('login.signInToContinue')
-                : step === 'password' ? t('login.signInToContinue')
+              {step === 'trusted' || step === 'password' ? t('login.signInToContinue')
                 : step === 'setup' ? t('login.twoFactorSetupTitle')
                 : step === 'changePassword' ? t('login.changePasswordTitle')
                 : t('login.twoFactorTitle')}
