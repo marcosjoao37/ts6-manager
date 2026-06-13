@@ -215,6 +215,8 @@ export class DiscordBridge {
       new SlashCommandBuilder().setName('stop').setDescription('Arrêter la lecture'),
       new SlashCommandBuilder().setName('pause').setDescription('Pause / reprise'),
       new SlashCommandBuilder().setName('skip').setDescription('Piste suivante'),
+      new SlashCommandBuilder().setName('next').setDescription('Piste suivante (alias de /skip)'),
+      new SlashCommandBuilder().setName('prev').setDescription('Piste précédente'),
       new SlashCommandBuilder().setName('queue').setDescription("Afficher la file d'attente"),
       new SlashCommandBuilder().setName('volume').setDescription('Régler le volume')
         .addIntegerOption((o) => o.setName('level').setDescription('0-100').setMinValue(0).setMaxValue(100).setRequired(true)),
@@ -267,7 +269,8 @@ export class DiscordBridge {
         }
         break;
       }
-      case 'skip': {
+      case 'skip':
+      case 'next': {
         await i.deferReply();
         const bot = this.musicBot();
         const next = bot.queue.next();
@@ -278,6 +281,19 @@ export class DiscordBridge {
         } else {
           bot.stopAudio();
           await i.editReply('⏹️ File vide — lecture arrêtée.');
+        }
+        break;
+      }
+      case 'prev': {
+        await i.deferReply();
+        const bot = this.musicBot();
+        const prev = bot.queue.previous();
+        if (prev) {
+          if (prev.streamUrl) await bot.playStream(prev);
+          else await bot.play(prev);
+          await i.editReply(`⏮️ ${prev.title}`);
+        } else {
+          await i.editReply('Pas de piste précédente.');
         }
         break;
       }
