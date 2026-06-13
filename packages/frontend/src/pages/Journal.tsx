@@ -11,15 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Flag } from '@/components/shared/Flag';
 import { ChevronLeft, ChevronRight, Globe, MessagesSquare, ArrowUp, ArrowDown, X, Ban, ShieldOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type SortField = 'createdAt' | 'login' | 'ip' | 'country' | 'success';
-
-function flag(country: string | null): string {
-  if (!country || country.length !== 2) return '';
-  return String.fromCodePoint(...[...country.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
-}
 
 let regionNames: Intl.DisplayNames | null = null;
 try { regionNames = new Intl.DisplayNames(['fr'], { type: 'region' }); } catch { /* older runtime */ }
@@ -130,7 +126,7 @@ function WebBansDialog({ open, onClose }: { open: boolean; onClose: () => void }
 
 function LocationCell({ e }: { e: ConnectionLogEntry }) {
   const { t } = useTranslation();
-  if (e.country) return <span title={countryName(e.country)}>{flag(e.country)} {e.country}</span>;
+  if (e.country) return <span className="inline-flex items-center gap-1.5" title={countryName(e.country)}><Flag code={e.country} /> {e.country}</span>;
   if (e.ip && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|::1)/.test(e.ip)) {
     return <Badge variant="outline" className="text-[10px]">{t('journal.lan')}</Badge>;
   }

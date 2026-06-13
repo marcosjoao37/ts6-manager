@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LANGUAGES, setLanguage } from '@/i18n';
 import { authApi } from '@/api/auth.api';
 import { useAuthStore } from '@/stores/auth.store';
+import { Flag } from '@/components/shared/Flag';
 
 export function LanguageSwitcher() {
   const { i18n } = useTranslation();
@@ -22,14 +23,14 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 px-2 text-base" title="Language">
-          {current.flag}
+        <Button variant="ghost" size="sm" className="h-8 px-2" title="Language">
+          <Flag code={current.country} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         {LANGUAGES.map((l) => (
           <DropdownMenuItem key={l.code} onClick={() => choose(l.code)} className="gap-2">
-            <span className="text-base">{l.flag}</span>
+            <Flag code={l.country} />
             <span className="text-xs">{l.label}</span>
           </DropdownMenuItem>
         ))}

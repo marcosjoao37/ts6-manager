@@ -9,11 +9,11 @@ import es from './locales/es.json';
 import it from './locales/it.json';
 
 export const LANGUAGES = [
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'en', label: 'English', country: 'gb' },
+  { code: 'fr', label: 'Français', country: 'fr' },
+  { code: 'de', label: 'Deutsch', country: 'de' },
+  { code: 'es', label: 'Español', country: 'es' },
+  { code: 'it', label: 'Italiano', country: 'it' },
 ] as const;
 
 export const SUPPORTED_LANGUAGES = LANGUAGES.map((l) => l.code);

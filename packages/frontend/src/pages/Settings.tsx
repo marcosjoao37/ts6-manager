@@ -24,6 +24,7 @@ import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Y
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage } from '@/i18n';
+import { Flag } from '@/components/shared/Flag';
 
 export default function Settings() {
   const { user } = useAuthStore();
@@ -176,7 +177,7 @@ function LanguageCard() {
           <SelectTrigger className="h-8 text-xs w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
             {LANGUAGES.map((l) => (
-              <SelectItem key={l.code} value={l.code}><span className="mr-2">{l.flag}</span>{l.label}</SelectItem>
+              <SelectItem key={l.code} value={l.code}><Flag code={l.country} className="mr-2" />{l.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

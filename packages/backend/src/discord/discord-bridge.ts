@@ -482,6 +482,29 @@ export class DiscordBridge {
       });
     });
     await this.eventBridge.connectServer(settings.serverConfigId, settings.virtualServerId);
+
+    // Seed the nickname/channel maps with clients already connected before the
+    // bridge started, so a disconnect from the watched channel by a pre-existing
+    // member still produces a leave notification.
+    await this.seedClientState();
+  }
+
+  /** Populate clientNicknames/clientChannels from the current clientlist. */
+  private async seedClientState(): Promise<void> {
+    const settings = this.settings;
+    if (!settings?.serverConfigId) return;
+    try {
+      const client = await this.pool.getOrLoad(settings.serverConfigId);
+      const list = await client.execute(settings.virtualServerId, 'clientlist');
+      for (const c of Array.isArray(list) ? list : []) {
+        if (String(c.client_type) !== '0') continue;
+        const clid = String(c.clid);
+        if (!this.clientNicknames.has(clid)) this.clientNicknames.set(clid, c.client_nickname || `Client #${clid}`);
+        if (!this.clientChannels.has(clid)) this.clientChannels.set(clid, String(c.cid));
+      }
+    } catch (err: any) {
+      console.warn(`[Discord] Could not seed client state: ${err.message}`);
+    }
   }
 
   private async onTsEvent(eventName: string, data: Record<string, string>): Promise<void> {
