@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Hash, Plus, Trash2, Pencil, ChevronRight, ChevronDown, Users, Lock, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface ChannelNode {
   cid: number;
@@ -61,6 +62,7 @@ function buildTree(channels: any[]): ChannelNode[] {
 }
 
 function ClientEntry({ client, depth }: { client: ClientInfo; depth: number }) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex items-center gap-1.5 py-0.5 px-2 text-xs text-muted-foreground"
@@ -70,8 +72,8 @@ function ClientEntry({ client, depth }: { client: ClientInfo; depth: number }) {
         {client.client_nickname?.[0]?.toUpperCase() || '?'}
       </div>
       <span className="truncate">{client.client_nickname}</span>
-      {client.client_away === 1 && <Badge variant="warning" className="text-[8px] px-1 py-0 h-3.5">Away</Badge>}
-      {client.client_input_muted === 1 && !client.client_away && <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">Muted</Badge>}
+      {client.client_away === 1 && <Badge variant="warning" className="text-[8px] px-1 py-0 h-3.5">{t('channels.away')}</Badge>}
+      {client.client_input_muted === 1 && !client.client_away && <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5">{t('channels.muted')}</Badge>}
     </div>
   );
 }
@@ -218,6 +220,7 @@ function ChannelTreeNode({ node, depth = 0, isAdmin, clientsByChannel, onDelete,
 }
 
 export default function Channels() {
+  const { t } = useTranslation();
   const { selectedConfigId, selectedSid } = useServerStore();
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const { data: channelData, isLoading: channelsLoading } = useChannels();
@@ -259,22 +262,22 @@ export default function Channels() {
     return map;
   }, [clientData]);
 
-  if (!selectedConfigId || !selectedSid) return <EmptyState icon={Hash} title="No server selected" />;
+  if (!selectedConfigId || !selectedSid) return <EmptyState icon={Hash} title={t('channels.noServerSelected')} />;
   if (channelsLoading) return <PageLoader />;
 
   const handleCreate = () => {
     if (!newName.trim()) return;
     createChannel.mutate({ channel_name: newName, channel_flag_permanent: 1 }, {
-      onSuccess: () => { toast.success('Channel created'); setShowCreate(false); setNewName(''); },
-      onError: () => toast.error('Failed to create channel'),
+      onSuccess: () => { toast.success(t('channels.toastCreated')); setShowCreate(false); setNewName(''); },
+      onError: () => toast.error(t('channels.toastCreateFailed')),
     });
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
     deleteChannel.mutate(deleteTarget.cid, {
-      onSuccess: () => { toast.success('Channel deleted'); setDeleteTarget(null); },
-      onError: () => toast.error('Failed to delete channel'),
+      onSuccess: () => { toast.success(t('channels.toastDeleted')); setDeleteTarget(null); },
+      onError: () => toast.error(t('channels.toastDeleteFailed')),
     });
   };
 
@@ -289,15 +292,15 @@ export default function Channels() {
     if (editForm.channel_topic !== undefined) data.channel_topic = editForm.channel_topic;
     if (editForm.channel_password) data.channel_password = editForm.channel_password;
     editChannel.mutate({ cid: editTarget.cid, data }, {
-      onSuccess: () => { toast.success('Channel updated'); setEditTarget(null); },
-      onError: () => toast.error('Failed to update channel'),
+      onSuccess: () => { toast.success(t('channels.toastUpdated')); setEditTarget(null); },
+      onError: () => toast.error(t('channels.toastUpdateFailed')),
     });
   };
 
   const handleDrop = (draggedCid: number, targetCid: number) => {
     moveChannel.mutate({ cid: draggedCid, data: { cpid: targetCid } }, {
-      onSuccess: () => toast.success('Channel moved'),
-      onError: () => toast.error('Failed to move channel'),
+      onSuccess: () => toast.success(t('channels.toastMoved')),
+      onError: () => toast.error(t('channels.toastMoveFailed')),
     });
   };
 
@@ -309,14 +312,14 @@ export default function Channels() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Channels</h1>
+          <h1 className="text-xl font-semibold">{t('channels.title')}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {Array.isArray(channelData) ? channelData.length : 0} channels · {totalClients} clients online
+            {t('channels.subtitle', { count: Array.isArray(channelData) ? channelData.length : 0, clients: totalClients })}
           </p>
         </div>
         {isAdmin && (
           <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Create Channel
+            <Plus className="h-4 w-4 mr-1" /> {t('channels.create')}
           </Button>
         )}
       </div>
@@ -325,7 +328,7 @@ export default function Channels() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <Volume2 className="h-4 w-4 text-primary" />
-            Channel Tree
+            {t('channels.tree')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -353,17 +356,17 @@ export default function Channels() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Channel</DialogTitle>
+            <DialogTitle>{t('channels.createTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Channel Name</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New Channel" autoFocus />
+              <Label className="text-xs">{t('channels.channelName')}</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('channels.newChannelPlaceholder')} autoFocus />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={createChannel.isPending}>Create</Button>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>{t('channels.cancel')}</Button>
+            <Button onClick={handleCreate} disabled={createChannel.isPending}>{t('channels.createButton')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -372,26 +375,26 @@ export default function Channels() {
       <Dialog open={!!editTarget} onOpenChange={(v) => { if (!v) setEditTarget(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Channel</DialogTitle>
+            <DialogTitle>{t('channels.editTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Channel Name</Label>
+              <Label className="text-xs">{t('channels.channelName')}</Label>
               <Input value={editForm.channel_name} onChange={(e) => setEditForm({ ...editForm, channel_name: e.target.value })} />
             </div>
             <div>
-              <Label className="text-xs">Topic</Label>
-              <Input value={editForm.channel_topic} onChange={(e) => setEditForm({ ...editForm, channel_topic: e.target.value })} placeholder="Optional" />
+              <Label className="text-xs">{t('channels.topic')}</Label>
+              <Input value={editForm.channel_topic} onChange={(e) => setEditForm({ ...editForm, channel_topic: e.target.value })} placeholder={t('channels.optional')} />
             </div>
             <div>
-              <Label className="text-xs">Password</Label>
-              <Input type="password" value={editForm.channel_password} onChange={(e) => setEditForm({ ...editForm, channel_password: e.target.value })} placeholder="Leave empty to keep current" />
+              <Label className="text-xs">{t('channels.password')}</Label>
+              <Input type="password" value={editForm.channel_password} onChange={(e) => setEditForm({ ...editForm, channel_password: e.target.value })} placeholder={t('channels.passwordPlaceholder')} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>{t('channels.cancel')}</Button>
             <Button onClick={handleEditSave} disabled={!editForm.channel_name.trim() || editChannel.isPending}>
-              {editChannel.isPending ? 'Saving...' : 'Save'}
+              {editChannel.isPending ? t('channels.saving') : t('channels.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -401,9 +404,9 @@ export default function Channels() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
-        title="Delete Channel"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title={t('channels.deleteTitle')}
+        description={t('channels.deleteDescription', { name: deleteTarget?.name })}
+        confirmLabel={t('channels.deleteConfirm')}
         destructive
         onConfirm={handleDelete}
         loading={deleteChannel.isPending}

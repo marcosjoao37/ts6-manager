@@ -11,6 +11,7 @@ import { formatBytes, formatUptime } from '@/lib/utils';
 import { Users, Activity, Clock, Hash, ArrowDownToLine, ArrowUpFromLine, Wifi, Server, LayoutGrid } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface StatsCardProps {
   icon: React.ElementType;
@@ -41,6 +42,7 @@ function StatsCard({ icon: Icon, label, value, sub, accentColor = 'text-primary'
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { selectedConfigId, selectedSid } = useServerStore();
   const { data, isLoading, error } = useDashboard();
   const isAdmin = useAuthStore((s) => s.isAdmin());
@@ -68,8 +70,8 @@ export default function Dashboard() {
     return (
       <EmptyState
         icon={Server}
-        title="No server selected"
-        description="Select a server connection from the header to view the dashboard."
+        title={t('dashboard.noServerTitle')}
+        description={t('dashboard.noServerDescription')}
       />
     );
   }
@@ -79,8 +81,8 @@ export default function Dashboard() {
     return (
       <EmptyState
         icon={Wifi}
-        title="Connection failed"
-        description="Could not connect to the TeamSpeak server. Check your connection settings."
+        title={t('dashboard.connectionFailedTitle')}
+        description={t('dashboard.connectionFailedDescription')}
       />
     );
   }
@@ -92,21 +94,21 @@ export default function Dashboard() {
         <div>
           <h1 className="text-xl font-semibold">{data.serverName}</h1>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant="success" className="font-mono-data text-[10px]">ONLINE</Badge>
+            <Badge variant="success" className="font-mono-data text-[10px]">{t('dashboard.online')}</Badge>
             <span className="text-xs text-muted-foreground font-mono-data">{data.version} / {data.platform}</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           {isAdmin && (
             <Button size="sm" variant="outline" onClick={() => setShowWidgets(true)}>
-              <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Widgets
+              <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> {t('dashboard.widgets')}
             </Button>
           )}
           <div className="text-right">
-            <p className="text-[10px] text-muted-foreground font-mono-data uppercase tracking-widest">Live Monitoring</p>
+            <p className="text-[10px] text-muted-foreground font-mono-data uppercase tracking-widest">{t('dashboard.liveMonitoring')}</p>
             <div className="flex items-center gap-1 justify-end mt-0.5">
               <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 pulse-dot" />
-              <span className="text-[10px] text-emerald-400 font-mono-data">ACTIVE</span>
+              <span className="text-[10px] text-emerald-400 font-mono-data">{t('dashboard.active')}</span>
             </div>
           </div>
         </div>
@@ -116,28 +118,28 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           icon={Users}
-          label="Online Users"
+          label={t('dashboard.onlineUsers')}
           value={data.onlineUsers}
-          sub={`of ${data.maxClients} slots`}
+          sub={t('dashboard.ofSlots', { count: data.maxClients })}
           accentColor="text-primary"
         />
         <StatsCard
           icon={Hash}
-          label="Channels"
+          label={t('dashboard.channels')}
           value={data.channelCount}
           accentColor="text-violet-400"
         />
         <StatsCard
           icon={Clock}
-          label="Uptime"
+          label={t('dashboard.uptime')}
           value={formatUptime(data.uptime)}
           accentColor="text-emerald-400"
         />
         <StatsCard
           icon={Activity}
-          label="Ping"
+          label={t('dashboard.ping')}
           value={`${parseFloat(String(data.ping || 0)).toFixed(1)}ms`}
-          sub={`Loss: ${(parseFloat(String(data.packetloss || 0)) * 100).toFixed(2)}%`}
+          sub={t('dashboard.loss', { value: (parseFloat(String(data.packetloss || 0)) * 100).toFixed(2) })}
           accentColor="text-amber-400"
         />
       </div>
@@ -149,7 +151,7 @@ export default function Dashboard() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
-              Bandwidth
+              {t('dashboard.bandwidth')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -172,7 +174,7 @@ export default function Dashboard() {
                     <ReTooltip
                       contentStyle={{ background: 'hsl(218, 28%, 10%)', border: '1px solid hsl(215, 22%, 14%)', borderRadius: '6px', fontSize: '12px' }}
                       labelStyle={{ color: 'hsl(213, 20%, 85%)' }}
-                      formatter={(value: number, name: string) => [formatBytes(value) + '/s', name === 'in' ? 'Download' : 'Upload']}
+                      formatter={(value: number, name: string) => [formatBytes(value) + '/s', name === 'in' ? t('dashboard.download') : t('dashboard.upload')]}
                     />
                     <Area type="monotone" dataKey="in" stroke="hsl(186, 72%, 42%)" fill="url(#inGrad)" strokeWidth={2} />
                     <Area type="monotone" dataKey="out" stroke="hsl(280, 55%, 60%)" fill="url(#outGrad)" strokeWidth={2} />
@@ -180,19 +182,19 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground font-mono-data">
-                  Collecting data...
+                  {t('dashboard.collectingData')}
                 </div>
               )}
             </div>
             <div className="flex items-center gap-6 mt-3">
               <div className="flex items-center gap-2 text-xs">
                 <ArrowDownToLine className="h-3.5 w-3.5 text-primary" />
-                <span className="text-muted-foreground">In:</span>
+                <span className="text-muted-foreground">{t('dashboard.in')}</span>
                 <span className="font-mono-data text-primary">{formatBytes(data.bandwidth.incoming)}/s</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <ArrowUpFromLine className="h-3.5 w-3.5 text-violet-400" />
-                <span className="text-muted-foreground">Out:</span>
+                <span className="text-muted-foreground">{t('dashboard.out')}</span>
                 <span className="font-mono-data text-violet-400">{formatBytes(data.bandwidth.outgoing)}/s</span>
               </div>
             </div>
@@ -202,12 +204,12 @@ export default function Dashboard() {
         {/* Capacity */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Server Capacity</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.serverCapacity')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="text-muted-foreground">User Slots</span>
+                <span className="text-muted-foreground">{t('dashboard.userSlots')}</span>
                 <span className="font-mono-data">{data.onlineUsers} / {data.maxClients}</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -217,25 +219,25 @@ export default function Dashboard() {
                 />
               </div>
               <p className="text-[10px] text-muted-foreground mt-1 font-mono-data">
-                {((data.onlineUsers / data.maxClients) * 100).toFixed(1)}% utilized
+                {t('dashboard.utilized', { value: ((data.onlineUsers / data.maxClients) * 100).toFixed(1) })}
               </p>
             </div>
 
             <div className="pt-3 border-t border-border space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Server Version</span>
+                <span className="text-muted-foreground">{t('dashboard.serverVersion')}</span>
                 <span className="font-mono-data text-foreground">{data.version?.split(' ')[0]}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Platform</span>
+                <span className="text-muted-foreground">{t('dashboard.platform')}</span>
                 <span className="font-mono-data text-foreground">{data.platform}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Channels</span>
+                <span className="text-muted-foreground">{t('dashboard.channels')}</span>
                 <span className="font-mono-data text-foreground">{data.channelCount}</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Uptime</span>
+                <span className="text-muted-foreground">{t('dashboard.uptime')}</span>
                 <span className="font-mono-data text-emerald-400">{formatUptime(data.uptime)}</span>
               </div>
             </div>

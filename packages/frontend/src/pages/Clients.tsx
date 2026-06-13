@@ -15,8 +15,10 @@ import { formatUptime } from '@/lib/utils';
 import { Users, MoreHorizontal, LogOut, Ban, Zap } from 'lucide-react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function Clients() {
+  const { t } = useTranslation();
   const { selectedConfigId, selectedSid } = useServerStore();
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const { data, isLoading } = useClients();
@@ -36,7 +38,7 @@ export default function Clients() {
     const cols: ColumnDef<any>[] = [
       {
         accessorKey: 'client_nickname',
-        header: 'Nickname',
+        header: t('clients.nickname'),
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-mono-data text-primary">
@@ -48,21 +50,21 @@ export default function Clients() {
       },
       {
         accessorKey: 'client_country',
-        header: 'Country',
+        header: t('clients.country'),
         cell: ({ getValue }) => <span className="font-mono-data text-xs">{(getValue() as string) || '-'}</span>,
       },
       {
         accessorKey: 'client_idle_time',
-        header: 'Idle',
+        header: t('clients.idle'),
         cell: ({ getValue }) => <span className="font-mono-data text-xs text-muted-foreground">{formatUptime(Math.floor((getValue() as number) / 1000))}</span>,
       },
       {
         accessorKey: 'client_away',
-        header: 'Status',
+        header: t('clients.status'),
         cell: ({ row }) => {
-          if (row.original.client_away) return <Badge variant="warning" className="text-[10px]">Away</Badge>;
-          if (row.original.client_input_muted) return <Badge variant="secondary" className="text-[10px]">Muted</Badge>;
-          return <Badge variant="success" className="text-[10px]">Active</Badge>;
+          if (row.original.client_away) return <Badge variant="warning" className="text-[10px]">{t('clients.away')}</Badge>;
+          if (row.original.client_input_muted) return <Badge variant="secondary" className="text-[10px]">{t('clients.muted')}</Badge>;
+          return <Badge variant="success" className="text-[10px]">{t('clients.active')}</Badge>;
         },
       },
     ];
@@ -81,19 +83,19 @@ export default function Clients() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => { setPokeTarget({ clid: c.clid, name: c.client_nickname }); setPokeMsg(''); }}>
-                  <Zap className="mr-2 h-4 w-4" /> Poke
+                  <Zap className="mr-2 h-4 w-4" /> {t('clients.poke')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => {
                   kickClient.mutate({ clid: c.clid, reasonid: 5, reasonmsg: 'Kicked by admin' });
-                  toast.success(`Kicked ${c.client_nickname}`);
+                  toast.success(t('clients.kicked', { name: c.client_nickname }));
                 }}>
-                  <LogOut className="mr-2 h-4 w-4" /> Kick from Server
+                  <LogOut className="mr-2 h-4 w-4" /> {t('clients.kickFromServer')}
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => {
                   banClient.mutate({ clid: c.clid, time: 3600, banreason: 'Banned by admin' });
-                  toast.success(`Banned ${c.client_nickname}`);
+                  toast.success(t('clients.banned', { name: c.client_nickname }));
                 }}>
-                  <Ban className="mr-2 h-4 w-4" /> Ban (1 hour)
+                  <Ban className="mr-2 h-4 w-4" /> {t('clients.banOneHour')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -104,40 +106,40 @@ export default function Clients() {
     return cols;
   }, [isAdmin, kickClient, banClient]);
 
-  if (!selectedConfigId || !selectedSid) return <EmptyState icon={Users} title="No server selected" />;
+  if (!selectedConfigId || !selectedSid) return <EmptyState icon={Users} title={t('clients.noServerSelected')} />;
   if (isLoading) return <PageLoader />;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Clients</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{clients.length} online</p>
+          <h1 className="text-xl font-semibold">{t('clients.title')}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t('clients.online', { count: clients.length })}</p>
         </div>
       </div>
 
-      <DataTable columns={columns} data={clients} searchKey="client_nickname" searchPlaceholder="Search clients..." />
+      <DataTable columns={columns} data={clients} searchKey="client_nickname" searchPlaceholder={t('clients.searchPlaceholder')} />
 
       {/* Poke Dialog */}
       <Dialog open={!!pokeTarget} onOpenChange={() => setPokeTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Poke {pokeTarget?.name}</DialogTitle>
+            <DialogTitle>{t('clients.pokeTitle', { name: pokeTarget?.name })}</DialogTitle>
           </DialogHeader>
           <div>
-            <Label className="text-xs">Message</Label>
-            <Input value={pokeMsg} onChange={(e) => setPokeMsg(e.target.value)} placeholder="Hey!" autoFocus />
+            <Label className="text-xs">{t('clients.message')}</Label>
+            <Input value={pokeMsg} onChange={(e) => setPokeMsg(e.target.value)} placeholder={t('clients.messagePlaceholder')} autoFocus />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPokeTarget(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPokeTarget(null)}>{t('clients.cancel')}</Button>
             <Button onClick={() => {
               if (pokeTarget && pokeMsg) {
                 pokeClient.mutate({ clid: pokeTarget.clid, msg: pokeMsg });
-                toast.success(`Poked ${pokeTarget.name}`);
+                toast.success(t('clients.poked', { name: pokeTarget.name }));
                 setPokeTarget(null);
               }
             }}>
-              <Zap className="h-4 w-4 mr-1" /> Poke
+              <Zap className="h-4 w-4 mr-1" /> {t('clients.poke')}
             </Button>
           </DialogFooter>
         </DialogContent>
