@@ -5,6 +5,7 @@ import {
   StreamType,
   NoSubscriberBehavior,
   VoiceConnectionStatus,
+  AudioPlayerStatus,
   entersState,
   type VoiceConnection,
   type AudioPlayer,
@@ -33,6 +34,21 @@ export class DiscordVoiceRelay {
     this.player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Play } });
     this.player.on('error', (err) => {
       console.error(`[DiscordVoice] Player error: ${err.message}`);
+    });
+    // Watchdog: if the player goes idle while the TS bot is still playing
+    // (state-machine hiccup on track switches), restart the resource. An
+    // intentional stop sets this.stream = null first, so it isn't caught.
+    this.player.on('stateChange', (oldState, newState) => {
+      if (
+        newState.status === AudioPlayerStatus.Idle &&
+        oldState.status !== AudioPlayerStatus.Idle &&
+        this.stream !== null &&
+        this.connection &&
+        this.bot?.status === 'playing'
+      ) {
+        console.warn('[DiscordVoice] Player went idle mid-track — restarting resource');
+        this.startResource();
+      }
     });
   }
 
@@ -133,11 +149,17 @@ export class DiscordVoiceRelay {
   // One opus packet per chunk: object mode prevents Node from coalescing
   // frames, which would corrupt packet boundaries (StreamType.Opus expects
   // exactly one packet per read).
+  // Track switches play the new resource directly (the canonical
+  // @discordjs/voice pattern) — no intermediate player.stop(), which could
+  // leave the player stuck in Idle and Discord silent after a /skip.
   private startResource(): void {
-    this.endResource();
     if (!this.connection) return;
+    const oldStream = this.stream;
     this.stream = new PassThrough({ objectMode: true, highWaterMark: 250 });
     this.player.play(createAudioResource(this.stream, { inputType: StreamType.Opus }));
+    if (oldStream) {
+      try { oldStream.end(); } catch { }
+    }
   }
 
   private endResource(): void {
