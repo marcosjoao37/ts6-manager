@@ -64,7 +64,11 @@
     "changeAndContinue": "Ändern & fortfahren",
     "changingPassword": "Wird geändert...",
     "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
-    "changeFailed": "Passwort konnte nicht geändert werden"
+    "changeFailed": "Passwort konnte nicht geändert werden",
+    "trustDevice": "Dies ist ein vertrauenswürdiger Computer",
+    "trustDeviceInfo": "30 Tage lang meldet dich dieses Gerät automatisch an – ohne Passwort und ohne Zwei-Faktor-Code. Nutze dies nur auf einem privaten Gerät, das du kontrollierst. Du kannst es jederzeit unter Einstellungen → Konto widerrufen.",
+    "continueAs": "Als {{name}} fortfahren",
+    "useAnotherAccount": "Mit einem anderen Konto anmelden"
   },
   "settings": {
     "title": "Einstellungen",
@@ -108,6 +112,20 @@
         "invalidCode": "Ungültiger Code",
         "disabledToast": "MFA deaktiviert",
         "disableFailed": "MFA konnte nicht deaktiviert werden"
+      },
+      "trustedDevices": {
+        "title": "Vertrauenswürdige Geräte",
+        "description": "Geräte, die sich 30 Tage lang automatisch ohne Passwort oder Zwei-Faktor-Code anmelden.",
+        "empty": "Keine vertrauenswürdigen Geräte.",
+        "thisDevice": "Dieses Gerät",
+        "added": "Hinzugefügt",
+        "lastUsed": "Zuletzt verwendet",
+        "expires": "Läuft ab",
+        "revoke": "Widerrufen",
+        "revokeAll": "Alle widerrufen",
+        "revoked": "Vertrauenswürdiges Gerät widerrufen",
+        "revokedAll": "Alle vertrauenswürdigen Geräte widerrufen",
+        "revokeError": "Gerät konnte nicht widerrufen werden"
       }
     },
     "connections": {

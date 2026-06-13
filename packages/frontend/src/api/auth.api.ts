@@ -1,8 +1,8 @@
 import api from './client';
 
 export const authApi = {
-  login: (username: string, password: string) =>
-    api.post('/auth/login', { username, password }).then((r) => r.data),
+  login: (username: string, password: string, trustDevice = false) =>
+    api.post('/auth/login', { username, password, trustDevice }, { withCredentials: true }).then((r) => r.data),
 
   refresh: (refreshToken: string) =>
     api.post('/auth/refresh', { refreshToken }).then((r) => r.data),
@@ -19,12 +19,12 @@ export const authApi = {
     api.put('/auth/language', { language }).then((r) => r.data),
 
   // MFA — login second step
-  loginMfa: (mfaToken: string, code: string) =>
-    api.post('/auth/login/mfa', { mfaToken, code }).then((r) => r.data),
+  loginMfa: (mfaToken: string, code: string, trustDevice = false) =>
+    api.post('/auth/login/mfa', { mfaToken, code, trustDevice }, { withCredentials: true }).then((r) => r.data),
 
   // Forced password change at login
-  loginChangePassword: (changeToken: string, currentPassword: string, newPassword: string) =>
-    api.post('/auth/login/change-password', { changeToken, currentPassword, newPassword }).then((r) => r.data),
+  loginChangePassword: (changeToken: string, currentPassword: string, newPassword: string, trustDevice = false) =>
+    api.post('/auth/login/change-password', { changeToken, currentPassword, newPassword, trustDevice }, { withCredentials: true }).then((r) => r.data),
 
   // MFA — enrollment. mfaToken is only needed during admin-forced setup at
   // login; from the Account tab the session cookie/header authorizes it.
@@ -34,4 +34,16 @@ export const authApi = {
     api.post('/auth/mfa/enable', mfaToken ? { code, mfaToken } : { code }).then((r) => r.data),
   mfaDisable: (password: string) =>
     api.post('/auth/mfa/disable', { password }),
+
+  // Trusted device — cookie-based auto-login
+  trustedPeek: () =>
+    api.get('/auth/trusted/peek', { withCredentials: true }).then((r) => r.data),
+  trustedSession: () =>
+    api.post('/auth/trusted/session', {}, { withCredentials: true }).then((r) => r.data),
+  trustedList: () =>
+    api.get('/auth/trusted').then((r) => r.data),
+  trustedRevoke: (id: number) =>
+    api.delete(`/auth/trusted/${id}`),
+  trustedRevokeAll: () =>
+    api.delete('/auth/trusted'),
 };

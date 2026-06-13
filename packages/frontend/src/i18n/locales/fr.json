@@ -64,7 +64,11 @@
     "changeAndContinue": "Changer et continuer",
     "changingPassword": "Modification...",
     "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
-    "changeFailed": "Impossible de changer le mot de passe"
+    "changeFailed": "Impossible de changer le mot de passe",
+    "trustDevice": "Cet ordinateur est un PC de confiance",
+    "trustDeviceInfo": "Pendant 30 jours, cet appareil vous connectera automatiquement, sans mot de passe ni code à deux facteurs. À n'utiliser que sur un appareil personnel que vous contrôlez. Vous pouvez le révoquer à tout moment depuis Paramètres → Compte.",
+    "continueAs": "Continuer en tant que {{name}}",
+    "useAnotherAccount": "Se connecter avec un autre compte"
   },
   "settings": {
     "title": "Paramètres",
@@ -108,6 +112,20 @@
         "invalidCode": "Code invalide",
         "disabledToast": "MFA désactivé",
         "disableFailed": "Échec de la désactivation du MFA"
+      },
+      "trustedDevices": {
+        "title": "PC de confiance",
+        "description": "Appareils qui se connectent automatiquement pendant 30 jours, sans mot de passe ni code à deux facteurs.",
+        "empty": "Aucun appareil de confiance.",
+        "thisDevice": "Cet appareil",
+        "added": "Ajouté",
+        "lastUsed": "Dernière utilisation",
+        "expires": "Expire",
+        "revoke": "Révoquer",
+        "revokeAll": "Tout révoquer",
+        "revoked": "Appareil de confiance révoqué",
+        "revokedAll": "Tous les appareils de confiance ont été révoqués",
+        "revokeError": "Impossible de révoquer l'appareil"
       }
     },
     "connections": {

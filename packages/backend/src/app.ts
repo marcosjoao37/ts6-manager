@@ -1,6 +1,7 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -50,6 +51,7 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(cors({ origin: config.frontendUrl, credentials: true }));
   app.use(express.json({ limit: '10mb' }));
+  app.use(cookieParser());
 
   // Health check
   app.get('/api/health', (_req, res) => {

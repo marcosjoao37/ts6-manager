@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -10,9 +10,10 @@ import { useAuthStore } from '@/stores/auth.store';
 import { applyUserLanguage } from '@/hooks/use-auth';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
-import { Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Loader2, AlertCircle, ShieldCheck, Info } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
-type Step = 'password' | 'setup' | 'code' | 'changePassword';
+type Step = 'password' | 'setup' | 'code' | 'changePassword' | 'trusted';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -28,11 +29,23 @@ export default function Login() {
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(false);
+  const [trustedName, setTrustedName] = useState('');
 
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+
+  useEffect(() => {
+    if (isAuthenticated) return; // already signed in — no need to peek
+    authApi.trustedPeek()
+      .then((res) => {
+        if (res.trusted) { setTrustedName(res.displayName || res.username); setStep('trusted'); }
+      })
+      .catch(() => { /* no trusted device */ });
+  }, [isAuthenticated]);
+
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const finish = (data: any) => {
@@ -61,7 +74,7 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      await routeAuth(await authApi.login(username, password));
+      await routeAuth(await authApi.login(username, password, trustDevice));
     } catch {
       setError(t('login.invalidCredentials'));
     } finally {
@@ -75,7 +88,7 @@ export default function Login() {
     if (newPw !== confirmPw) { setError(t('login.passwordsDoNotMatch')); return; }
     setBusy(true);
     try {
-      await routeAuth(await authApi.loginChangePassword(changeToken, curPw, newPw));
+      await routeAuth(await authApi.loginChangePassword(changeToken, curPw, newPw, trustDevice));
     } catch (err: any) {
       setError(err.response?.data?.error || t('login.changeFailed'));
     } finally {
@@ -105,9 +118,22 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      finish(await authApi.loginMfa(mfaToken, code));
+      finish(await authApi.loginMfa(mfaToken, code, trustDevice));
     } catch {
       setError(t('login.invalidCode'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTrustedContinue = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      finish(await authApi.trustedSession());
+    } catch {
+      setError(t('login.invalidCredentials'));
+      setStep('password');
     } finally {
       setBusy(false);
     }
@@ -130,7 +156,7 @@ export default function Login() {
         <Card className="border-border/50 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <h2 className="text-sm font-medium text-center text-muted-foreground">
-              {step === 'password' ? t('login.signInToContinue')
+              {step === 'trusted' || step === 'password' ? t('login.signInToContinue')
                 : step === 'setup' ? t('login.twoFactorSetupTitle')
                 : step === 'changePassword' ? t('login.changePasswordTitle')
                 : t('login.twoFactorTitle')}
@@ -153,6 +179,18 @@ export default function Login() {
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-xs">{t('login.password')}</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <Checkbox checked={trustDevice} onCheckedChange={(v) => setTrustDevice(v === true)} />
+                    <span className="text-xs text-muted-foreground">{t('login.trustDevice')}</span>
+                  </label>
+                  {trustDevice && (
+                    <div className="flex items-start gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
+                      <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                      <span>{t('login.trustDeviceInfo')}</span>
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={busy || !username || !password}>
                   {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.signingIn')}</> : t('login.signIn')}
@@ -209,6 +247,21 @@ export default function Login() {
                   {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.changingPassword')}</> : t('login.changeAndContinue')}
                 </Button>
               </form>
+            )}
+
+            {step === 'trusted' && (
+              <div className="space-y-4">
+                <Button onClick={handleTrustedContinue} className="w-full" disabled={busy}>
+                  {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.signingIn')}</> : t('login.continueAs', { name: trustedName })}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setStep('password')}
+                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {t('login.useAnotherAccount')}
+                </button>
+              </div>
             )}
           </CardContent>
         </Card>

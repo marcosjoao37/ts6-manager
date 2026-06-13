@@ -64,7 +64,11 @@
     "changeAndContinue": "Cambiar y continuar",
     "changingPassword": "Cambiando...",
     "passwordsDoNotMatch": "Las contraseñas no coinciden",
-    "changeFailed": "No se pudo cambiar la contraseña"
+    "changeFailed": "No se pudo cambiar la contraseña",
+    "trustDevice": "Este es un ordenador de confianza",
+    "trustDeviceInfo": "Durante 30 días, este dispositivo iniciará sesión automáticamente, sin contraseña ni código de doble factor. Úsalo solo en un dispositivo privado que controles. Puedes revocarlo en cualquier momento desde Ajustes → Cuenta.",
+    "continueAs": "Continuar como {{name}}",
+    "useAnotherAccount": "Iniciar sesión con otra cuenta"
   },
   "settings": {
     "title": "Ajustes",
@@ -108,6 +112,20 @@
         "invalidCode": "Código inválido",
         "disabledToast": "MFA desactivado",
         "disableFailed": "No se pudo desactivar el MFA"
+      },
+      "trustedDevices": {
+        "title": "Dispositivos de confianza",
+        "description": "Dispositivos que inician sesión automáticamente durante 30 días, sin contraseña ni código de doble factor.",
+        "empty": "No hay dispositivos de confianza.",
+        "thisDevice": "Este dispositivo",
+        "added": "Añadido",
+        "lastUsed": "Último uso",
+        "expires": "Caduca",
+        "revoke": "Revocar",
+        "revokeAll": "Revocar todos",
+        "revoked": "Dispositivo de confianza revocado",
+        "revokedAll": "Todos los dispositivos de confianza revocados",
+        "revokeError": "No se pudo revocar el dispositivo"
       }
     },
     "connections": {
