@@ -27,8 +27,9 @@ model User {
   mustChangePassword Boolean @default(false) // force a password change at next login
   language         String? // UI language (en/fr/de/es/it); null = browser default
 
-  serverAccess  UserServerAccess[]
-  refreshTokens RefreshToken[]
+  serverAccess   UserServerAccess[]
+  refreshTokens  RefreshToken[]
+  trustedDevices TrustedDevice[]
 }
 
 model RefreshToken {
@@ -40,6 +41,19 @@ model RefreshToken {
   createdAt  DateTime @default(now())
   family     String?
   replacedBy String?
+}
+
+model TrustedDevice {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selector     String   @unique
+  verifierHash String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  userAgent    String?
+  ipAddress    String?
 }
 
 model UserServerAccess {
