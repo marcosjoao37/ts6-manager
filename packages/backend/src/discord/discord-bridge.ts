@@ -40,6 +40,13 @@ export interface DiscordStatus {
   warnings: string[];
 }
 
+export interface DiscordFlowMessage {
+  channelId: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+}
+
 /**
  * Bridges Discord and the TS manager: slash commands for music and stats,
  * TS connect/disconnect notifications, now-playing announcements, and an
@@ -58,6 +65,17 @@ export class DiscordBridge {
   private lastError: string | null = null;
   private warnings: string[] = [];
   private startEpoch = 0; // guards async callbacks across reloads
+  private messageHandler: ((msg: DiscordFlowMessage) => void) | null = null;
+
+  /** Register a handler for channel messages (used by the bot-flow engine). */
+  setMessageHandler(handler: ((msg: DiscordFlowMessage) => void) | null): void {
+    this.messageHandler = handler;
+  }
+
+  /** Send a plain message to a Discord channel (used by flow actions). */
+  async sendFlowMessage(channelId: string, content: string): Promise<void> {
+    await this.postToChannel(channelId, { content });
+  }
 
   constructor(
     private prisma: PrismaClient,
@@ -90,9 +108,12 @@ export class DiscordBridge {
       return;
     }
 
-    const client = new Client({
-      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
-    });
+    const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates];
+    if (this.settings.flowMessageTrigger) {
+      // Privileged: must also be enabled in the Discord developer portal.
+      intents.push(GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent);
+    }
+    const client = new Client({ intents });
     this.client = client;
 
     client.on(Events.ClientReady, () => {
@@ -119,6 +140,20 @@ export class DiscordBridge {
         } catch { /* interaction expired */ }
       });
     });
+
+    if (this.settings.flowMessageTrigger) {
+      client.on(Events.MessageCreate, (message) => {
+        if (epoch !== this.startEpoch) return;
+        if (message.author?.bot) return; // ignore bots (incl. ourselves)
+        if (!message.guildId) return; // ignore DMs
+        this.messageHandler?.({
+          channelId: message.channelId,
+          content: message.content || '',
+          authorId: message.author.id,
+          authorName: message.author.username,
+        });
+      });
+    }
 
     client.on(Events.Error, (err) => {
       console.error(`[Discord] Client error: ${err.message}`);

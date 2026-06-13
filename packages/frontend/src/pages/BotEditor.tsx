@@ -15,6 +15,7 @@ import {
   Bell, PenLine, FolderPlus, FolderMinus, Users, Globe, Send,
   Moon, Timer, Megaphone, Award,
   Music, Volume2, LogIn, LogOut, Pause, SkipForward, Navigation, Mic, Sparkles,
+  MessagesSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,11 @@ const TRIGGER_NODES: NodeTypeDef[] = [
   { type: 'trigger_cron', label: 'Cron Timer', icon: Clock, color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', handles: { inputs: [], outputs: ['out'] } },
   { type: 'trigger_webhook', label: 'Webhook', icon: Webhook, color: 'bg-violet-500/20 text-violet-400 border-violet-500/30', handles: { inputs: [], outputs: ['out'] } },
   { type: 'trigger_command', label: 'Chat Command', icon: Terminal, color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30', handles: { inputs: [], outputs: ['out'] } },
+  { type: 'trigger_discordMessage', label: 'Discord Message', icon: MessagesSquare, color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30', handles: { inputs: [], outputs: ['out'] } },
+];
+
+const DISCORD_NODES: NodeTypeDef[] = [
+  { type: 'action_discordSend', label: 'Discord Send', icon: MessagesSquare, color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30', handles: { inputs: ['in'], outputs: ['out'] } },
 ];
 
 const ACTION_NODES: NodeTypeDef[] = [
@@ -87,11 +93,12 @@ const LOGIC_NODES: NodeTypeDef[] = [
   { type: 'action_generateCode', label: 'Generate Code', icon: Sparkles, color: 'bg-teal-500/20 text-teal-400 border-teal-500/30', handles: { inputs: ['in'], outputs: ['out'] } },
 ];
 
-const ALL_NODE_TYPES: NodeTypeDef[] = [...TRIGGER_NODES, ...ACTION_NODES, ...VOICE_ACTION_NODES, ...SMART_ACTION_NODES, ...LOGIC_NODES];
+const ALL_NODE_TYPES: NodeTypeDef[] = [...TRIGGER_NODES, ...ACTION_NODES, ...DISCORD_NODES, ...VOICE_ACTION_NODES, ...SMART_ACTION_NODES, ...LOGIC_NODES];
 
 const NODE_CATEGORIES = [
   { label: 'Triggers', nodes: TRIGGER_NODES },
   { label: 'Actions', nodes: ACTION_NODES },
+  { label: 'Discord', nodes: DISCORD_NODES },
   { label: 'Voice', nodes: VOICE_ACTION_NODES },
   { label: 'Smart Actions', nodes: SMART_ACTION_NODES },
   { label: 'Logic', nodes: LOGIC_NODES },
@@ -778,6 +785,54 @@ export default function BotEditor() {
                         <p className="text-[9px] text-muted-foreground/60 mt-0.5">
                           Commands are only received while a ServerQuery client is in that channel.
                         </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedNodeData.type === 'trigger_discordMessage' && (
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Discord Channel ID</Label>
+                        <Input
+                          className="h-7 text-xs mt-1 font-mono-data"
+                          placeholder="e.g. 123456789012345678"
+                          value={selectedNodeData.config.channelId || ''}
+                          onChange={(e) => setNodes((prev) => prev.map((n) => n.id === selectedNode ? { ...n, config: { ...n.config, channelId: e.target.value } } : n))}
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">Discord → right-click the channel → Copy Channel ID (developer mode on). Requires "flow message triggers" enabled in Settings → Discord.</p>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Prefix (optional)</Label>
+                        <Input
+                          className="h-7 text-xs mt-1 font-mono-data"
+                          placeholder="e.g. ! — fire only on messages starting with it"
+                          value={selectedNodeData.config.prefix || ''}
+                          onChange={(e) => setNodes((prev) => prev.map((n) => n.id === selectedNode ? { ...n, config: { ...n.config, prefix: e.target.value } } : n))}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Available variables: {'{{discord_content}}'}, {'{{discord_author}}'}, {'{{discord_author_id}}'}, {'{{discord_channel_id}}'}.</p>
+                    </div>
+                  )}
+
+                  {selectedNodeData.type === 'action_discordSend' && (
+                    <div className="space-y-2">
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Discord Channel ID</Label>
+                        <Input
+                          className="h-7 text-xs mt-1 font-mono-data"
+                          placeholder="e.g. 123456789012345678 or {{discord_channel_id}}"
+                          value={selectedNodeData.config.channelId || ''}
+                          onChange={(e) => setNodes((prev) => prev.map((n) => n.id === selectedNode ? { ...n, config: { ...n.config, channelId: e.target.value } } : n))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-muted-foreground">Message</Label>
+                        <Textarea
+                          className="min-h-[100px] text-xs mt-1 resize-y font-mono-data"
+                          placeholder="Message to send (supports {{variables}})"
+                          value={selectedNodeData.config.message || ''}
+                          onChange={(e) => setNodes((prev) => prev.map((n) => n.id === selectedNode ? { ...n, config: { ...n.config, message: e.target.value } } : n))}
+                        />
                       </div>
                     </div>
                   )}

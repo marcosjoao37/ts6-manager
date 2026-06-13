@@ -71,6 +71,9 @@ function normalizeFlowData(raw: any): FlowDefinition {
       const prefix = cmd.startsWith('!') ? '!' : config.commandPrefix || '!';
       const name = cmd.startsWith('!') ? cmd.substring(1) : cmd;
       data = { triggerType: 'command', label, commandPrefix: prefix, commandName: name, channelId: config.channelId ? String(config.channelId) : undefined, };
+    } else if (nodeType === 'trigger_discordMessage') {
+      type = 'trigger';
+      data = { triggerType: 'discordMessage', label, channelId: config.channelId ? String(config.channelId) : '', prefix: config.prefix || undefined };
     } else if (nodeType === 'action_kick') {
       type = 'action';
       data = { actionType: 'kick', label, reasonId: parseInt(config.reasonid) || 5, reasonMsg: config.reason || '' };
@@ -86,6 +89,9 @@ function normalizeFlowData(raw: any): FlowDefinition {
     } else if (nodeType === 'action_poke') {
       type = 'action';
       data = { actionType: 'poke', label, message: config.message || '' };
+    } else if (nodeType === 'action_discordSend') {
+      type = 'action';
+      data = { actionType: 'discordSend', label, channelId: config.channelId ? String(config.channelId) : '', message: config.message || '' };
     } else if (nodeType === 'action_channelCreate') {
       type = 'action';
       const params: Record<string, string> = {};
@@ -257,6 +263,28 @@ export class BotEngine {
 
   setVoiceBotManager(manager: any): void {
     this.flowRunner.setVoiceBotManager(manager);
+  }
+
+  setDiscordBridge(bridge: any): void {
+    this.flowRunner.setDiscordBridge(bridge);
+  }
+
+  /** Route a Discord channel message to flows with a matching discordMessage trigger. */
+  handleDiscordMessage(msg: { channelId: string; content: string; authorId: string; authorName: string }): void {
+    for (const flow of this.flows.values()) {
+      for (const triggerNode of flow.triggerNodes) {
+        const td = triggerNode.data as any;
+        if (td?.triggerType !== 'discordMessage') continue;
+        if (td.channelId && String(td.channelId) !== msg.channelId) continue;
+        if (td.prefix && !msg.content.startsWith(td.prefix)) continue;
+        this.executeFlow(flow, triggerNode.id, 'discordMessage', {
+          discord_content: msg.content,
+          discord_channel_id: msg.channelId,
+          discord_author: msg.authorName,
+          discord_author_id: msg.authorId,
+        });
+      }
+    }
   }
 
   getEventBridge(): EventBridge {

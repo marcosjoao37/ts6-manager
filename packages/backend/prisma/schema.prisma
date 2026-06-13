@@ -263,6 +263,7 @@ model DiscordSettings {
   notifyChannelId        String?
   notifyJoinTemplate     String?
   notifyLeaveTemplate    String?
+  flowMessageTrigger     Boolean  @default(false)
   statsMessageId         String?
   voiceChannelId         String?
   defaultMusicBotId      Int?

@@ -31,6 +31,7 @@ interface FlowInfo {
 
 export class FlowRunner {
   private voiceBotManager: VoiceBotManager | null = null;
+  private discordBridge: { sendFlowMessage(channelId: string, content: string): Promise<void> } | null = null;
 
   constructor(
     private prisma: PrismaClient,
@@ -40,6 +41,10 @@ export class FlowRunner {
 
   setVoiceBotManager(manager: VoiceBotManager): void {
     this.voiceBotManager = manager;
+  }
+
+  setDiscordBridge(bridge: { sendFlowMessage(channelId: string, content: string): Promise<void> }): void {
+    this.discordBridge = bridge;
   }
 
   async execute(
@@ -232,6 +237,7 @@ export class FlowRunner {
         case 'move': await this.executeMove(data as MoveActionData, ctx, client); break;
         case 'message': await this.executeMessage(data as MessageActionData, ctx, client); break;
         case 'poke': await this.executePoke(data as PokeActionData, ctx, client); break;
+        case 'discordSend': await this.executeDiscordSend(data, ctx); break;
         case 'channelCreate': await this.executeChannelCreate(data as ChannelCreateActionData, ctx, client); break;
         case 'groupAddClient': await this.executeGroupAddClient(data as GroupAddClientActionData, ctx, client); break;
         case 'groupRemoveClient': await this.executeGroupRemoveClient(data as GroupRemoveClientActionData, ctx, client); break;
@@ -326,6 +332,15 @@ export class FlowRunner {
     const clid = ctx.eventData.clid;
     const msg = await ctx.resolveTemplate(data.message);
     await client.executePost(ctx.sid, 'clientpoke', { clid, msg });
+  }
+
+  private async executeDiscordSend(data: any, ctx: ExecutionContext): Promise<void> {
+    if (!this.discordBridge) throw new Error('Discord bridge not available');
+    const channelId = String(data.channelId || '').trim();
+    if (!channelId) throw new Error('No Discord channel configured');
+    const content = await ctx.resolveTemplate(String(data.message || ''));
+    if (!content) throw new Error('Empty Discord message');
+    await this.discordBridge.sendFlowMessage(channelId, content);
   }
 
   private async executeChannelCreate(data: ChannelCreateActionData, ctx: ExecutionContext, client: WebQueryClient): Promise<void> {

@@ -30,6 +30,7 @@ discordRoutes.get('/settings', async (req: Request, res: Response, next) => {
       notifyChannelId: s.notifyChannelId,
       notifyJoinTemplate: s.notifyJoinTemplate,
       notifyLeaveTemplate: s.notifyLeaveTemplate,
+      flowMessageTrigger: s.flowMessageTrigger,
       defaultMusicBotId: s.defaultMusicBotId,
       serverConfigId: s.serverConfigId,
       virtualServerId: s.virtualServerId,
@@ -43,7 +44,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreateSettings(prisma);
 
-    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
+    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, flowMessageTrigger, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
 
     const data: any = {};
     if (enabled !== undefined) data.enabled = !!enabled;
@@ -59,6 +60,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     if (notifyChannelId !== undefined) data.notifyChannelId = notifyChannelId || null;
     if (notifyJoinTemplate !== undefined) data.notifyJoinTemplate = notifyJoinTemplate || null;
     if (notifyLeaveTemplate !== undefined) data.notifyLeaveTemplate = notifyLeaveTemplate || null;
+    if (flowMessageTrigger !== undefined) data.flowMessageTrigger = !!flowMessageTrigger;
     if (defaultMusicBotId !== undefined) data.defaultMusicBotId = defaultMusicBotId ? parseInt(defaultMusicBotId) : null;
     if (serverConfigId !== undefined) data.serverConfigId = serverConfigId ? parseInt(serverConfigId) : null;
     if (virtualServerId !== undefined) data.virtualServerId = parseInt(virtualServerId) || 1;

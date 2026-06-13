@@ -29,7 +29,8 @@ export type TriggerNodeData =
   | EventTriggerData
   | CronTriggerData
   | WebhookTriggerData
-  | CommandTriggerData;
+  | CommandTriggerData
+  | DiscordMessageTriggerData;
 
 export interface EventTriggerData {
   triggerType: 'event';
@@ -62,6 +63,13 @@ export interface CommandTriggerData {
   channelId?: string;
 }
 
+export interface DiscordMessageTriggerData {
+  triggerType: 'discordMessage';
+  label: string;
+  channelId: string;
+  prefix?: string; // only fire when the message starts with this
+}
+
 // --- Action Types ---
 export type ActionNodeData =
   | KickActionData
@@ -83,7 +91,8 @@ export type ActionNodeData =
   | RankCheckActionData
   | TempChannelCleanupActionData
   | AnimatedChannelActionData
-  | GenerateCodeActionData;
+  | GenerateCodeActionData
+  | DiscordSendActionData;
 
 export interface KickActionData {
   actionType: 'kick';
@@ -110,6 +119,13 @@ export interface MessageActionData {
   label: string;
   targetMode: 1 | 2 | 3;
   target?: string;
+  message: string;
+}
+
+export interface DiscordSendActionData {
+  actionType: 'discordSend';
+  label: string;
+  channelId: string;
   message: string;
 }
 

@@ -116,6 +116,10 @@ async function main() {
     console.error(`[Discord] Failed to start: ${err.message}`);
   });
 
+  // Wire Discord ↔ bot flows: Discord message triggers + send-message action
+  botEngine.setDiscordBridge(discordBridge);
+  discordBridge.setMessageHandler((msg) => botEngine.handleDiscordMessage(msg));
+
   // Connection journal: web + TS connection logging (non-blocking)
   const connectionJournal = new ConnectionJournal(prisma, connectionPool, voiceBotManager);
   app.locals.connectionJournal = connectionJournal;

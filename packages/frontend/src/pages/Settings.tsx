@@ -894,6 +894,18 @@ function DiscordTab() {
           <p className="text-[10px] text-muted-foreground">The /stats command stays available regardless of these toggles.</p>
         </div>
 
+        <div className="space-y-2 pt-1">
+          <Label className="text-xs font-medium">Bot flows</Label>
+          <div className="flex items-center gap-2">
+            <Switch checked={!!form.flowMessageTrigger} onCheckedChange={(v) => setForm((f) => ({ ...f, flowMessageTrigger: v }))} />
+            <Label className="text-xs font-normal">Enable flow message triggers</Label>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Lets the "Discord Message" flow trigger fire on channel messages. Requires the privileged
+            <span className="font-mono"> Message Content </span> intent — also enable it in the Discord developer portal (Bot → Privileged Gateway Intents).
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">TS server (stats & events)</Label>
