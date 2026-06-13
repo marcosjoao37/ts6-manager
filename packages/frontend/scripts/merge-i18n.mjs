@@ -14,14 +14,27 @@ const locales = Object.fromEntries(
   LANGS.map((l) => [l, JSON.parse(fs.readFileSync(path.join(localesDir, `${l}.json`), 'utf8'))]),
 );
 
+// Deep-merge so a fragment adds/updates keys without dropping existing ones
+// in the same namespace (e.g. the settings namespace migrated across waves).
+function deepMerge(target, src) {
+  for (const [k, v] of Object.entries(src)) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      target[k] = deepMerge(target[k] && typeof target[k] === 'object' ? target[k] : {}, v);
+    } else {
+      target[k] = v;
+    }
+  }
+  return target;
+}
+
 const fragments = fs.readdirSync(fragDir).filter((f) => f.endsWith('.json'));
 for (const file of fragments) {
   const frag = JSON.parse(fs.readFileSync(path.join(fragDir, file), 'utf8'));
   const ns = frag.namespace;
   for (const lang of LANGS) {
-    locales[lang][ns] = frag.keys[lang];
+    locales[lang][ns] = deepMerge(locales[lang][ns] && typeof locales[lang][ns] === 'object' ? locales[lang][ns] : {}, frag.keys[lang]);
   }
-  console.log(`merged: ${ns} (${Object.keys(frag.keys.en).length} keys)`);
+  console.log(`merged: ${ns} (${Object.keys(frag.keys.en).length} top-level keys)`);
 }
 
 for (const lang of LANGS) {

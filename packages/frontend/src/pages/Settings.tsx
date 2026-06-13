@@ -263,6 +263,7 @@ function MfaCard() {
 }
 
 function ConnectionsTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: servers, isLoading } = useQuery({ queryKey: ['servers'], queryFn: serversApi.list });
   const createServer = useMutation({ mutationFn: (data: any) => serversApi.create(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['servers'] }) });
@@ -285,13 +286,13 @@ function ConnectionsTab() {
     const payload = { ...form, webqueryPort: parseInt(form.webqueryPort), sshPort: parseInt(form.sshPort) };
     if (editId) {
       updateServer.mutate({ id: editId, data: payload }, {
-        onSuccess: () => { toast.success('Connection updated'); setEditId(null); setShowAdd(false); resetForm(); },
-        onError: () => toast.error('Failed to update'),
+        onSuccess: () => { toast.success(t('settings.connections.toastUpdated')); setEditId(null); setShowAdd(false); resetForm(); },
+        onError: () => toast.error(t('settings.connections.toastUpdateFailed')),
       });
     } else {
       createServer.mutate(payload, {
-        onSuccess: () => { toast.success('Connection added'); setShowAdd(false); resetForm(); },
-        onError: () => toast.error('Failed to create'),
+        onSuccess: () => { toast.success(t('settings.connections.toastAdded')); setShowAdd(false); resetForm(); },
+        onError: () => toast.error(t('settings.connections.toastCreateFailed')),
       });
     }
   };
@@ -314,8 +315,8 @@ function ConnectionsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Manage TeamSpeak server connections</p>
-        <Button size="sm" onClick={() => { resetForm(); setEditId(null); setShowAdd(true); }}><Plus className="h-4 w-4 mr-1" /> Add Connection</Button>
+        <p className="text-sm text-muted-foreground">{t('settings.connections.subtitle')}</p>
+        <Button size="sm" onClick={() => { resetForm(); setEditId(null); setShowAdd(true); }}><Plus className="h-4 w-4 mr-1" /> {t('settings.connections.add')}</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -325,28 +326,28 @@ function ConnectionsTab() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{server.name}</CardTitle>
                 <Badge variant={server.enabled ? 'default' : 'secondary'} className="text-[10px]">
-                  {server.enabled ? 'Enabled' : 'Disabled'}
+                  {server.enabled ? t('settings.connections.enabled') : t('settings.connections.disabled')}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <span className="text-muted-foreground">Host</span>
+                <span className="text-muted-foreground">{t('settings.connections.host')}</span>
                 <span className="font-mono-data">{server.host}:{server.webqueryPort}</span>
-                <span className="text-muted-foreground">Protocol</span>
+                <span className="text-muted-foreground">{t('settings.connections.protocol')}</span>
                 <span>{server.useHttps ? 'HTTPS' : 'HTTP'}</span>
                 <span className="text-muted-foreground">SSH</span>
                 <span className="font-mono-data">{server.sshPort || '-'}</span>
               </div>
               <div className="flex items-center gap-1 pt-2">
                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => testServer.mutate(server.id, {
-                  onSuccess: () => toast.success('Connection successful'),
-                  onError: () => toast.error('Connection failed'),
+                  onSuccess: () => toast.success(t('settings.connections.toastTestSuccess')),
+                  onError: () => toast.error(t('settings.connections.toastTestFailed')),
                 })}>
-                  <TestTube className="h-3 w-3 mr-1" /> Test
+                  <TestTube className="h-3 w-3 mr-1" /> {t('settings.connections.test')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openEdit(server)}>
-                  <Pencil className="h-3 w-3 mr-1" /> Edit
+                  <Pencil className="h-3 w-3 mr-1" /> {t('settings.connections.edit')}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteId(server.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
@@ -360,30 +361,30 @@ function ConnectionsTab() {
       {/* Add/Edit Dialog */}
       <Dialog open={showAdd} onOpenChange={(v) => { if (!v) { setShowAdd(false); setEditId(null); resetForm(); } else setShowAdd(true); }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{editId ? 'Edit Connection' : 'Add Connection'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editId ? t('settings.connections.dialogEditTitle') : t('settings.connections.dialogAddTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="My TS Server" /></div>
+            <div><Label className="text-xs">{t('settings.connections.name')}</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t('settings.connections.namePlaceholder')} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Host</Label><Input value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="127.0.0.1" /></div>
-              <div><Label className="text-xs">WebQuery Port</Label><Input type="number" value={form.webqueryPort} onChange={(e) => setForm({ ...form, webqueryPort: e.target.value })} /></div>
+              <div><Label className="text-xs">{t('settings.connections.host')}</Label><Input value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="127.0.0.1" /></div>
+              <div><Label className="text-xs">{t('settings.connections.webqueryPort')}</Label><Input type="number" value={form.webqueryPort} onChange={(e) => setForm({ ...form, webqueryPort: e.target.value })} /></div>
             </div>
             <div>
-              <Label className="text-xs">API Key</Label>
-              <Input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={editId ? '(unchanged — enter new key to update)' : 'WebQuery API Key'} type="password" />
+              <Label className="text-xs">{t('settings.connections.apiKey')}</Label>
+              <Input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={editId ? t('settings.connections.apiKeyPlaceholderEdit') : t('settings.connections.apiKeyPlaceholder')} type="password" />
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={form.useHttps} onCheckedChange={(v) => setForm({ ...form, useHttps: v })} />
-              <Label className="text-xs">Use HTTPS</Label>
+              <Label className="text-xs">{t('settings.connections.useHttps')}</Label>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div><Label className="text-xs">SSH Port</Label><Input type="number" value={form.sshPort} onChange={(e) => setForm({ ...form, sshPort: e.target.value })} /></div>
-              <div><Label className="text-xs">SSH User</Label><Input value={form.sshUsername} onChange={(e) => setForm({ ...form, sshUsername: e.target.value })} placeholder="serveradmin" /></div>
-              <div><Label className="text-xs">SSH Password</Label><Input type="password" value={form.sshPassword} onChange={(e) => setForm({ ...form, sshPassword: e.target.value })} /></div>
+              <div><Label className="text-xs">{t('settings.connections.sshPort')}</Label><Input type="number" value={form.sshPort} onChange={(e) => setForm({ ...form, sshPort: e.target.value })} /></div>
+              <div><Label className="text-xs">{t('settings.connections.sshUser')}</Label><Input value={form.sshUsername} onChange={(e) => setForm({ ...form, sshUsername: e.target.value })} placeholder="serveradmin" /></div>
+              <div><Label className="text-xs">{t('settings.connections.sshPassword')}</Label><Input type="password" value={form.sshPassword} onChange={(e) => setForm({ ...form, sshPassword: e.target.value })} /></div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowAdd(false); setEditId(null); resetForm(); }}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!form.name || !form.host || !form.apiKey}>{editId ? 'Update' : 'Add'}</Button>
+            <Button variant="outline" onClick={() => { setShowAdd(false); setEditId(null); resetForm(); }}>{t('settings.connections.cancel')}</Button>
+            <Button onClick={handleSave} disabled={!form.name || !form.host || !form.apiKey}>{editId ? t('settings.connections.update') : t('settings.connections.addShort')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -391,9 +392,9 @@ function ConnectionsTab() {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={() => setDeleteId(null)}
-        title="Delete Connection?"
-        description="This will remove the server connection. Bots linked to this server will stop working."
-        onConfirm={() => { if (deleteId) deleteServer.mutate(deleteId, { onSuccess: () => { toast.success('Connection deleted'); setDeleteId(null); } }); }}
+        title={t('settings.connections.deleteTitle')}
+        description={t('settings.connections.deleteDescription')}
+        onConfirm={() => { if (deleteId) deleteServer.mutate(deleteId, { onSuccess: () => { toast.success(t('settings.connections.toastDeleted')); setDeleteId(null); } }); }}
         destructive
       />
     </div>
@@ -401,6 +402,7 @@ function ConnectionsTab() {
 }
 
 function UsersTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: users, isLoading } = useQuery({ queryKey: ['users'], queryFn: usersApi.list });
   const createUser = useMutation({ mutationFn: (data: any) => usersApi.create(data), onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }) });
@@ -419,47 +421,47 @@ function UsersTab() {
 
   const handleCreate = () => {
     createUser.mutate(form, {
-      onSuccess: () => { toast.success('User created'); setShowAdd(false); setForm({ username: '', password: '', displayName: '', role: 'viewer' }); },
-      onError: () => toast.error('Failed to create user'),
+      onSuccess: () => { toast.success(t('settings.users.toastCreated')); setShowAdd(false); setForm({ username: '', password: '', displayName: '', role: 'viewer' }); },
+      onError: () => toast.error(t('settings.users.toastCreateFailed')),
     });
   };
 
   const handleRoleChange = (userId: number, role: string) => {
     updateUser.mutate({ id: userId, data: { role } }, {
-      onSuccess: () => toast.success('Role updated'),
-      onError: () => toast.error('Failed to update role'),
+      onSuccess: () => toast.success(t('settings.users.toastRoleUpdated')),
+      onError: () => toast.error(t('settings.users.toastRoleFailed')),
     });
   };
 
   const handleToggleEnabled = (userId: number, enabled: boolean) => {
     updateUser.mutate({ id: userId, data: { enabled } }, {
-      onSuccess: () => toast.success(enabled ? 'User enabled' : 'User disabled'),
-      onError: () => toast.error('Failed to update status'),
+      onSuccess: () => toast.success(enabled ? t('settings.users.toastEnabled') : t('settings.users.toastDisabled')),
+      onError: () => toast.error(t('settings.users.toastStatusFailed')),
     });
   };
 
   const handleRequireMfa = (userId: number, mfaRequired: boolean) => {
     updateUser.mutate({ id: userId, data: { mfaRequired } }, {
-      onSuccess: () => toast.success(mfaRequired ? '2FA required for user' : '2FA no longer required'),
-      onError: () => toast.error('Failed to update 2FA requirement'),
+      onSuccess: () => toast.success(mfaRequired ? t('settings.users.toastMfaRequired') : t('settings.users.toastMfaNotRequired')),
+      onError: () => toast.error(t('settings.users.toastMfaRequireFailed')),
     });
   };
 
   const handleResetMfa = (userId: number) => {
     updateUser.mutate({ id: userId, data: { resetMfa: true } }, {
-      onSuccess: () => toast.success('2FA reset — the user must re-enroll'),
-      onError: () => toast.error('Failed to reset 2FA'),
+      onSuccess: () => toast.success(t('settings.users.toastMfaReset')),
+      onError: () => toast.error(t('settings.users.toastMfaResetFailed')),
     });
   };
 
   const handleResetPassword = () => {
     if (!resetPwUserId || resetPwValue.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error(t('settings.users.passwordMinError'));
       return;
     }
     updateUser.mutate({ id: resetPwUserId, data: { password: resetPwValue } }, {
-      onSuccess: () => { toast.success('Password reset successfully'); setResetPwUserId(null); setResetPwValue(''); },
-      onError: () => toast.error('Failed to reset password'),
+      onSuccess: () => { toast.success(t('settings.users.toastPasswordReset')); setResetPwUserId(null); setResetPwValue(''); },
+      onError: () => toast.error(t('settings.users.toastPasswordResetFailed')),
     });
   };
 
@@ -470,20 +472,20 @@ function UsersTab() {
       <JournalRetentionCard />
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Manage webapp users and roles</p>
-        <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1" /> Add User</Button>
+        <p className="text-sm text-muted-foreground">{t('settings.users.subtitle')}</p>
+        <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1" /> {t('settings.users.add')}</Button>
       </div>
 
       <div className="rounded-md border border-border overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="h-10 px-3 text-left font-medium text-muted-foreground">Username</th>
-              <th className="h-10 px-3 text-left font-medium text-muted-foreground">Display Name</th>
-              <th className="h-10 px-3 text-left font-medium text-muted-foreground">Role</th>
-              <th className="h-10 px-3 text-left font-medium text-muted-foreground">Status</th>
-              <th className="h-10 px-3 text-left font-medium text-muted-foreground">2FA</th>
-              <th className="h-10 px-3 text-right font-medium text-muted-foreground">Actions</th>
+              <th className="h-10 px-3 text-left font-medium text-muted-foreground">{t('settings.users.colUsername')}</th>
+              <th className="h-10 px-3 text-left font-medium text-muted-foreground">{t('settings.users.colDisplayName')}</th>
+              <th className="h-10 px-3 text-left font-medium text-muted-foreground">{t('settings.users.colRole')}</th>
+              <th className="h-10 px-3 text-left font-medium text-muted-foreground">{t('settings.users.colStatus')}</th>
+              <th className="h-10 px-3 text-left font-medium text-muted-foreground">{t('settings.users.col2fa')}</th>
+              <th className="h-10 px-3 text-right font-medium text-muted-foreground">{t('settings.users.colActions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -502,8 +504,8 @@ function UsersTab() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="admin">{t('settings.users.roleAdmin')}</SelectItem>
+                          <SelectItem value="viewer">{t('settings.users.roleViewer')}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -511,7 +513,7 @@ function UsersTab() {
                   <td className="px-3 py-2.5">
                     {isProtected ? (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-                        <Check className="h-3 w-3" /> Active
+                        <Check className="h-3 w-3" /> {t('settings.users.active')}
                       </span>
                     ) : (
                       <Switch
@@ -522,20 +524,20 @@ function UsersTab() {
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <span title="Require 2FA for this user" className="inline-flex items-center gap-1">
+                      <span title={t('settings.users.require2faTitle')} className="inline-flex items-center gap-1">
                         <Switch checked={!!u.mfaRequired} onCheckedChange={(v) => handleRequireMfa(u.id, v)} />
-                        <span className="text-[10px] text-muted-foreground">{u.mfaEnabled ? 'on' : (u.mfaRequired ? 'pending' : 'off')}</span>
+                        <span className="text-[10px] text-muted-foreground">{u.mfaEnabled ? t('settings.users.mfaOn') : (u.mfaRequired ? t('settings.users.mfaPending') : t('settings.users.mfaOff'))}</span>
                       </span>
                       {u.mfaEnabled && (
-                        <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5" title="Reset (lost device)" onClick={() => handleResetMfa(u.id)}>
-                          Reset
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5" title={t('settings.users.resetLostDeviceTitle')} onClick={() => handleResetMfa(u.id)}>
+                          {t('settings.users.reset')}
                         </Button>
                       )}
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="inline-flex items-center gap-0.5">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Reset Password" onClick={() => { setResetPwUserId(u.id); setResetPwValue(''); }}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title={t('settings.users.resetPasswordTitle')} onClick={() => { setResetPwUserId(u.id); setResetPwValue(''); }}>
                         <KeyRound className="h-3.5 w-3.5" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteId(u.id)} disabled={isProtected}>
@@ -553,25 +555,25 @@ function UsersTab() {
       {/* Add User Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add User</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('settings.users.addDialogTitle')}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label className="text-xs">Username</Label><Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="johndoe" /></div>
-            <div><Label className="text-xs">Display Name</Label><Input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="John Doe" /></div>
-            <div><Label className="text-xs">Password</Label><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="********" /></div>
+            <div><Label className="text-xs">{t('settings.users.username')}</Label><Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="johndoe" /></div>
+            <div><Label className="text-xs">{t('settings.users.displayName')}</Label><Input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="John Doe" /></div>
+            <div><Label className="text-xs">{t('settings.users.password')}</Label><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="********" /></div>
             <div>
-              <Label className="text-xs">Role</Label>
+              <Label className="text-xs">{t('settings.users.role')}</Label>
               <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
+                  <SelectItem value="admin">{t('settings.users.roleAdmin')}</SelectItem>
+                  <SelectItem value="viewer">{t('settings.users.roleViewer')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={handleCreate} disabled={!form.username || !form.password}>Create</Button>
+            <Button variant="outline" onClick={() => setShowAdd(false)}>{t('settings.users.cancel')}</Button>
+            <Button onClick={handleCreate} disabled={!form.username || !form.password}>{t('settings.users.create')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -580,21 +582,21 @@ function UsersTab() {
       <Dialog open={resetPwUserId !== null} onOpenChange={(v) => { if (!v) { setResetPwUserId(null); setResetPwValue(''); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">Reset Password</DialogTitle>
+            <DialogTitle className="text-sm">{t('settings.users.resetPasswordDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Set a new password for <span className="font-medium text-foreground">{userList.find((u: any) => u.id === resetPwUserId)?.username}</span>
+              {t('settings.users.setNewPasswordFor')} <span className="font-medium text-foreground">{userList.find((u: any) => u.id === resetPwUserId)?.username}</span>
             </p>
             <div>
-              <Label className="text-xs">New Password</Label>
-              <Input type="password" value={resetPwValue} onChange={(e) => setResetPwValue(e.target.value)} placeholder="Min. 6 characters" />
+              <Label className="text-xs">{t('settings.users.newPassword')}</Label>
+              <Input type="password" value={resetPwValue} onChange={(e) => setResetPwValue(e.target.value)} placeholder={t('settings.users.minCharsPlaceholder')} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setResetPwUserId(null); setResetPwValue(''); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setResetPwUserId(null); setResetPwValue(''); }}>{t('settings.users.cancel')}</Button>
             <Button onClick={handleResetPassword} disabled={resetPwValue.length < 6 || updateUser.isPending}>
-              {updateUser.isPending ? 'Resetting...' : 'Reset Password'}
+              {updateUser.isPending ? t('settings.users.resetting') : t('settings.users.resetPassword')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -603,9 +605,9 @@ function UsersTab() {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={() => setDeleteId(null)}
-        title="Delete User?"
-        description="This user will be permanently deleted."
-        onConfirm={() => { if (deleteId) deleteUser.mutate(deleteId, { onSuccess: () => { toast.success('User deleted'); setDeleteId(null); } }); }}
+        title={t('settings.users.deleteTitle')}
+        description={t('settings.users.deleteDescription')}
+        onConfirm={() => { if (deleteId) deleteUser.mutate(deleteId, { onSuccess: () => { toast.success(t('settings.users.toastDeleted')); setDeleteId(null); } }); }}
         destructive
       />
     </div>
@@ -613,6 +615,7 @@ function UsersTab() {
 }
 
 function YouTubeTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [pasteMode, setPasteMode] = useState(false);
   const [cookieText, setCookieText] = useState('');
@@ -625,30 +628,30 @@ function YouTubeTab() {
   const uploadFile = useMutation({
     mutationFn: (file: File) => settingsApi.uploadYtCookieFile(file),
     onSuccess: () => {
-      toast.success('Cookie file uploaded');
+      toast.success(t('settings.youtube.toastFileUploaded'));
       qc.invalidateQueries({ queryKey: ['yt-cookie-status'] });
     },
-    onError: () => toast.error('Failed to upload cookie file'),
+    onError: () => toast.error(t('settings.youtube.toastUploadFailed')),
   });
 
   const uploadText = useMutation({
     mutationFn: (text: string) => settingsApi.uploadYtCookieText(text),
     onSuccess: () => {
-      toast.success('Cookies saved');
+      toast.success(t('settings.youtube.toastCookiesSaved'));
       setCookieText('');
       setPasteMode(false);
       qc.invalidateQueries({ queryKey: ['yt-cookie-status'] });
     },
-    onError: () => toast.error('Failed to save cookies'),
+    onError: () => toast.error(t('settings.youtube.toastSaveFailed')),
   });
 
   const deleteCookies = useMutation({
     mutationFn: () => settingsApi.deleteYtCookies(),
     onSuccess: () => {
-      toast.success('Cookie file removed');
+      toast.success(t('settings.youtube.toastCookiesRemoved'));
       qc.invalidateQueries({ queryKey: ['yt-cookie-status'] });
     },
-    onError: () => toast.error('Failed to remove cookies'),
+    onError: () => toast.error(t('settings.youtube.toastRemoveFailed')),
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -666,22 +669,21 @@ function YouTubeTab() {
     <div className="max-w-lg space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">YouTube Cookies</CardTitle>
+          <CardTitle className="text-sm font-medium">{t('settings.youtube.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Upload a cookies.txt file to access age-restricted or member-only YouTube content.
-            You can export cookies from your browser using extensions like
-            {' '}<span className="font-medium">Get cookies.txt LOCALLY</span> (Chrome/Firefox).
+            {t('settings.youtube.description')}
+            {' '}<span className="font-medium">Get cookies.txt LOCALLY</span> {t('settings.youtube.descriptionBrowsers')}
           </p>
 
           {/* Status */}
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${status?.active ? 'bg-green-500' : 'bg-zinc-500'}`} />
             <span className="text-sm">
-              {isLoading ? 'Loading...' : status?.active
-                ? `Cookies active (${formatSize(status.size)})`
-                : 'No cookies configured'}
+              {isLoading ? t('settings.youtube.loading') : status?.active
+                ? t('settings.youtube.cookiesActive', { size: formatSize(status.size) })
+                : t('settings.youtube.noCookies')}
             </span>
           </div>
 
@@ -701,7 +703,7 @@ function YouTubeTab() {
               disabled={uploadFile.isPending}
             >
               <Upload className="h-3.5 w-3.5 mr-1" />
-              {uploadFile.isPending ? 'Uploading...' : 'Upload cookies.txt'}
+              {uploadFile.isPending ? t('settings.youtube.uploading') : t('settings.youtube.uploadFile')}
             </Button>
             <Button
               variant="outline"
@@ -709,7 +711,7 @@ function YouTubeTab() {
               onClick={() => setPasteMode(!pasteMode)}
             >
               <FileText className="h-3.5 w-3.5 mr-1" />
-              Paste cookies
+              {t('settings.youtube.pasteCookies')}
             </Button>
             {status?.active && (
               <Button
@@ -720,7 +722,7 @@ function YouTubeTab() {
                 disabled={deleteCookies.isPending}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Remove
+                {t('settings.youtube.remove')}
               </Button>
             )}
           </div>
@@ -740,10 +742,10 @@ function YouTubeTab() {
                   onClick={() => uploadText.mutate(cookieText)}
                   disabled={!cookieText.trim() || uploadText.isPending}
                 >
-                  {uploadText.isPending ? 'Saving...' : 'Save'}
+                  {uploadText.isPending ? t('settings.youtube.saving') : t('settings.youtube.save')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => { setPasteMode(false); setCookieText(''); }}>
-                  Cancel
+                  {t('settings.youtube.cancel')}
                 </Button>
               </div>
             </div>
@@ -757,6 +759,7 @@ function YouTubeTab() {
 // ─── Discord Tab ─────────────────────────────────────────────
 
 function DiscordTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: settings, isLoading } = useQuery({ queryKey: ['discord-settings'], queryFn: discordApi.settings });
   const { data: status } = useQuery({
@@ -795,10 +798,10 @@ function DiscordTab() {
       qc.invalidateQueries({ queryKey: ['discord-settings'] });
       qc.invalidateQueries({ queryKey: ['discord-status'] });
       qc.invalidateQueries({ queryKey: ['discord-channels'] });
-      if (result?.status?.error) toast.error(`Saved, but: ${result.status.error}`);
-      else toast.success('Discord settings saved');
+      if (result?.status?.error) toast.error(t('settings.discord.toastSavedButError', { error: result.status.error }));
+      else toast.success(t('settings.discord.toastSaved'));
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.discord.toastSaveFailed')),
   });
 
   if (isLoading || !settings) return <PageLoader />;
@@ -813,14 +816,14 @@ function DiscordTab() {
       <Label className="text-xs">{label}</Label>
       {channelOptions.length > 0 ? (
         <Select value={form[key] || 'none'} onValueChange={(v) => setForm((f) => ({ ...f, [key]: v === 'none' ? null : v }))}>
-          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('settings.discord.none')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">— Disabled —</SelectItem>
+            <SelectItem value="none">{t('settings.discord.disabledOption')}</SelectItem>
             {channelOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
       ) : (
-        <Input className="h-8 text-xs" placeholder="Channel ID (connect the bot to pick from a list)"
+        <Input className="h-8 text-xs" placeholder={t('settings.discord.channelIdPlaceholder')}
           value={form[key] || ''} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value || null }))} />
       )}
       <p className="text-[10px] text-muted-foreground">{hint}</p>
@@ -830,13 +833,13 @@ function DiscordTab() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-sm">Discord Integration</CardTitle>
+        <CardTitle className="text-sm">{t('settings.discord.title')}</CardTitle>
         <div className="flex items-center gap-2">
           {status?.running
-            ? <Badge className="bg-emerald-600">Connected{status.guildName ? ` — ${status.guildName}` : ''}</Badge>
+            ? <Badge className="bg-emerald-600">{status.guildName ? t('settings.discord.connectedTo', { guild: status.guildName }) : t('settings.discord.connected')}</Badge>
             : status?.enabled
-              ? <Badge variant="destructive">{status?.error ? 'Error' : 'Connecting...'}</Badge>
-              : <Badge variant="outline">Disabled</Badge>}
+              ? <Badge variant="destructive">{status?.error ? t('settings.discord.error') : t('settings.discord.connecting')}</Badge>
+              : <Badge variant="outline">{t('settings.discord.disabled')}</Badge>}
         </div>
       </CardHeader>
       <CardContent className="space-y-4 max-w-xl">
@@ -845,127 +848,127 @@ function DiscordTab() {
 
         <div className="flex items-center gap-2">
           <Switch checked={!!form.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, enabled: v }))} />
-          <Label className="text-xs">Enable Discord bot</Label>
+          <Label className="text-xs">{t('settings.discord.enableBot')}</Label>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Bot Token</Label>
+          <Label className="text-xs">{t('settings.discord.botToken')}</Label>
           <Input className="h-8 text-xs" type="password"
-            placeholder={settings.hasToken ? '(unchanged — enter new token to update)' : 'Discord bot token'}
+            placeholder={settings.hasToken ? t('settings.discord.botTokenPlaceholderSet') : t('settings.discord.botTokenPlaceholder')}
             value={form.botToken || ''} onChange={(e) => setForm((f) => ({ ...f, botToken: e.target.value }))} />
           <p className="text-[10px] text-muted-foreground">
-            Create an application on the Discord Developer Portal, add a Bot, and invite it with the "bot" and "applications.commands" scopes.
+            {t('settings.discord.botTokenHint')}
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Discord server</Label>
+          <Label className="text-xs">{t('settings.discord.server')}</Label>
           {guilds.length > 0 ? (
             <Select value={form.guildId || 'none'} onValueChange={(v) => setForm((f) => ({ ...f, guildId: v === 'none' ? null : v }))}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select a server..." /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t('settings.discord.selectServer')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">— None —</SelectItem>
+                <SelectItem value="none">{t('settings.discord.noneOption')}</SelectItem>
                 {guilds.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
           ) : (
-            <Input className="h-8 text-xs" placeholder="Guild ID (save the token first to pick from a list)"
+            <Input className="h-8 text-xs" placeholder={t('settings.discord.guildIdPlaceholder')}
               value={form.guildId || ''} onChange={(e) => setForm((f) => ({ ...f, guildId: e.target.value || null }))} />
           )}
-          <p className="text-[10px] text-muted-foreground">Servers the bot has been invited to — save the token and enable first, the list appears once connected.</p>
+          <p className="text-[10px] text-muted-foreground">{t('settings.discord.serverHint')}</p>
         </div>
 
-        {channelField('Notifications channel', 'notificationsChannelId', 'Target for connect/disconnect and now-playing notifications below', textChannels)}
-        {channelField('Stats channel', 'statsChannelId', 'Target for the auto-updated stats panel', textChannels)}
-        {channelField('Voice channel (music relay)', 'voiceChannelId', 'The bot joins this voice channel and streams the music bot audio — /join and /leave override it', voiceChannels)}
+        {channelField(t('settings.discord.notificationsChannel'), 'notificationsChannelId', t('settings.discord.notificationsChannelHint'), textChannels)}
+        {channelField(t('settings.discord.statsChannel'), 'statsChannelId', t('settings.discord.statsChannelHint'), textChannels)}
+        {channelField(t('settings.discord.voiceChannel'), 'voiceChannelId', t('settings.discord.voiceChannelHint'), voiceChannels)}
 
         <div className="space-y-2 pt-1">
-          <Label className="text-xs font-medium">Notifications</Label>
+          <Label className="text-xs font-medium">{t('settings.discord.notifications')}</Label>
           <div className="flex items-center gap-2">
             <Switch checked={!!form.notifyConnections} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyConnections: v }))} />
-            <Label className="text-xs font-normal">TS presence (connect / channel join)</Label>
+            <Label className="text-xs font-normal">{t('settings.discord.tsPresence')}</Label>
           </div>
 
           {form.notifyConnections && (
             <div className="ml-9 space-y-2 border-l border-border pl-3">
               <div className="space-y-1.5">
-                <Label className="text-[11px]">Watch a specific channel</Label>
+                <Label className="text-[11px]">{t('settings.discord.watchChannel')}</Label>
                 {tsChannels.length > 0 ? (
                   <Select value={form.notifyChannelId || 'server'} onValueChange={(v) => setForm((f) => ({ ...f, notifyChannelId: v === 'server' ? null : v }))}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="server">Whole server (connect / disconnect)</SelectItem>
+                      <SelectItem value="server">{t('settings.discord.wholeServer')}</SelectItem>
                       {tsChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Input className="h-8 text-xs" placeholder="Channel ID (or leave empty for whole-server)"
+                  <Input className="h-8 text-xs" placeholder={t('settings.discord.watchChannelPlaceholder')}
                     value={form.notifyChannelId || ''} onChange={(e) => setForm((f) => ({ ...f, notifyChannelId: e.target.value || null }))} />
                 )}
                 <p className="text-[10px] text-muted-foreground">
-                  Empty = notify on server connect/disconnect. Set = notify only on join/leave of that channel.
+                  {t('settings.discord.watchChannelHint')}
                 </p>
               </div>
 
               {form.notifyChannelId && (
                 <div className="grid grid-cols-1 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-[11px]">Join message</Label>
+                    <Label className="text-[11px]">{t('settings.discord.joinMessage')}</Label>
                     <Input className="h-8 text-xs" placeholder="{user} a rejoint le canal {channel} du TeamSpeak"
                       value={form.notifyJoinTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyJoinTemplate: e.target.value || null }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px]">Leave message</Label>
+                    <Label className="text-[11px]">{t('settings.discord.leaveMessage')}</Label>
                     <Input className="h-8 text-xs" placeholder="{user} a quitté le canal {channel} du TeamSpeak"
                       value={form.notifyLeaveTemplate || ''} onChange={(e) => setForm((f) => ({ ...f, notifyLeaveTemplate: e.target.value || null }))} />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Variables: <span className="font-mono">{'{user}'}</span> and <span className="font-mono">{'{channel}'}</span>.</p>
+                  <p className="text-[10px] text-muted-foreground">{t('settings.discord.templateVariables')} <span className="font-mono">{'{user}'}</span> {t('settings.discord.and')} <span className="font-mono">{'{channel}'}</span>.</p>
                 </div>
               )}
             </div>
           )}
           <div className="flex items-center gap-2">
             <Switch checked={!!form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
-            <Label className="text-xs font-normal">Now playing (music)</Label>
+            <Label className="text-xs font-normal">{t('settings.discord.nowPlaying')}</Label>
           </div>
           <div className="flex items-center gap-2">
             <Switch checked={!!form.statsLiveEnabled} onCheckedChange={(v) => setForm((f) => ({ ...f, statsLiveEnabled: v }))} />
-            <Label className="text-xs font-normal">Live stats panel (edited every 60s)</Label>
+            <Label className="text-xs font-normal">{t('settings.discord.liveStatsPanel')}</Label>
           </div>
-          <p className="text-[10px] text-muted-foreground">The /stats command stays available regardless of these toggles.</p>
+          <p className="text-[10px] text-muted-foreground">{t('settings.discord.statsCommandHint')}</p>
         </div>
 
         <div className="space-y-2 pt-1">
-          <Label className="text-xs font-medium">Bot flows</Label>
+          <Label className="text-xs font-medium">{t('settings.discord.botFlows')}</Label>
           <div className="flex items-center gap-2">
             <Switch checked={!!form.flowMessageTrigger} onCheckedChange={(v) => setForm((f) => ({ ...f, flowMessageTrigger: v }))} />
-            <Label className="text-xs font-normal">Enable flow message triggers</Label>
+            <Label className="text-xs font-normal">{t('settings.discord.enableFlowTriggers')}</Label>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Lets the "Discord Message" flow trigger fire on channel messages. Requires the privileged
-            <span className="font-mono"> Message Content </span> intent — also enable it in the Discord developer portal (Bot → Privileged Gateway Intents).
+            {t('settings.discord.flowTriggersHintPre')}
+            <span className="font-mono"> Message Content </span> {t('settings.discord.flowTriggersHintPost')}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">TS server (stats & events)</Label>
+            <Label className="text-xs">{t('settings.discord.tsServer')}</Label>
             <Select value={form.serverConfigId ? String(form.serverConfigId) : 'none'}
               onValueChange={(v) => setForm((f) => ({ ...f, serverConfigId: v === 'none' ? null : parseInt(v) }))}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">— None —</SelectItem>
+                <SelectItem value="none">{t('settings.discord.noneOption')}</SelectItem>
                 {serverList.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Default music bot (/play, /stop...)</Label>
+            <Label className="text-xs">{t('settings.discord.defaultMusicBot')}</Label>
             <Select value={form.defaultMusicBotId ? String(form.defaultMusicBotId) : 'none'}
               onValueChange={(v) => setForm((f) => ({ ...f, defaultMusicBotId: v === 'none' ? null : parseInt(v) }))}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">— None —</SelectItem>
+                <SelectItem value="none">{t('settings.discord.noneOption')}</SelectItem>
                 {botList.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -973,7 +976,7 @@ function DiscordTab() {
         </div>
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? 'Saving & reconnecting...' : 'Save'}
+          {save.isPending ? t('settings.discord.savingReconnecting') : t('settings.discord.save')}
         </Button>
       </CardContent>
     </Card>
@@ -983,6 +986,7 @@ function DiscordTab() {
 // ─── Spotify Tab ─────────────────────────────────────────────
 
 function SpotifyTab() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: settings, isLoading } = useQuery({ queryKey: ['spotify-settings'], queryFn: spotifyApi.settings });
   const [form, setForm] = useState<{ enabled: boolean; clientId: string; clientSecret: string; maxAlbumTracks: number }>({
@@ -1007,9 +1011,9 @@ function SpotifyTab() {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['spotify-settings'] });
-      toast.success('Spotify settings saved');
+      toast.success(t('settings.spotify.toastSaved'));
     },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.spotify.toastSaveFailed')),
   });
 
   if (isLoading || !settings) return <PageLoader />;
@@ -1017,47 +1021,44 @@ function SpotifyTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Spotify</CardTitle>
+        <CardTitle className="text-sm">{t('settings.spotify.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 max-w-xl">
         <p className="text-[11px] text-muted-foreground">
-          Spotify doesn't allow audio downloads — these credentials are used only to read track/album
-          metadata from a Spotify link. Playback then finds the matching track on YouTube. Paste a
-          Spotify track or album link into <span className="font-mono">!play</span> /{' '}
-          <span className="font-mono">/play</span> (or <span className="font-mono">!spotify</span>).
-          Create an app on the{' '}
+          {t('settings.spotify.descriptionPre')} <span className="font-mono">!play</span> /{' '}
+          <span className="font-mono">/play</span> {t('settings.spotify.descriptionOr')} <span className="font-mono">!spotify</span>{t('settings.spotify.descriptionMid')}{' '}
           <a className="underline" href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">
-            Spotify Developer Dashboard
+            {t('settings.spotify.dashboardLink')}
           </a>{' '}
-          to get a Client ID and Secret.
+          {t('settings.spotify.descriptionPost')}
         </p>
 
         <div className="flex items-center gap-2">
           <Switch checked={form.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, enabled: v }))} />
-          <Label className="text-xs">Enable Spotify link support</Label>
+          <Label className="text-xs">{t('settings.spotify.enable')}</Label>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Client ID</Label>
+          <Label className="text-xs">{t('settings.spotify.clientId')}</Label>
           <Input className="h-8 text-xs" value={form.clientId}
             onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))} />
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Client Secret</Label>
+          <Label className="text-xs">{t('settings.spotify.clientSecret')}</Label>
           <Input className="h-8 text-xs" type="password"
-            placeholder={settings.hasClientSecret ? '(unchanged — enter new secret to update)' : 'Spotify client secret'}
+            placeholder={settings.hasClientSecret ? t('settings.spotify.clientSecretPlaceholderSet') : t('settings.spotify.clientSecretPlaceholder')}
             value={form.clientSecret} onChange={(e) => setForm((f) => ({ ...f, clientSecret: e.target.value }))} />
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Max tracks per album</Label>
+          <Label className="text-xs">{t('settings.spotify.maxAlbumTracks')}</Label>
           <Input className="h-8 text-xs w-32" type="number" min={1} value={form.maxAlbumTracks}
             onChange={(e) => setForm((f) => ({ ...f, maxAlbumTracks: parseInt(e.target.value) || 50 }))} />
         </div>
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? 'Saving...' : 'Save'}
+          {save.isPending ? t('settings.spotify.saving') : t('settings.spotify.save')}
         </Button>
       </CardContent>
     </Card>
@@ -1067,6 +1068,7 @@ function SpotifyTab() {
 // ─── Password Policy Card ────────────────────────────────────
 
 function PasswordPolicyCard() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data: policy } = useQuery({ queryKey: ['password-policy'], queryFn: usersApi.passwordPolicy });
   const [minLength, setMinLength] = useState(12);
@@ -1078,33 +1080,33 @@ function PasswordPolicyCard() {
 
   const save = useMutation({
     mutationFn: () => usersApi.updatePasswordPolicy({ minLength, requireComplexity }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['password-policy'] }); toast.success('Password policy saved'); },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['password-policy'] }); toast.success(t('settings.users.passwordPolicy.toastSaved')); },
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.users.passwordPolicy.toastSaveFailed')),
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Password policy</CardTitle>
+        <CardTitle className="text-sm">{t('settings.users.passwordPolicy.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 max-w-xl">
         <div className="flex items-center gap-3">
-          <Label className="text-xs w-40">Minimum length</Label>
+          <Label className="text-xs w-40">{t('settings.users.passwordPolicy.minLength')}</Label>
           <Input className="h-8 text-xs w-24" type="number" min={1} max={128} value={minLength}
             onChange={(e) => setMinLength(parseInt(e.target.value) || 1)} />
         </div>
         <div className="flex items-center gap-2">
           <Switch checked={requireComplexity} onCheckedChange={setRequireComplexity} />
           <Label className="text-xs font-normal">
-            Obligation d'utiliser un mot de passe robuste
-            <span className="text-muted-foreground"> (une majuscule, une minuscule, un chiffre, un caractère spécial)</span>
+            {t('settings.users.passwordPolicy.requireComplexity')}
+            <span className="text-muted-foreground"> {t('settings.users.passwordPolicy.requireComplexityHint')}</span>
           </Label>
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Applied when creating a user, changing your password, and when an admin resets a password.
+          {t('settings.users.passwordPolicy.appliedHint')}
         </p>
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? 'Saving...' : 'Save policy'}
+          {save.isPending ? t('settings.users.passwordPolicy.saving') : t('settings.users.passwordPolicy.savePolicy')}
         </Button>
       </CardContent>
     </Card>
@@ -1114,6 +1116,7 @@ function PasswordPolicyCard() {
 // ─── Journal Retention Card ──────────────────────────────────
 
 function JournalRetentionCard() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['journal-retention'], queryFn: journalApi.retention });
   const [days, setDays] = useState(90);
@@ -1122,24 +1125,24 @@ function JournalRetentionCard() {
 
   const save = useMutation({
     mutationFn: () => journalApi.updateRetention(days),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['journal-retention'] }); toast.success('Retention saved'); },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['journal-retention'] }); toast.success(t('settings.users.journalRetention.toastSaved')); },
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.users.journalRetention.toastSaveFailed')),
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Connection journal</CardTitle>
+        <CardTitle className="text-sm">{t('settings.users.journalRetention.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 max-w-xl">
         <div className="flex items-center gap-3">
-          <Label className="text-xs w-40">Retention (days)</Label>
+          <Label className="text-xs w-40">{t('settings.users.journalRetention.retentionDays')}</Label>
           <Input className="h-8 text-xs w-24" type="number" min={0} max={3650} value={days}
             onChange={(e) => setDays(parseInt(e.target.value) || 0)} />
         </div>
-        <p className="text-[10px] text-muted-foreground">Entries older than this are purged daily. Set to 0 to keep everything.</p>
+        <p className="text-[10px] text-muted-foreground">{t('settings.users.journalRetention.hint')}</p>
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? 'Saving...' : 'Save'}
+          {save.isPending ? t('settings.users.journalRetention.saving') : t('settings.users.journalRetention.save')}
         </Button>
       </CardContent>
     </Card>
@@ -1149,6 +1152,7 @@ function JournalRetentionCard() {
 // ─── Reverse Proxy Card ──────────────────────────────────────
 
 function ReverseProxyCard() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['proxy-settings'], queryFn: proxyApi.get });
   const [hops, setHops] = useState(1);
@@ -1157,32 +1161,30 @@ function ReverseProxyCard() {
 
   const save = useMutation({
     mutationFn: () => proxyApi.update(hops),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['proxy-settings'] }); toast.success('Proxy setting saved'); },
-    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to save'),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['proxy-settings'] }); toast.success(t('settings.users.reverseProxy.toastSaved')); },
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.users.reverseProxy.toastSaveFailed')),
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Reverse proxy / client IP</CardTitle>
+        <CardTitle className="text-sm">{t('settings.users.reverseProxy.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 max-w-xl">
         <p className="text-[11px] text-muted-foreground">
-          Number of reverse proxies in front of the backend, so the real client IP is read from
-          X-Forwarded-For (connection journal, rate limiting). 1 = the built-in frontend nginx only;
-          add 1 per extra proxy/WAF (e.g. 2 behind SafeLine).
+          {t('settings.users.reverseProxy.description')}
         </p>
         <div className="flex items-center gap-3">
-          <Label className="text-xs w-40">Trusted proxy hops</Label>
+          <Label className="text-xs w-40">{t('settings.users.reverseProxy.trustedHops')}</Label>
           <Input className="h-8 text-xs w-24" type="number" min={0} max={16} value={hops}
             onChange={(e) => setHops(parseInt(e.target.value) || 0)} />
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Detected IP for your current request: <span className="font-mono-data">{data?.detectedIp || '—'}</span>.
-          Adjust the hop count and save until this shows your real public IP (save reloads it).
+          {t('settings.users.reverseProxy.detectedIpPre')} <span className="font-mono-data">{data?.detectedIp || '—'}</span>.
+          {' '}{t('settings.users.reverseProxy.detectedIpPost')}
         </p>
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
-          {save.isPending ? 'Saving...' : 'Save'}
+          {save.isPending ? t('settings.users.reverseProxy.saving') : t('settings.users.reverseProxy.save')}
         </Button>
       </CardContent>
     </Card>
