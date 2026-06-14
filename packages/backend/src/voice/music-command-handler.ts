@@ -13,6 +13,7 @@ const MUSIC_COMMANDS = new Set([
   'radio', 'play', 'spotify', 'stop', 'pause', 'skip', 'next', 'prev',
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
   'stream', 'stopstream', 'viewers',
+  'help', 'aide', 'info',
 ]);
 
 /**
@@ -124,6 +125,13 @@ export class MusicCommandHandler {
           break;
         case 'viewers':
           this.handleViewers(bot, reply);
+          break;
+        case 'help':
+        case 'aide':
+          this.handleHelp(reply);
+          break;
+        case 'info':
+          this.handleInfo(bot, reply);
           break;
       }
     } catch (err: any) {
@@ -404,6 +412,52 @@ export class MusicCommandHandler {
 
     const artist = np.artist ? `${np.artist} - ` : '';
     reply(`Now playing: ${artist}${np.title}`);
+  }
+
+  private handleInfo(bot: VoiceBot, reply: ReplyFn): void {
+    const np = bot.nowPlaying;
+    if (!np) {
+      reply('Aucune musique en cours de lecture.');
+      return;
+    }
+
+    const lines: string[] = ['♪ Musique en cours :'];
+    lines.push(`  Titre  : ${np.title}`);
+    if (np.artist) lines.push(`  Artiste: ${np.artist}`);
+
+    if (np.duration) {
+      const min = Math.floor(np.duration / 60);
+      const sec = String(Math.floor(np.duration % 60)).padStart(2, '0');
+      lines.push(`  Durée  : ${min}:${sec}`);
+    }
+
+    // Lien direct vers la source (YouTube/Spotify via sourceUrl, radio via streamUrl)
+    const link = np.sourceUrl || np.streamUrl;
+    if (link) lines.push(`  Lien   : [URL]${link}[/URL]`);
+
+    reply(lines.join('\n'));
+  }
+
+  private handleHelp(reply: ReplyFn): void {
+    reply([
+      'Commandes musicales disponibles :',
+      '  !play <url>          Lire une vidéo YouTube ou un lien Spotify',
+      '  !spotify <lien>      Lire une piste/album Spotify',
+      '  !radio [id]          Lister les radios ou en lancer une',
+      '  !queue [..]          Voir/gérer la file (show|play <n>|remove <n>|clear|<url>)',
+      '  !add <url>           Ajouter une piste à la file',
+      '  !skip / !next        Piste suivante',
+      '  !prev                Piste précédente',
+      '  !pause               Mettre en pause / reprendre',
+      '  !stop                Arrêter la lecture',
+      '  !vol <0-100>         Régler ou afficher le volume',
+      '  !np / !nowplaying    Titre en cours de lecture',
+      '  !info                Détails du titre en cours (artiste, titre, lien direct)',
+      '  !stream <url> [qual] Diffuser une vidéo (presets : 480p, 720p, 1080p)',
+      '  !stopstream          Arrêter la diffusion vidéo',
+      '  !viewers             Lister les spectateurs du stream vidéo',
+      '  !help / !aide        Afficher cette aide',
+    ].join('\n'));
   }
 
   // ─── Video Streaming Commands ─────────────────────────────
