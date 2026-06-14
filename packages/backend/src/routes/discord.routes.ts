@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { requireRole } from '../middleware/rbac.js';
 import { encrypt } from '../utils/crypto.js';
 import type { DiscordBridge } from '../discord/discord-bridge.js';
+import { parseRoleIds } from '../discord/command-permissions.js';
 
 export const discordRoutes: Router = Router();
 
@@ -33,6 +34,7 @@ discordRoutes.get('/settings', async (req: Request, res: Response, next) => {
       notifyEmbed: s.notifyEmbed,
       notifAutoDeleteSeconds: s.notifAutoDeleteSeconds,
       flowMessageTrigger: s.flowMessageTrigger,
+      commandRoleIds: parseRoleIds(s.commandRoleIds),
       defaultMusicBotId: s.defaultMusicBotId,
       serverConfigId: s.serverConfigId,
       virtualServerId: s.virtualServerId,
@@ -46,7 +48,7 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreateSettings(prisma);
 
-    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, notifyEmbed, notifAutoDeleteSeconds, flowMessageTrigger, defaultMusicBotId, serverConfigId, virtualServerId } = req.body;
+    const { enabled, botToken, guildId, notificationsChannelId, statsChannelId, voiceChannelId, statsLiveEnabled, notifyConnections, notifyNowPlaying, notifyChannelId, notifyJoinTemplate, notifyLeaveTemplate, notifyEmbed, notifAutoDeleteSeconds, flowMessageTrigger, defaultMusicBotId, serverConfigId, virtualServerId, commandRoleIds } = req.body;
 
     const data: any = {};
     if (enabled !== undefined) data.enabled = !!enabled;
@@ -65,6 +67,11 @@ discordRoutes.put('/settings', async (req: Request, res: Response, next) => {
     if (notifyEmbed !== undefined) data.notifyEmbed = !!notifyEmbed;
     if (notifAutoDeleteSeconds !== undefined) data.notifAutoDeleteSeconds = Math.max(0, Math.min(86400, parseInt(notifAutoDeleteSeconds) || 0));
     if (flowMessageTrigger !== undefined) data.flowMessageTrigger = !!flowMessageTrigger;
+    if (commandRoleIds !== undefined) {
+      data.commandRoleIds = Array.isArray(commandRoleIds) && commandRoleIds.length
+        ? JSON.stringify(commandRoleIds.map(String))
+        : null;
+    }
     if (defaultMusicBotId !== undefined) data.defaultMusicBotId = defaultMusicBotId ? parseInt(defaultMusicBotId) : null;
     if (serverConfigId !== undefined) data.serverConfigId = serverConfigId ? parseInt(serverConfigId) : null;
     if (virtualServerId !== undefined) data.virtualServerId = parseInt(virtualServerId) || 1;
@@ -94,6 +101,12 @@ discordRoutes.get('/guilds', (req: Request, res: Response) => {
 discordRoutes.get('/channels', (req: Request, res: Response) => {
   const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;
   res.json(bridge?.listChannels() ?? { text: [], voice: [] });
+});
+
+// GET /api/discord/roles — selectable guild roles for the command-permission picker
+discordRoutes.get('/roles', (req: Request, res: Response) => {
+  const bridge: DiscordBridge | undefined = req.app.locals.discordBridge;
+  res.json(bridge?.listRoles() ?? []);
 });
 
 // GET /api/discord/ts-channels — TS channels of the configured server (for the watch-channel picker)
