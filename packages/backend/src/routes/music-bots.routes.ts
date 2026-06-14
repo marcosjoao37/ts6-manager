@@ -586,7 +586,7 @@ musicBotRoutes.put('/:id/queue/move', async (req: Request, res: Response, next) 
 
     const { from, to } = req.body;
     if (typeof from !== 'number' || typeof to !== 'number') throw new AppError(400, 'from and to are required');
-    const moved = bot.queue.move(from, to);
+    const moved = bot.queue.moveInDisplayOrder(from, to);
     if (!moved) throw new AppError(400, 'Invalid indices');
     res.json({ success: true });
   } catch (err) { next(err); }
