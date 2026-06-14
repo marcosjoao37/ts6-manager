@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { PlayQueue, QueueItem } from './queue.js';
 
 function makeItem(id: string): QueueItem {

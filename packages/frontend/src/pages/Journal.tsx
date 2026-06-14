@@ -183,7 +183,9 @@ export default function Journal() {
     else { setSort(field); setDir(field === 'createdAt' ? 'desc' : 'asc'); }
   };
 
-  const SortHead = ({ field, label }: { field: SortField; label: string }) => (
+  // Render helper (not a nested component) so it isn't recreated as a new
+  // component type on every render.
+  const sortHead = (field: SortField, label: string) => (
     <th className="h-10 px-3 text-left font-medium text-muted-foreground">
       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort(field)}>
         {label}
@@ -233,11 +235,11 @@ export default function Journal() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <SortHead field="login" label={t('journal.colLogin')} />
-                <SortHead field="createdAt" label={t('journal.colDateTime')} />
-                <SortHead field="ip" label={t('journal.colIp')} />
-                <SortHead field="country" label={t('journal.colLocation')} />
-                {source === 'web' && <SortHead field="success" label={t('journal.colResult')} />}
+                {sortHead('login', t('journal.colLogin'))}
+                {sortHead('createdAt', t('journal.colDateTime'))}
+                {sortHead('ip', t('journal.colIp'))}
+                {sortHead('country', t('journal.colLocation'))}
+                {source === 'web' && sortHead('success', t('journal.colResult'))}
                 <th className="h-10 px-3 text-right font-medium text-muted-foreground">{t('journal.colActions')}</th>
               </tr>
               <tr className="border-b border-border bg-background">

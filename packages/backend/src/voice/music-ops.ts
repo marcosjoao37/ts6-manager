@@ -4,7 +4,6 @@ import type { QueueItem } from './playlist/queue.js';
 import { downloadYouTube, searchYouTube } from './audio/youtube.js';
 import { decrypt } from '../utils/crypto.js';
 import {
-  isSpotifyUrl,
   resolveSpotifyInput,
   findBestYouTubeForSpotify,
   type SpotifyConfig,
