@@ -1,6 +1,6 @@
 import net from 'net';
 import tls from 'tls';
-import { isPrivateIP } from '../../utils/url-validator.js';
+import { isPrivateIP, validateUrl } from '../../utils/url-validator.js';
 
 /**
  * Fetch the current StreamTitle from an ICY/Shoutcast/Icecast radio stream.
@@ -24,6 +24,10 @@ export async function fetchIcyMetadata(streamUrl: string, timeoutMs = 10000): Pr
   const maxRedirects = 5;
 
   for (let i = 0; i <= maxRedirects; i++) {
+    const urlCheck = await validateUrl(currentUrl, { allowedProtocols: ['http:', 'https:'] });
+    if (!urlCheck.valid) {
+      return null;
+    }
     const result = await fetchIcySingle(currentUrl, timeoutMs);
     if (result.redirect) {
       currentUrl = result.redirect;
