@@ -271,6 +271,7 @@ musicBotRoutes.post('/:id/play-url', async (req: Request, res: Response, next) =
 
     res.json({ success: true, queueItem });
   } catch (err: any) {
+    if (err instanceof AppError) return next(err);
     next(new AppError(500, `Failed to play URL: ${err.message}`));
   }
 });
@@ -381,7 +382,8 @@ musicBotRoutes.post('/:id/volume', async (req: Request, res: Response, next) => 
     const manager: VoiceBotManager = req.app.locals.voiceBotManager;
     const id = parseInt(req.params.id as string);
     const { volume } = req.body;
-    const vol = Math.max(0, Math.min(100, parseInt(volume) || 50));
+    const parsed = parseInt(volume, 10);
+    const vol = Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 50;
 
     const bot = manager.getBot(id);
     if (bot) bot.setVolume(vol);
