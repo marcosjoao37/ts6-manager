@@ -84,7 +84,12 @@ export class DiscordVoiceRelay {
       }
     });
 
-    await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
+    try {
+      await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
+    } catch (err) {
+      this.leaveChannel();
+      throw err;
+    }
     console.log(`[DiscordVoice] Joined voice channel ${channelId}`);
 
     // A track may already be playing — start relaying it mid-flight
