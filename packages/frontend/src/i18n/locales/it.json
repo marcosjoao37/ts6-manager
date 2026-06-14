@@ -320,7 +320,10 @@
       "toastSavedButError": "Salvato, ma: {{error}}",
       "embedStyle": "Stile embed (scheda colorata) invece di un messaggio semplice",
       "autoDelete": "Eliminazione automatica delle notifiche dopo (secondi)",
-      "autoDeleteHint": "0 = mantieni i messaggi. Rimuove i messaggi di entrata/uscita, now-playing e /stats dopo il ritardo per evitare di intasare il canale (il pannello statistiche live non è interessato)."
+      "autoDeleteHint": "0 = mantieni i messaggi. Rimuove i messaggi di entrata/uscita, now-playing e /stats dopo il ritardo per evitare di intasare il canale (il pannello statistiche live non è interessato).",
+      "commandRoles": "Ruoli autorizzati per i comandi",
+      "commandRolesHint": "Vuoto = tutti possono usare i comandi. Scegli i ruoli per limitarne l'accesso. Gli amministratori di Discord e il proprietario del server sono sempre autorizzati.",
+      "commandRolesOffline": "Connetti il bot per elencare i suoi ruoli."
     },
     "spotify": {
       "title": "Spotify",

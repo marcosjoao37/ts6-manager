@@ -320,7 +320,10 @@
       "toastSavedButError": "Saved, but: {{error}}",
       "embedStyle": "Embed style (colored card) instead of a plain message",
       "autoDelete": "Auto-delete notifications after (seconds)",
-      "autoDeleteHint": "0 = keep messages. Removes join/leave, now-playing and /stats messages after the delay to avoid channel clutter (the live stats panel is not affected)."
+      "autoDeleteHint": "0 = keep messages. Removes join/leave, now-playing and /stats messages after the delay to avoid channel clutter (the live stats panel is not affected).",
+      "commandRoles": "Allowed roles for commands",
+      "commandRolesHint": "Empty = everyone can use the commands. Pick roles to restrict who can. Discord admins and the server owner are always allowed.",
+      "commandRolesOffline": "Connect the bot to list its roles."
     },
     "spotify": {
       "title": "Spotify",

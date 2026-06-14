@@ -320,7 +320,10 @@
       "toastSavedButError": "Gespeichert, aber: {{error}}",
       "embedStyle": "Embed-Stil (farbige Karte) statt einer einfachen Nachricht",
       "autoDelete": "Benachrichtigungen automatisch löschen nach (Sekunden)",
-      "autoDeleteHint": "0 = Nachrichten behalten. Entfernt Join/Leave-, Now-Playing- und /stats-Nachrichten nach der Verzögerung, um den Kanal sauber zu halten (das Live-Statspanel ist nicht betroffen)."
+      "autoDeleteHint": "0 = Nachrichten behalten. Entfernt Join/Leave-, Now-Playing- und /stats-Nachrichten nach der Verzögerung, um den Kanal sauber zu halten (das Live-Statspanel ist nicht betroffen).",
+      "commandRoles": "Erlaubte Rollen für Befehle",
+      "commandRolesHint": "Leer = alle dürfen die Befehle nutzen. Wähle Rollen, um den Zugriff einzuschränken. Discord-Administratoren und der Server-Inhaber sind immer erlaubt.",
+      "commandRolesOffline": "Verbinde den Bot, um seine Rollen aufzulisten."
     },
     "spotify": {
       "title": "Spotify",

@@ -282,6 +282,7 @@ model DiscordSettings {
   notifyEmbed            Boolean  @default(false)
   notifAutoDeleteSeconds Int      @default(0) // 0 = keep messages
   flowMessageTrigger     Boolean  @default(false)
+  commandRoleIds         String?  // JSON array of Discord role IDs; null/empty = open to everyone
   statsMessageId         String?
   voiceChannelId         String?
   defaultMusicBotId      Int?

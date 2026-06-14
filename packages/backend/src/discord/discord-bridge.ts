@@ -2,6 +2,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  PermissionFlagsBits,
   SlashCommandBuilder,
   ChannelType,
   type ChatInputCommandInteraction,
@@ -17,6 +18,7 @@ import type { QueueItem } from '../voice/playlist/queue.js';
 import { EventBridge } from '../bot-engine/event-bridge.js';
 import { decrypt } from '../utils/crypto.js';
 import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from '../voice/music-ops.js';
+import { isCommandAllowed, parseRoleIds } from './command-permissions.js';
 import {
   clientConnectedEmbed,
   clientDisconnectedEmbed,
@@ -232,6 +234,17 @@ export class DiscordBridge {
     return { text: ofType(ChannelType.GuildText), voice: ofType(ChannelType.GuildVoice) };
   }
 
+  /** Selectable guild roles for the command-permission picker. Excludes
+   *  @everyone and integration/bot-managed roles. Empty if not connected. */
+  listRoles(): Array<{ id: string; name: string; color: number }> {
+    const guild = this.guild();
+    if (!guild) return [];
+    return guild.roles.cache
+      .filter((r) => r.id !== guild.id && !r.managed)
+      .map((r) => ({ id: r.id, name: r.name, color: r.color }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   // ─── Internals ──────────────────────────────────────────────
 
   private guild() {
@@ -280,7 +293,25 @@ export class DiscordBridge {
     return bot;
   }
 
+  /** Whether the interaction's author may run commands, per configured roles. */
+  private commandAllowed(i: ChatInputCommandInteraction): boolean {
+    // this.settings is loaded in start() before the interaction handler is wired,
+    // so it is non-null here; a null would parse to [] (fail-open) anyway.
+    const allowedRoleIds = parseRoleIds(this.settings?.commandRoleIds);
+    if (allowedRoleIds.length === 0) return true;
+    const member = i.member as GuildMember | null;
+    const memberRoleIds =
+      member && 'roles' in member && member.roles?.cache ? [...member.roles.cache.keys()] : [];
+    const isAdmin = !!i.memberPermissions?.has(PermissionFlagsBits.Administrator);
+    const isOwner = !!i.guild && i.guild.ownerId === i.user.id;
+    return isCommandAllowed({ allowedRoleIds, memberRoleIds, isAdmin, isOwner });
+  }
+
   private async handleCommand(i: ChatInputCommandInteraction): Promise<void> {
+    if (!this.commandAllowed(i)) {
+      await i.reply({ content: '⛔ Tu n\'as pas la permission d\'utiliser cette commande.', ephemeral: true });
+      return;
+    }
     switch (i.commandName) {
       case 'play': {
         await i.deferReply();
