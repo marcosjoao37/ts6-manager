@@ -28,9 +28,12 @@ const OPUS_COMPLEXITY = ((): number => {
   return Number.isInteger(n) && n >= 0 && n <= 10 ? n : 5;
 })();
 
-// Cap ffmpeg's own threads: decoding one 48k stereo stream is trivial, and extra
-// worker threads only add scheduling contention when several bots run at once.
-const FFMPEG_THREADS = process.env.FFMPEG_THREADS || '1';
+// ffmpeg thread count, left on auto. Audio decoding to PCM is effectively
+// single-threaded (audio codecs barely parallelize) and already runs in its own
+// child process on its own core, so this has little effect — the real real-time
+// bottleneck is the single Node event loop encoding+sending each 20ms frame, not
+// ffmpeg. Override with FFMPEG_THREADS only if you have a reason to.
+const FFMPEG_THREADS = process.env.FFMPEG_THREADS || '0';
 
 // Native libopus bindings encode ~5-10x faster than the opusscript WASM
 // build — that matters at one frame every 20ms on a small VM. Optional:
