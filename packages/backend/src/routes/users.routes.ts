@@ -94,6 +94,19 @@ userRoutes.put('/:userId', async (req: Request, res: Response, next) => {
       data.mfaRecoveryCodes = null;
     }
 
+    const isDemoting = data.enabled === false || data.role === 'viewer';
+    if (isDemoting) {
+      // Self-protection: cannot disable or demote your own account
+      if (id === req.user!.id) throw new AppError(400, 'Cannot disable or demote your own account');
+
+      // Last-admin protection: if target is currently an enabled admin, ensure others remain
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true, enabled: true } });
+      if (target?.role === 'admin' && target.enabled) {
+        const otherAdmins = await prisma.user.count({ where: { role: 'admin', enabled: true, id: { not: id } } });
+        if (otherAdmins === 0) throw new AppError(400, 'Cannot remove the last administrator');
+      }
+    }
+
     await prisma.user.update({ where: { id }, data });
     res.status(204).send();
   } catch (err) { next(err); }
@@ -104,6 +117,13 @@ userRoutes.delete('/:userId', async (req: Request, res: Response, next) => {
     const prisma = req.app.locals.prisma;
     const id = parseInt(String(req.params.userId));
     if (id === req.user!.id) throw new AppError(400, 'Cannot delete your own account');
+
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true, enabled: true } });
+    if (target?.role === 'admin' && target.enabled) {
+      const otherAdmins = await prisma.user.count({ where: { role: 'admin', enabled: true, id: { not: id } } });
+      if (otherAdmins === 0) throw new AppError(400, 'Cannot remove the last administrator');
+    }
+
     await prisma.user.delete({ where: { id } });
     res.status(204).send();
   } catch (err) { next(err); }
