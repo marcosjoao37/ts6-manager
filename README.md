@@ -3,11 +3,30 @@
 
 # TS6 Manager
 
-Web-based management interface for TeamSpeak servers. Control virtual servers, channels, clients, permissions, music bots, automated workflows, and embeddable server widgets — all from your browser.
+**English** · [Français](README.fr.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Italiano](README.it.md)
+
+Web-based management interface for TeamSpeak servers. Control virtual servers, channels, clients, permissions, music bots, automated workflows, and embeddable server widgets — all from your browser. The interface is available in **English, French, German, Spanish, and Italian**.
 
 ## What this version changes
 
 Hardened, reliability-focused evolution of [clusterzx/ts6-manager](https://github.com/clusterzx/ts6-manager):
+
+**Accounts & access**
+- Two-factor authentication (TOTP) with one-time recovery codes; admins can require MFA per user and force a password change at next logon
+- "Trusted computer" option: skip password **and** MFA on a chosen device for 30 days via a revocable `httpOnly` cookie, with a device list you can revoke from your account
+- Configurable password policy (minimum length + complexity)
+
+**Discord integration**
+- Discord bridge: slash commands (`/play`, `/skip`, `/queue`, …), TeamSpeak connect/leave + presence notifications, and a live server-stats panel
+- The music bot can also stream into a Discord voice channel
+- Restrict who may run the bot's commands to a chosen set of Discord roles
+
+**Multi-language**
+- Full UI translation in English, French, German, Spanish, and Italian, remembered per user
+
+**Spotify & journal**
+- Spotify links resolve to YouTube for playback, configured in the WebUI
+- Connection journal of web + TeamSpeak logins with offline GeoIP, sortable/filterable columns, and one-click IP bans (web and/or TeamSpeak)
 
 **Reliability**
 - Self-healing connection pool: server connections added or edited in the UI work immediately — no backend restart, ever
@@ -34,6 +53,10 @@ Built on the **WebQuery HTTP API** (the ServerQuery replacement in modern TeamSp
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
+## Coming Soon
+
+- **SSO via SAML** — single sign-on against your identity provider (Okta, Entra ID, Keycloak, Google Workspace, …) so users log in with their organization account.
+
 ## Screenshots
 
 ### Dashboard
@@ -58,6 +81,14 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 
 ## Features
 
+### Authentication & Accounts
+- Setup wizard for the initial admin account (no default credentials)
+- Two-factor authentication (TOTP) compatible with any authenticator app, with one-time recovery codes
+- Admins can require MFA per user and force a password change at next logon
+- "Trusted computer" option: a revocable 30-day cookie that skips both password and MFA on that device; trusted devices are listed and revocable from your account
+- Configurable password policy (minimum length + complexity)
+- Per-user UI language (English, French, German, Spanish, Italian)
+
 ### Server Management
 - Dashboard with live server stats, bandwidth graph, and capacity overview
 - Virtual server list with start/stop controls
@@ -77,12 +108,21 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 - Multiple bots per server, each with independent queue and playback
 - Radio station streaming with ICY metadata and live title updates
 - YouTube playback via yt-dlp (search, download, queue)
+- Spotify link support (track/album/playlist metadata resolved to YouTube)
 - Music library management (upload, organize, playlists)
 - Volume control, pause, skip, previous, shuffle, repeat
 - Stereo audio support with stable 20ms pacing
 - Auto-reconnect with exponential backoff on disconnect
 - In-channel text commands for hands-free control
 - Music request history tracking
+
+### Discord Integration
+- Discord bridge bot with slash commands: `/play`, `/stop`, `/pause`, `/skip`, `/next`, `/prev`, `/queue`, `/volume`, `/nowplaying`, `/stats`, `/join`, `/leave`
+- Restrict commands to selected Discord roles (admins/owner always allowed; empty = open to everyone)
+- TeamSpeak connect/leave and channel-scoped presence notifications, with embed or plain style and optional auto-delete
+- Live server-stats panel kept up to date in a Discord channel
+- The music bot can stream its audio into a Discord voice channel
+- Discord message trigger and send-message action available in the Bot Flow Engine
 
 ### Video Streaming
 - Live video streaming from YouTube, Twitch, or direct URLs to TeamSpeak channels
@@ -94,12 +134,18 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 
 ### Bot Flow Engine
 - Visual flow editor with drag-and-drop node canvas
-- Triggers: TS3 events, cron schedules, webhooks (with mandatory secrets), chat commands (global or channel-specific)
-- Actions: kick, ban, move, message, poke, channel create/edit/delete, HTTP requests, WebQuery commands
+- Triggers: TS3 events, cron schedules, webhooks (with mandatory secrets), chat commands (global or channel-specific), Discord messages
+- Actions: kick, ban, move, message, poke, channel create/edit/delete, HTTP requests, WebQuery commands, Discord messages
 - Conditions, variables, delays, loops, logging
 - Animated channel names (rotating text on a timer)
 - Placeholder system with filters and expressions
 - Pre-built templates for common automation tasks
+
+### Connection Journal
+- Records web and TeamSpeak logins with timestamp, username, and IP
+- Offline GeoIP enrichment (no external calls)
+- Sortable columns and per-column filters
+- One-click IP ban from the journal — on the web app, on the TeamSpeak server, or both
 
 ### Server Widgets
 - Embeddable server status banner for websites and forums
@@ -109,20 +155,23 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 - Configurable: show/hide channel tree and client list
 
 ### Security
-- Setup wizard for initial admin account (no default credentials)
 - AES-256-GCM encryption for stored credentials (API keys, SSH passwords)
-- SSRF protection on all outbound HTTP requests and FFmpeg URLs
+- Two-factor authentication (TOTP) with recovery codes; admin-enforceable per user
+- Configurable password policy and forced password change at next logon
+- SSRF protection on all outbound HTTP requests, FFmpeg URLs, and webhook redirects
 - Rate limiting on authentication endpoints
 - JWT access + refresh token rotation with reuse detection
 - Role-based access control (admin / viewer)
 - Per-server access control for multi-tenant setups
+- Discord command access restricted by role
 - WebQuery command whitelist in bot flows (blocks destructive commands)
 - Authenticated WebSocket connections
-- Password complexity requirements
 
 ### Settings & Administration
-- yt-dlp cookie file management for accessing age-restricted or member-only YouTube content
-- Upload cookies via file or paste directly in the UI
+- User management with MFA enforcement and forced password change
+- Discord, Spotify, and YouTube integration settings
+- yt-dlp cookie file management for accessing age-restricted or member-only YouTube content (upload a file or paste directly in the UI)
+- Connection journal and IP ban management
 - Admin-only settings panel
 
 ## Architecture
@@ -153,7 +202,7 @@ Public:  /widget/:token  ──▶  SVG / PNG / JSON (no auth)
 | Package | Description |
 |---------|-------------|
 | `@ts6/common` | Shared types, constants, utilities |
-| `@ts6/backend` | Express API, WebQuery client, bot engine, voice bots, widgets |
+| `@ts6/backend` | Express API, WebQuery client, bot engine, voice bots, Discord bridge, widgets |
 | `@ts6/frontend` | React SPA with Vite, TailwindCSS, shadcn/ui |
 | `sidecar` | Go WebRTC media relay (Pion) for video streaming |
 
@@ -161,9 +210,9 @@ The backend proxies all TeamSpeak API calls. The frontend never has direct acces
 
 ## Tech Stack
 
-**Frontend:** React 18, Vite, TailwindCSS, shadcn/ui, TanStack Query + Table, React Flow, Recharts, Zustand
+**Frontend:** React 18, Vite, TailwindCSS, shadcn/ui, TanStack Query + Table, React Flow, Recharts, Zustand, react-i18next
 
-**Backend:** Node.js, Express, Prisma (SQLite), JWT authentication, WebQuery HTTP client, SSH event listener
+**Backend:** Node.js, Express, Prisma (SQLite), JWT authentication, TOTP MFA, WebQuery HTTP client, SSH event listener, discord.js
 
 **Voice/Audio:** Custom TS3 voice protocol client (UDP), Opus encoding, FFmpeg, yt-dlp
 
