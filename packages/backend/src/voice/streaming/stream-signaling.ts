@@ -40,11 +40,18 @@ export interface SignalingMessage {
 export class StreamSignaling extends EventEmitter {
   private client: Ts3Client;
   private activeStreams: Map<string, ActiveStream> = new Map();
+  private onCommand = (parsed: any) => this.handleCommand(parsed);
 
   constructor(client: Ts3Client) {
     super();
     this.client = client;
-    this.client.on('command', (parsed: any) => this.handleCommand(parsed));
+    this.client.on('command', this.onCommand);
+  }
+
+  dispose(): void {
+    this.client.removeListener('command', this.onCommand);
+    this.activeStreams.clear();
+    this.removeAllListeners();
   }
 
   getActiveStreams(): Map<string, ActiveStream> {
