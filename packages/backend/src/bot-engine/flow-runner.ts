@@ -175,7 +175,7 @@ export class FlowRunner {
 
       case 'delay': {
         const delayData = node.data as DelayNodeData;
-        const delayMs = Math.min(delayData.delayMs, MAX_DELAY_MS);
+        const delayMs = Math.min(Math.max(0, Number(delayData.delayMs) || 0), MAX_DELAY_MS);
         await this.log(ctx, node, 'info', `Delaying ${delayMs}ms`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
         const edges = this.getOutgoingEdges(node.id, flowDef);
@@ -422,6 +422,7 @@ export class FlowRunner {
       headers,
       data: body ? JSON.parse(body) : undefined,
       timeout: 10000,
+      maxRedirects: 0,
     });
     if (data.storeAs) {
       ctx.setTemp(data.storeAs, response.data);
@@ -464,6 +465,7 @@ export class FlowRunner {
       headers,
       data: body ? JSON.parse(body) : undefined,
       timeout: 15000,
+      maxRedirects: 0,
       transformResponse: [(data) => data], // Return raw response, don't auto-parse JSON
     });
     if (data.storeAs) {
