@@ -49,6 +49,9 @@ export default function Dashboard() {
   const [bandwidthHistory, setBandwidthHistory] = useState<any[]>([]);
   const [showWidgets, setShowWidgets] = useState(false);
 
+  // Reset bandwidth history when switching to a different server
+  useEffect(() => { setBandwidthHistory([]); }, [selectedConfigId, selectedSid]);
+
   // Build bandwidth history from periodic data
   useEffect(() => {
     if (data) {
