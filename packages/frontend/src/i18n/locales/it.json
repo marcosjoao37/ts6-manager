@@ -1055,7 +1055,8 @@
       "selectRunningBot": "Seleziona prima un bot in esecuzione",
       "playingRadio": "Riproduzione della radio",
       "playRadioFailed": "Riproduzione della radio non riuscita",
-      "stationRemoved": "Stazione rimossa"
+      "stationRemoved": "Stazione rimossa",
+      "widgetFailed": "Impossibile caricare il widget"
     },
     "playDialog": {
       "title": "Riproduci musica",

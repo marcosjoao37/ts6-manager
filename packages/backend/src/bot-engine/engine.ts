@@ -407,7 +407,7 @@ export class BotEngine {
   }
 
   async disableFlow(flowId: number): Promise<void> {
-    this.animationManager.stopAnimation(flowId);
+    this.animationManager.stopFlow(flowId);
     this.teardownCronJobs(flowId);
     this.webhookEntries = this.webhookEntries.filter(w => w.flowId !== flowId);
     this.flows.delete(flowId);

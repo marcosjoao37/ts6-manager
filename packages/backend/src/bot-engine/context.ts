@@ -181,7 +181,7 @@ export class ExecutionContext {
       }
 
       if (filter) value = this.applyFilter(value, filter);
-      result = result.replace(fullMatch, value);
+      result = result.replace(fullMatch, () => value);
     }
 
     return result;

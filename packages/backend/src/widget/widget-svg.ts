@@ -169,5 +169,6 @@ function renderTreeNodes(
 }
 
 function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  const chars = Array.from(s);
+  return chars.length > max ? chars.slice(0, max - 1).join('') + '…' : s;
 }

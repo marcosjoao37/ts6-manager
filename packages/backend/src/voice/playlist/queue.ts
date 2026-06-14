@@ -70,18 +70,28 @@ export class PlayQueue {
 
     this.items.splice(idx, 1);
 
-    // Update shuffle order
     if (this._shuffle) {
+      // Find where this items-index appears in the shuffle order (shuffle-space position)
+      const shufflePos = this.shuffleOrder.indexOf(idx);
+
+      // Reindex: drop the removed entry and decrement all items-indices above idx
       this.shuffleOrder = this.shuffleOrder
         .filter((i) => i !== idx)
         .map((i) => (i > idx ? i - 1 : i));
-    }
 
-    // Adjust current index
-    if (idx < this.currentIndex) {
-      this.currentIndex--;
-    } else if (idx === this.currentIndex) {
-      this.currentIndex = Math.min(this.currentIndex, this.items.length - 1);
+      // Adjust currentIndex in shuffle-space
+      if (shufflePos < this.currentIndex) {
+        this.currentIndex--;
+      } else if (shufflePos === this.currentIndex) {
+        this.currentIndex = Math.min(this.currentIndex, this.shuffleOrder.length - 1);
+      }
+    } else {
+      // Non-shuffle: currentIndex is an items-space index
+      if (idx < this.currentIndex) {
+        this.currentIndex--;
+      } else if (idx === this.currentIndex) {
+        this.currentIndex = Math.min(this.currentIndex, this.items.length - 1);
+      }
     }
 
     return true;
@@ -158,6 +168,38 @@ export class PlayQueue {
     }
 
     return true;
+  }
+
+  /**
+   * Move a track using display-order positions (what the client sees via getAll()).
+   * In shuffle mode the display order is shuffleOrder; in normal mode it matches items.
+   * This is what the UI should call so indices always refer to the rendered list.
+   */
+  moveInDisplayOrder(fromDisplay: number, toDisplay: number): boolean {
+    const len = this._shuffle ? this.shuffleOrder.length : this.items.length;
+    if (fromDisplay < 0 || fromDisplay >= len) return false;
+    if (toDisplay < 0 || toDisplay >= len) return false;
+    if (fromDisplay === toDisplay) return true;
+
+    if (this._shuffle) {
+      // Reorder within shuffleOrder only — items array is untouched
+      const [entry] = this.shuffleOrder.splice(fromDisplay, 1);
+      this.shuffleOrder.splice(toDisplay, 0, entry);
+
+      // Keep currentIndex (shuffle-space) tracking the same logical track
+      if (this.currentIndex === fromDisplay) {
+        this.currentIndex = toDisplay;
+      } else if (fromDisplay < this.currentIndex && toDisplay >= this.currentIndex) {
+        this.currentIndex--;
+      } else if (fromDisplay > this.currentIndex && toDisplay <= this.currentIndex) {
+        this.currentIndex++;
+      }
+
+      return true;
+    }
+
+    // Non-shuffle: delegate to the existing items-space implementation
+    return this.move(fromDisplay, toDisplay);
   }
 
   setRepeat(mode: RepeatMode): void {

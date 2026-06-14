@@ -271,6 +271,7 @@ musicBotRoutes.post('/:id/play-url', async (req: Request, res: Response, next) =
 
     res.json({ success: true, queueItem });
   } catch (err: any) {
+    if (err instanceof AppError) return next(err);
     next(new AppError(500, `Failed to play URL: ${err.message}`));
   }
 });
@@ -381,7 +382,8 @@ musicBotRoutes.post('/:id/volume', async (req: Request, res: Response, next) => 
     const manager: VoiceBotManager = req.app.locals.voiceBotManager;
     const id = parseInt(req.params.id as string);
     const { volume } = req.body;
-    const vol = Math.max(0, Math.min(100, parseInt(volume) || 50));
+    const parsed = parseInt(volume, 10);
+    const vol = Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 50;
 
     const bot = manager.getBot(id);
     if (bot) bot.setVolume(vol);
@@ -584,7 +586,7 @@ musicBotRoutes.put('/:id/queue/move', async (req: Request, res: Response, next) 
 
     const { from, to } = req.body;
     if (typeof from !== 'number' || typeof to !== 'number') throw new AppError(400, 'from and to are required');
-    const moved = bot.queue.move(from, to);
+    const moved = bot.queue.moveInDisplayOrder(from, to);
     if (!moved) throw new AppError(400, 'Invalid indices');
     res.json({ success: true });
   } catch (err) { next(err); }

@@ -170,7 +170,11 @@ function resolveTimeVars(text: string, timezone?: string): string {
 }
 
 export class AnimationManager {
-  private animations: Map<number, ActiveAnimation> = new Map();
+  private animations: Map<string, ActiveAnimation> = new Map();
+
+  private key(flowId: number, channelId: string): string {
+    return `${flowId}:${channelId}`;
+  }
 
   startAnimation(
     flowId: number,
@@ -178,8 +182,8 @@ export class AnimationManager {
     config: AnimationConfig,
     client: WebQueryClient,
   ): void {
-    // Stop existing animation for this flow
-    this.stopAnimation(flowId);
+    // Stop existing animation for this specific (flowId, channelId) pair
+    this.stopAnimation(flowId, config.channelId);
 
     const intervalMs = Math.max(250, config.intervalSeconds * 1000);
     let frameIndex = 0;
@@ -201,7 +205,7 @@ export class AnimationManager {
       } catch (err: any) {
         // Log but don't stop — transient errors are common
         if (!err.message?.includes('304')) { // 304 = name unchanged, ignore
-          console.error(`[AnimationManager] Flow ${flowId} channel update error: ${err.message}`);
+          console.error(`[AnimationManager] Flow ${flowId} channel ${config.channelId} update error: ${err.message}`);
         }
       }
     };
@@ -210,17 +214,30 @@ export class AnimationManager {
     tick();
 
     const timer = setInterval(tick, intervalMs);
-    this.animations.set(flowId, { timer, frameIndex });
+    this.animations.set(this.key(flowId, config.channelId), { timer, frameIndex });
 
     console.log(`[AnimationManager] Started animation for flow ${flowId}: style=${config.style}, interval=${config.intervalSeconds}s, channel=${config.channelId}`);
   }
 
-  stopAnimation(flowId: number): void {
-    const anim = this.animations.get(flowId);
+  stopAnimation(flowId: number, channelId: string): void {
+    const k = this.key(flowId, channelId);
+    const anim = this.animations.get(k);
     if (anim) {
       clearInterval(anim.timer);
-      this.animations.delete(flowId);
-      console.log(`[AnimationManager] Stopped animation for flow ${flowId}`);
+      this.animations.delete(k);
+      console.log(`[AnimationManager] Stopped animation for flow ${flowId} channel ${channelId}`);
+    }
+  }
+
+  /** Stop all animations belonging to a flow (used on flow disable/reload). */
+  stopFlow(flowId: number): void {
+    const prefix = `${flowId}:`;
+    for (const [k, anim] of this.animations) {
+      if (k.startsWith(prefix)) {
+        clearInterval(anim.timer);
+        this.animations.delete(k);
+        console.log(`[AnimationManager] Stopped animation ${k}`);
+      }
     }
   }
 

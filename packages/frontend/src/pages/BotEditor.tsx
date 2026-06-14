@@ -985,7 +985,7 @@ export default function BotEditor() {
                       </div>
                       <div>
                         <Label className="text-[10px] text-muted-foreground">{t('botEditor.field.temporary')}</Label>
-                        <Select value={selectedNodeData.config.channel_flag_temporary || '0'} onValueChange={(v) => setNodes((prev) => prev.map((n) => { if (n.id !== selectedNode) return n; const cfg: any = { ...n.config }; if (v === '1') { cfg.channel_flag_temporary = '1'; delete cfg.channel_flag_semi_permanent; } else { cfg.channel_flag_temporary = '0'; cfg.channel_flag_semi_permanent = '1'; } return { ...n, config: cfg }; }) ) }>
+                        <Select value={selectedNodeData.config.channel_flag_temporary || '0'} onValueChange={(v) => setNodes((prev) => prev.map((n) => { if (n.id !== selectedNode) return n; const cfg: any = { ...n.config }; if (v === '1') { cfg.channel_flag_temporary = '1'; delete cfg.channel_flag_semi_permanent; } else { cfg.channel_flag_temporary = '0'; delete cfg.channel_flag_semi_permanent; } return { ...n, config: cfg }; }) ) }>
                           <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="0">{t('botEditor.option.permanent')}</SelectItem>

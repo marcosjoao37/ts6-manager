@@ -1055,7 +1055,8 @@
       "selectRunningBot": "Selecciona primero un bot en ejecución",
       "playingRadio": "Reproduciendo radio",
       "playRadioFailed": "Error al reproducir la radio",
-      "stationRemoved": "Emisora eliminada"
+      "stationRemoved": "Emisora eliminada",
+      "widgetFailed": "Error al cargar el widget"
     },
     "playDialog": {
       "title": "Reproducir música",

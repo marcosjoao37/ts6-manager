@@ -141,8 +141,11 @@ clientRoutes.delete('/:cldbid/permissions', requireRole('admin'), async (req: Re
 
 clientRoutes.get('/:clid/groups', async (req: Request, res: Response, next) => {
   try {
+    const clientInfo = await getClient(req).execute(getSid(req), 'clientinfo', { clid: String(req.params.clid) });
+    const cldbid = clientInfo?.[0]?.client_database_id ?? clientInfo?.client_database_id;
+    if (!cldbid) throw new TSApiError(512, 'Client not found or not connected');
     const result = await getClient(req).execute(getSid(req), 'servergroupsbyclientid', {
-      cldbid: String(req.params.clid),
+      cldbid: String(cldbid),
     });
     res.json(result);
   } catch (err) { next(err); }

@@ -27,6 +27,8 @@ export class ConnectionPool {
   }
 
   addClient(id: number, host: string, port: number, apiKey: string, useHttps: boolean): void {
+    const existing = this.clients.get(id);
+    if (existing) existing.destroy();
     const client = new WebQueryClient(host, port, apiKey, useHttps);
     this.clients.set(id, client);
   }

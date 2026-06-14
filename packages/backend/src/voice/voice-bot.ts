@@ -993,6 +993,7 @@ export class VoiceBot extends EventEmitter {
     this._videoSource = null;
     this._videoStreaming = false;
     this._videoStartedAt = null;
+    this.signaling?.dispose();
     this.signaling = null;
 
     console.log(`[VoiceBot ${this.config.id}] Video stream stopped`);

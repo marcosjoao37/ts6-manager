@@ -12,6 +12,7 @@ serverRoutes.get('/', async (req: Request, res: Response, next) => {
   try {
     const prisma = req.app.locals.prisma;
     const servers = await prisma.tsServerConfig.findMany({
+      where: req.user?.role === 'admin' ? {} : { userAccess: { some: { userId: req.user!.id } } },
       select: {
         id: true, name: true, host: true, webqueryPort: true,
         useHttps: true, sshPort: true, enabled: true,
@@ -65,6 +66,13 @@ serverRoutes.get('/:configId', async (req: Request, res: Response, next) => {
       where: { id: parseInt(String(req.params.configId)) },
     });
     if (!server) throw new AppError(404, 'Server config not found');
+
+    if (req.user?.role !== 'admin') {
+      const access = await prisma.userServerAccess.findUnique({
+        where: { userId_serverConfigId: { userId: req.user!.id, serverConfigId: server.id } },
+      });
+      if (!access) throw new AppError(403, 'No access to this server');
+    }
 
     res.json({
       id: server.id, name: server.name, host: server.host,

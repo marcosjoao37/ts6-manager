@@ -4,6 +4,7 @@ import { AppError } from '../middleware/error-handler.js';
 import { RETENTION_KEY, DEFAULT_RETENTION_DAYS } from '../connection-journal.js';
 import { buildJournalQuery } from './journal-query.js';
 import { durationToExpiry } from '../utils/web-ban.js';
+import { normalizeIp } from '../utils/geo.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 
 export const journalRoutes: Router = Router();
@@ -63,7 +64,7 @@ journalRoutes.get('/', async (req: Request, res: Response, next) => {
 journalRoutes.post('/ban', async (req: Request, res: Response, next) => {
   try {
     const prisma = req.app.locals.prisma;
-    const ip = String(req.body.ip || '').trim();
+    const ip = normalizeIp(String(req.body.ip || '').trim());
     const targets: string[] = Array.isArray(req.body.targets) ? req.body.targets : [];
     const reason = req.body.reason ? String(req.body.reason) : undefined;
     const durationMinutes = parseInt(req.body.durationMinutes) || 0;
