@@ -12,10 +12,25 @@ export const FRAME_MS = 20;
 const BITRATE = 96000;
 
 // Both encoders wrap libopus, so the CTL constants are shared
+const OPUS_SET_COMPLEXITY = 4010;
 const OPUS_SET_VBR = 4006;
 const OPUS_SET_VBR_CONSTRAINT = 4020;
 const OPUS_SET_SIGNAL = 4024;
 const OPUS_SIGNAL_MUSIC = 3002;
+
+// Encoder complexity (10 = best quality / most CPU … 0 = cheapest). This is the
+// dominant CPU lever for real-time encoding: on a small or contended VM, a high
+// complexity makes the 20ms pacing loop fall behind, producing choppy/distorted
+// audio. Default 5 roughly halves the CPU vs 10 with no audible loss on music.
+// Drop it further (e.g. OPUS_COMPLEXITY=2) if the host is still struggling.
+const OPUS_COMPLEXITY = ((): number => {
+  const n = parseInt(process.env.OPUS_COMPLEXITY ?? '', 10);
+  return Number.isInteger(n) && n >= 0 && n <= 10 ? n : 5;
+})();
+
+// Cap ffmpeg's own threads: decoding one 48k stereo stream is trivial, and extra
+// worker threads only add scheduling contention when several bots run at once.
+const FFMPEG_THREADS = process.env.FFMPEG_THREADS || '1';
 
 // Native libopus bindings encode ~5-10x faster than the opusscript WASM
 // build — that matters at one frame every 20ms on a small VM. Optional:
@@ -47,7 +62,9 @@ export class AudioPipeline {
         encoder.applyEncoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
         // Tell encoder it's music (helps tuning)
         encoder.applyEncoderCTL(OPUS_SET_SIGNAL, OPUS_SIGNAL_MUSIC);
-        console.log("[audio] Using native opus encoder (@discordjs/opus)");
+        // Lower complexity to keep real-time pacing on small/contended VMs
+        encoder.applyEncoderCTL(OPUS_SET_COMPLEXITY, OPUS_COMPLEXITY);
+        console.log(`[audio] Using native opus encoder (@discordjs/opus), complexity=${OPUS_COMPLEXITY}`);
         return (pcm) => encoder.encode(pcm);
       } catch (err: any) {
         console.warn(`[audio] Native opus encoder failed to initialize (${err.message}), falling back to WASM`);
@@ -61,6 +78,8 @@ export class AudioPipeline {
     encoder.encoderCTL(OPUS_SET_VBR, 0);
     encoder.encoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
     encoder.encoderCTL(OPUS_SET_SIGNAL, OPUS_SIGNAL_MUSIC);
+    encoder.encoderCTL(OPUS_SET_COMPLEXITY, OPUS_COMPLEXITY);
+    console.log(`[audio] Using opusscript (WASM) encoder — higher CPU; complexity=${OPUS_COMPLEXITY}`);
     return (pcm) => {
       const encoded = encoder.encode(pcm, FRAME_SIZE);
       return Buffer.isBuffer(encoded) ? encoded : Buffer.from(encoded);
@@ -103,6 +122,8 @@ export class AudioPipeline {
    */
   toPcmFileStream(filePath: string, startSeconds: number = 0): { stdout: Readable; process: ChildProcess; kill: () => void } {
     const args = [
+      "-nostdin",
+      "-threads", FFMPEG_THREADS,
       // -ss before -i: ffmpeg seeks in the container without decoding what precedes
       ...(startSeconds > 0 ? ["-ss", String(startSeconds)] : []),
       "-i", filePath,
@@ -136,6 +157,8 @@ export class AudioPipeline {
     }
 
     const args = [
+      "-nostdin",
+      "-threads", FFMPEG_THREADS,
       "-reconnect", "1",
       "-reconnect_streamed", "1",
       "-reconnect_delay_max", "5",

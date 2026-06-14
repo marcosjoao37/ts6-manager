@@ -266,17 +266,24 @@ authRoutes.post('/refresh', async (req: Request, res: Response, next) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    await prisma.refreshToken.update({
-      where: { id: stored.id },
+    // Atomically claim this token for rotation. updateMany never throws on a
+    // missing/already-claimed row, so two concurrent /refresh calls with the
+    // same token can't both crash with P2025: the loser claims 0 rows and gets
+    // a clean 401 instead of a 500 (refresh tokens are one-time use by design).
+    const claimed = await prisma.refreshToken.updateMany({
+      where: { id: stored.id, replacedBy: null },
       data: { replacedBy: newRefreshToken },
     });
+    if (claimed.count === 0) {
+      throw new AppError(401, 'Invalid refresh token');
+    }
 
     await prisma.refreshToken.create({
       data: { token: newRefreshToken, userId: stored.userId, expiresAt, family: stored.family },
     });
 
-    // Delete old token after creating new one
-    await prisma.refreshToken.delete({ where: { id: stored.id } });
+    // Delete old token after creating new one (deleteMany: no throw if gone)
+    await prisma.refreshToken.deleteMany({ where: { id: stored.id } });
 
     const payload = { id: stored.user.id, username: stored.user.username, role: stored.user.role };
     const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtAccessExpiry } as jwt.SignOptions);

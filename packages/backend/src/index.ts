@@ -15,6 +15,18 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 
+// Last-resort safety net: a single bot/track glitch, an unawaited promise, or a
+// late event must never take the whole backend (serving every user) down. Log
+// the full error — including the stack, so the real cause is captured next time
+// — and keep running. The audio path additionally guards itself (failPlayback),
+// so this is defence in depth, not the primary handler.
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception (kept alive):', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled promise rejection (kept alive):', reason);
+});
+
 async function main() {
   // C1: JWT secret startup guard
   if (config.jwtSecret === 'dev-secret-change-me-in-production') {

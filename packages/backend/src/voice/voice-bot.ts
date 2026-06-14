@@ -511,8 +511,7 @@ export class VoiceBot extends EventEmitter {
         // Send exactly one frame if available
         const frame = this.takeFromStreamChunks(BYTES_PER_FRAME);
         if (frame) {
-          const opusFrame = this.pipeline.encodeFrame(frame, this.config.volume);
-          this.sendVoiceFrame(opusFrame);
+          if (!this.encodeAndSend(frame)) return;
         }
 
         // Next slot
@@ -701,6 +700,42 @@ export class VoiceBot extends EventEmitter {
     this.frameSink = sink;
   }
 
+  /**
+   * Stop the current track after an unrecoverable error raised inside the
+   * playback timer. Without this the throw would escape the setTimeout/
+   * setImmediate callback as an uncaughtException and take down the whole
+   * backend — a single bad frame (e.g. the voice socket dropping mid-track)
+   * must only end the track, not crash the process.
+   */
+  private failPlayback(err: Error): void {
+    console.error(`[VoiceBot] Playback frame error, stopping track: ${err?.message ?? err}`);
+    this.loopEpoch++;   // invalidate any pending ticks
+    this.streamEpoch++;
+    this.clearTimer();
+    try { this.streamKill?.(); } catch { /* already gone */ }
+    this.streamKill = null;
+    this.stopIcyPolling();
+    this._isStreaming = false;
+    this._nowPlaying = null;
+    this._status = 'connected';
+    try { this.client.sendVoiceStop(); } catch { /* connection may be down */ }
+    this.emit('error', err);
+    this.emit('statusChange', this._status);
+  }
+
+  /** Encode + send one PCM frame, guarding the only calls in the timer that can
+   *  realistically throw (native opus / UDP voice). Returns false on failure
+   *  (the track has been stopped) so the tick can bail out. */
+  private encodeAndSend(pcmFrame: Buffer): boolean {
+    try {
+      this.sendVoiceFrame(this.pipeline.encodeFrame(pcmFrame, this.config.volume));
+      return true;
+    } catch (err) {
+      this.failPlayback(err as Error);
+      return false;
+    }
+  }
+
   private startFilePlaybackLoop(item: QueueItem): void {
     const epoch = ++this.loopEpoch;
 
@@ -727,16 +762,14 @@ export class VoiceBot extends EventEmitter {
       // Send exactly ONE frame (if available)
       const frame = this.takeFromStreamChunks(BYTES_PER_FRAME);
       if (frame) {
-        const opusFrame = this.pipeline.encodeFrame(frame, this.config.volume);
-        this.sendVoiceFrame(opusFrame);
+        if (!this.encodeAndSend(frame)) return;
         this.framesSent++;
       } else if (this.fileDecodeDone) {
         // Decode finished and buffer exhausted: flush the final partial
         // frame (zero-padded), then end the track
         const last = this.takeRemainderPadded();
         if (last) {
-          const opusFrame = this.pipeline.encodeFrame(last, this.config.volume);
-          this.sendVoiceFrame(opusFrame);
+          if (!this.encodeAndSend(last)) return;
           this.framesSent++;
         }
         this.endOfTrack(item);
