@@ -1055,7 +1055,8 @@
       "selectRunningBot": "Wählen Sie zuerst einen laufenden Bot aus",
       "playingRadio": "Radio wird abgespielt",
       "playRadioFailed": "Abspielen des Radios fehlgeschlagen",
-      "stationRemoved": "Sender entfernt"
+      "stationRemoved": "Sender entfernt",
+      "widgetFailed": "Widget konnte nicht geladen werden"
     },
     "playDialog": {
       "title": "Musik abspielen",

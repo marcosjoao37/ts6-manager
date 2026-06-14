@@ -1055,7 +1055,8 @@
       "selectRunningBot": "Select a running bot first",
       "playingRadio": "Playing radio",
       "playRadioFailed": "Failed to play radio",
-      "stationRemoved": "Station removed"
+      "stationRemoved": "Station removed",
+      "widgetFailed": "Failed to load player widget"
     },
     "playDialog": {
       "title": "Play Music",

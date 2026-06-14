@@ -110,8 +110,10 @@ function BotPlayerCard({ bot, onEdit, onDelete, onPlay }: {
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-7 w-7" title={t('musicBots.player.widgetTooltip')}
               onClick={() => {
-                musicBotsApi.playerWidgetToken(bot.id).then(setWidgetData);
                 setShowWidget(true);
+                musicBotsApi.playerWidgetToken(bot.id)
+                  .then(setWidgetData)
+                  .catch(() => { setShowWidget(false); toast.error(t('musicBots.toast.widgetFailed')); });
               }}
             >
               <Link className="h-3.5 w-3.5" />
@@ -556,9 +558,9 @@ function BotsTab() {
     updateBot.mutate({ id: editBot.id, data: {
       name: form.name,
       nickname: form.nickname,
-      serverPassword: form.serverPassword || undefined,
-      defaultChannel: form.defaultChannel || undefined,
-      channelPassword: form.channelPassword || undefined,
+      serverPassword: form.serverPassword,
+      defaultChannel: form.defaultChannel,
+      channelPassword: form.channelPassword,
       voicePort: form.voicePort,
       volume: form.volume,
       autoStart: form.autoStart,
