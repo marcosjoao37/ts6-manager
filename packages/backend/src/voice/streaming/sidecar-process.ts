@@ -96,12 +96,12 @@ export class SidecarProcess extends EventEmitter {
         resolve();
       }, 3000);
 
+      proc.removeAllListeners('close');
       proc.once('close', () => {
         clearTimeout(timeout);
         resolve();
       });
 
-      proc.removeAllListeners('close');
       try { proc.kill('SIGTERM'); } catch { /* ignore */ }
     });
   }
