@@ -536,9 +536,24 @@ export class Ts3Client extends EventEmitter {
 
     this.lastMessageTime = Date.now();
 
-    // Decrypt
+    // Decrypt. The server bumps its per-type generation each time its 16-bit
+    // packet id wraps past 65535. We do NOT track incoming wraps proactively —
+    // that is fragile against UDP reordering (a single reordered packet could
+    // falsely advance the generation and break the whole session). Instead, when
+    // an encrypted packet fails to decrypt, retry with the next generation; if
+    // that succeeds the server has wrapped, so persist the bump. EAX is
+    // authenticated, so a successful decrypt proves the generation is right.
+    // This is self-correcting and a no-op for packets that already decrypt.
     const gen = this.inGenerationCounter[packetType] || 0;
-    const data = this.decryptPacket(raw, packetType, packetId, gen, flags);
+    let data = this.decryptPacket(raw, packetType, packetId, gen, flags);
+    if (!data && (flags & FLAG_UNENCRYPTED) === 0 && packetType !== PacketType.Init1) {
+      const nextGen = gen + 1;
+      const retry = this.decryptPacket(raw, packetType, packetId, nextGen, flags);
+      if (retry) {
+        this.inGenerationCounter[packetType] = nextGen;
+        data = retry;
+      }
+    }
     if (!data) {
       this.emit("debug", `Failed to decrypt packet type=${packetType} id=${packetId}`);
       return;
