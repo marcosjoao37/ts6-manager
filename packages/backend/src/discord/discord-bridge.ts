@@ -295,6 +295,8 @@ export class DiscordBridge {
 
   /** Whether the interaction's author may run commands, per configured roles. */
   private commandAllowed(i: ChatInputCommandInteraction): boolean {
+    // this.settings is loaded in start() before the interaction handler is wired,
+    // so it is non-null here; a null would parse to [] (fail-open) anyway.
     const allowedRoleIds = parseRoleIds(this.settings?.commandRoleIds);
     if (allowedRoleIds.length === 0) return true;
     const member = i.member as GuildMember | null;
