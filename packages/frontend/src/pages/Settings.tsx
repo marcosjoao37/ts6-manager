@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -851,6 +852,11 @@ function DiscordTab() {
     queryFn: discordApi.guilds,
     enabled: !!status?.running,
   });
+  const { data: roles = [] } = useQuery({
+    queryKey: ['discord-roles'],
+    queryFn: discordApi.roles,
+    enabled: !!status?.running,
+  });
   const { data: bots } = useQuery({ queryKey: ['music-bots'], queryFn: musicBotsApi.list });
   const { data: servers } = useQuery({ queryKey: ['servers'], queryFn: serversApi.list });
   const { data: tsChannels = [] } = useQuery({
@@ -871,6 +877,7 @@ function DiscordTab() {
       qc.invalidateQueries({ queryKey: ['discord-settings'] });
       qc.invalidateQueries({ queryKey: ['discord-status'] });
       qc.invalidateQueries({ queryKey: ['discord-channels'] });
+      qc.invalidateQueries({ queryKey: ['discord-roles'] });
       if (result?.status?.error) toast.error(t('settings.discord.toastSavedButError', { error: result.status.error }));
       else toast.success(t('settings.discord.toastSaved'));
     },
@@ -902,6 +909,12 @@ function DiscordTab() {
       <p className="text-[10px] text-muted-foreground">{hint}</p>
     </div>
   );
+
+  const toggleRole = (id: string) =>
+    setForm((f) => {
+      const cur = f.commandRoleIds ?? [];
+      return { ...f, commandRoleIds: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] };
+    });
 
   return (
     <Card>
@@ -954,6 +967,30 @@ function DiscordTab() {
         {channelField(t('settings.discord.notificationsChannel'), 'notificationsChannelId', t('settings.discord.notificationsChannelHint'), textChannels)}
         {channelField(t('settings.discord.statsChannel'), 'statsChannelId', t('settings.discord.statsChannelHint'), textChannels)}
         {channelField(t('settings.discord.voiceChannel'), 'voiceChannelId', t('settings.discord.voiceChannelHint'), voiceChannels)}
+
+        <div className="space-y-1.5 pt-1">
+          <Label className="text-xs font-medium">{t('settings.discord.commandRoles')}</Label>
+          <p className="text-[10px] text-muted-foreground">{t('settings.discord.commandRolesHint')}</p>
+          {roles.length > 0 ? (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border border-border/50 p-2">
+              {roles.map((r) => (
+                <label key={r.id} className="flex items-center gap-2 cursor-pointer select-none">
+                  <Checkbox
+                    checked={(form.commandRoleIds ?? []).includes(r.id)}
+                    onCheckedChange={() => toggleRole(r.id)}
+                  />
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full shrink-0 border border-border/50"
+                    style={{ backgroundColor: r.color ? `#${r.color.toString(16).padStart(6, '0')}` : 'transparent' }}
+                  />
+                  <span className="text-xs truncate">{r.name}</span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground italic">{t('settings.discord.commandRolesOffline')}</p>
+          )}
+        </div>
 
         <div className="space-y-2 pt-1">
           <Label className="text-xs font-medium">{t('settings.discord.notifications')}</Label>

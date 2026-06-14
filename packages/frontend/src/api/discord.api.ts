@@ -16,6 +16,7 @@ export interface DiscordSettings {
   notifyEmbed: boolean;
   notifAutoDeleteSeconds: number;
   flowMessageTrigger: boolean;
+  commandRoleIds: string[];
   defaultMusicBotId: number | null;
   serverConfigId: number | null;
   virtualServerId: number;
@@ -37,5 +38,7 @@ export const discordApi = {
   guilds: (): Promise<Array<{ id: string; name: string }>> => api.get('/discord/guilds').then((r) => r.data),
   channels: (): Promise<{ text: Array<{ id: string; name: string }>; voice: Array<{ id: string; name: string }> }> =>
     api.get('/discord/channels').then((r) => r.data),
+  roles: (): Promise<Array<{ id: string; name: string; color: number }>> =>
+    api.get('/discord/roles').then((r) => r.data),
   tsChannels: (): Promise<Array<{ id: string; name: string }>> => api.get('/discord/ts-channels').then((r) => r.data),
 };

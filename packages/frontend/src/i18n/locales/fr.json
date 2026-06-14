@@ -320,7 +320,10 @@
       "toastSavedButError": "Enregistré, mais : {{error}}",
       "embedStyle": "Style embed (carte colorée) au lieu d'un message simple",
       "autoDelete": "Auto-suppression des notifications après (secondes)",
-      "autoDeleteHint": "0 = conserver les messages. Supprime les notifs join/leave, now-playing et /stats après le délai pour éviter la pollution du canal (le panneau stats live n'est pas concerné)."
+      "autoDeleteHint": "0 = conserver les messages. Supprime les notifs join/leave, now-playing et /stats après le délai pour éviter la pollution du canal (le panneau stats live n'est pas concerné).",
+      "commandRoles": "Rôles autorisés pour les commandes",
+      "commandRolesHint": "Vide = tout le monde peut utiliser les commandes. Choisis des rôles pour restreindre. Les administrateurs Discord et le propriétaire du serveur sont toujours autorisés.",
+      "commandRolesOffline": "Connecte le bot pour lister ses rôles."
     },
     "spotify": {
       "title": "Spotify",
