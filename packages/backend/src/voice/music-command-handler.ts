@@ -6,6 +6,16 @@ import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } f
 
 const CMD_PREFIX = '!';
 
+/** Formats a number of seconds as m:ss (or h:mm:ss past an hour). */
+function formatTime(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = String(s % 60).padStart(2, '0');
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${sec}`;
+  return `${m}:${sec}`;
+}
+
 /** Sends a reply back to wherever the command came from (private or channel). */
 type ReplyFn = (msg: string) => void;
 
@@ -411,7 +421,37 @@ export class MusicCommandHandler {
     }
 
     const artist = np.artist ? `${np.artist} - ` : '';
-    reply(`Now playing: ${artist}${np.title}`);
+    const lines = [`Now playing: ${artist}${np.title}`];
+
+    const progress = this.formatProgress(bot);
+    if (progress) lines.push(progress);
+
+    reply(lines.join('\n'));
+  }
+
+  /**
+   * Builds a textual progress indicator for the current track, e.g.
+   *   1:07 ▬▬▬▬▬▬●▬▬▬▬▬▬▬▬▬▬▬ 3:42
+   * Returns null when there's nothing playing. For live streams (no known
+   * duration) only the elapsed time is shown.
+   */
+  private formatProgress(bot: VoiceBot): string | null {
+    const p = bot.playbackProgress;
+    if (!p) return null;
+
+    const pos = Math.max(0, Math.floor(p.position));
+
+    // Live stream / unknown duration — just the elapsed time.
+    if (!p.duration || p.duration <= 0) {
+      return `⏱ ${formatTime(pos)} (en direct)`;
+    }
+
+    const dur = Math.floor(p.duration);
+    const ratio = Math.min(1, pos / dur);
+    const barLen = 18;
+    const filled = Math.round(ratio * (barLen - 1));
+    const bar = '▬'.repeat(filled) + '●' + '▬'.repeat(barLen - 1 - filled);
+    return `${formatTime(pos)} ${bar} ${formatTime(dur)}`;
   }
 
   private handleInfo(bot: VoiceBot, reply: ReplyFn): void {
@@ -430,6 +470,9 @@ export class MusicCommandHandler {
       const sec = String(Math.floor(np.duration % 60)).padStart(2, '0');
       lines.push(`  Durée  : ${min}:${sec}`);
     }
+
+    const progress = this.formatProgress(bot);
+    if (progress) lines.push(`  Progression : ${progress}`);
 
     // Lien direct vers la source (YouTube/Spotify via sourceUrl, radio via streamUrl)
     const link = np.sourceUrl || np.streamUrl;
