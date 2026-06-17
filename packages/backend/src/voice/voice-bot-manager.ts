@@ -263,6 +263,7 @@ export class VoiceBotManager extends EventEmitter {
     }
     this.stopProgressBroadcast(id);
     this.bots.delete(id);
+    this.musicCmdHandler?.unregisterBot(id);
     await this.prisma.musicBot.delete({ where: { id } });
   }
 

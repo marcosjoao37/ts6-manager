@@ -621,8 +621,17 @@ export class MusicCommandHandler {
     if (required == null) return true;
 
     const { client, sid } = await this.getServer(botId);
-    const info = await client.execute(sid, 'clientinfo', { clid: String(userClid) });
-    const entry = Array.isArray(info) ? info[0] : info;
+
+    let entry: any;
+    try {
+      const info = await client.execute(sid, 'clientinfo', { clid: String(userClid) });
+      entry = Array.isArray(info) ? info[0] : info;
+    } catch {
+      // Could not resolve the invoker (e.g. just disconnected): fail closed.
+      reply('⛔ Impossible de vérifier vos permissions, commande refusée.');
+      return false;
+    }
+
     const groups = parseServerGroupIds(entry?.client_servergroups);
     if (groups.includes(required)) return true;
 
