@@ -78,7 +78,8 @@
       "users": "Benutzer",
       "youtube": "YouTube",
       "discord": "Discord",
-      "spotify": "Spotify"
+      "spotify": "Spotify",
+      "musicCommands": "Music-Bot"
     },
     "account": {
       "changePassword": "Passwort ändern",
@@ -342,6 +343,19 @@
       "saving": "Wird gespeichert...",
       "toastSaved": "Spotify-Einstellungen gespeichert",
       "toastSaveFailed": "Speichern fehlgeschlagen"
+    },
+    "musicCommands": {
+      "title": "Music-Bot-Befehle",
+      "description": "Music-Bot-Befehle auf Servergruppen beschränken und die Wiedergabe-Benachrichtigung im TeamSpeak-Kanal aktivieren. Es gelten die Gruppen des aktuell ausgewählten Servers.",
+      "noServerHint": "Wählen Sie einen Server, um die Gruppen anzuzeigen.",
+      "musicGroup": "Gruppe für Musikbefehle (!play, !skip, …)",
+      "adminGroup": "Gruppe für Admin-Befehle (!move, !moveall, !notif)",
+      "openToAll": "Keine (für alle offen)",
+      "notifyNowPlaying": "Aktuellen Titel im TS-Kanal ankündigen",
+      "save": "Speichern",
+      "saving": "Wird gespeichert...",
+      "toastSaved": "Einstellungen gespeichert",
+      "toastSaveFailed": "Speichern fehlgeschlagen"
     }
   },
   "channels": {
@@ -556,7 +570,14 @@
     "deleteServerGroup": "Servergruppe löschen",
     "deleteConfirm": "„{{name}}“ löschen?",
     "delete": "Löschen",
-    "groupDeleted": "Gruppe gelöscht"
+    "groupDeleted": "Gruppe gelöscht",
+    "addMember": "Mitglied hinzufügen",
+    "addMemberTitle": "Mitglied zur Gruppe hinzufügen",
+    "removeMember": "Aus Gruppe entfernen",
+    "searchClient": "Verbundenen Client suchen...",
+    "memberAdded": "Mitglied hinzugefügt",
+    "memberRemoved": "Mitglied entfernt",
+    "memberActionFailed": "Mitgliederaktion fehlgeschlagen"
   },
   "tokens": {
     "title": "Berechtigungsschlüssel",

@@ -78,7 +78,8 @@
       "users": "Utilisateurs",
       "youtube": "YouTube",
       "discord": "Discord",
-      "spotify": "Spotify"
+      "spotify": "Spotify",
+      "musicCommands": "Music Bot"
     },
     "account": {
       "changePassword": "Changer le mot de passe",
@@ -342,6 +343,19 @@
       "saving": "Enregistrement...",
       "toastSaved": "Paramètres Spotify enregistrés",
       "toastSaveFailed": "Échec de l'enregistrement"
+    },
+    "musicCommands": {
+      "title": "Commandes Music Bot",
+      "description": "Restreindre les commandes du Music Bot à des groupes serveur, et activer la notification du titre en cours dans le canal TeamSpeak. Les groupes sont ceux du serveur actuellement sélectionné.",
+      "noServerHint": "Sélectionnez un serveur pour lister les groupes.",
+      "musicGroup": "Groupe pour les commandes musicales (!play, !skip, …)",
+      "adminGroup": "Groupe pour les commandes d'admin (!move, !moveall, !notif)",
+      "openToAll": "Aucun (ouvert à tous)",
+      "notifyNowPlaying": "Notifier le titre en cours dans le canal TS",
+      "save": "Enregistrer",
+      "saving": "Enregistrement...",
+      "toastSaved": "Réglages enregistrés",
+      "toastSaveFailed": "Échec de l'enregistrement"
     }
   },
   "channels": {
@@ -556,7 +570,14 @@
     "deleteServerGroup": "Supprimer le groupe de serveur",
     "deleteConfirm": "Supprimer « {{name}} » ?",
     "delete": "Supprimer",
-    "groupDeleted": "Groupe supprimé"
+    "groupDeleted": "Groupe supprimé",
+    "addMember": "Ajouter un membre",
+    "addMemberTitle": "Ajouter un membre au groupe",
+    "removeMember": "Retirer du groupe",
+    "searchClient": "Rechercher un client connecté...",
+    "memberAdded": "Membre ajouté",
+    "memberRemoved": "Membre retiré",
+    "memberActionFailed": "Action sur le membre échouée"
   },
   "tokens": {
     "title": "Clés de privilège",

@@ -19,7 +19,14 @@
       "deleteServerGroup": "Delete Server Group",
       "deleteConfirm": "Delete \"{{name}}\"?",
       "delete": "Delete",
-      "groupDeleted": "Group deleted"
+      "groupDeleted": "Group deleted",
+      "addMember": "Add member",
+      "addMemberTitle": "Add a member to the group",
+      "removeMember": "Remove from group",
+      "searchClient": "Search a connected client...",
+      "memberAdded": "Member added",
+      "memberRemoved": "Member removed",
+      "memberActionFailed": "Member action failed"
     },
     "fr": {
       "noServerSelected": "Aucun serveur sélectionné",
@@ -39,7 +46,14 @@
       "deleteServerGroup": "Supprimer le groupe de serveur",
       "deleteConfirm": "Supprimer « {{name}} » ?",
       "delete": "Supprimer",
-      "groupDeleted": "Groupe supprimé"
+      "groupDeleted": "Groupe supprimé",
+      "addMember": "Ajouter un membre",
+      "addMemberTitle": "Ajouter un membre au groupe",
+      "removeMember": "Retirer du groupe",
+      "searchClient": "Rechercher un client connecté...",
+      "memberAdded": "Membre ajouté",
+      "memberRemoved": "Membre retiré",
+      "memberActionFailed": "Action sur le membre échouée"
     },
     "de": {
       "noServerSelected": "Kein Server ausgewählt",
@@ -59,7 +73,14 @@
       "deleteServerGroup": "Servergruppe löschen",
       "deleteConfirm": "„{{name}}“ löschen?",
       "delete": "Löschen",
-      "groupDeleted": "Gruppe gelöscht"
+      "groupDeleted": "Gruppe gelöscht",
+      "addMember": "Mitglied hinzufügen",
+      "addMemberTitle": "Mitglied zur Gruppe hinzufügen",
+      "removeMember": "Aus Gruppe entfernen",
+      "searchClient": "Verbundenen Client suchen...",
+      "memberAdded": "Mitglied hinzugefügt",
+      "memberRemoved": "Mitglied entfernt",
+      "memberActionFailed": "Mitgliederaktion fehlgeschlagen"
     },
     "es": {
       "noServerSelected": "Ningún servidor seleccionado",
@@ -79,7 +100,14 @@
       "deleteServerGroup": "Eliminar grupo de servidor",
       "deleteConfirm": "¿Eliminar «{{name}}»?",
       "delete": "Eliminar",
-      "groupDeleted": "Grupo eliminado"
+      "groupDeleted": "Grupo eliminado",
+      "addMember": "Añadir miembro",
+      "addMemberTitle": "Añadir un miembro al grupo",
+      "removeMember": "Quitar del grupo",
+      "searchClient": "Buscar un cliente conectado...",
+      "memberAdded": "Miembro añadido",
+      "memberRemoved": "Miembro eliminado",
+      "memberActionFailed": "Acción sobre el miembro fallida"
     },
     "it": {
       "noServerSelected": "Nessun server selezionato",
@@ -99,7 +127,14 @@
       "deleteServerGroup": "Elimina gruppo del server",
       "deleteConfirm": "Eliminare «{{name}}»?",
       "delete": "Elimina",
-      "groupDeleted": "Gruppo eliminato"
+      "groupDeleted": "Gruppo eliminato",
+      "addMember": "Aggiungi membro",
+      "addMemberTitle": "Aggiungi un membro al gruppo",
+      "removeMember": "Rimuovi dal gruppo",
+      "searchClient": "Cerca un client connesso...",
+      "memberAdded": "Membro aggiunto",
+      "memberRemoved": "Membro rimosso",
+      "memberActionFailed": "Azione sul membro non riuscita"
     }
   }
 }

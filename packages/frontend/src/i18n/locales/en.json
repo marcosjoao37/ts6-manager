@@ -78,7 +78,8 @@
       "users": "Users",
       "youtube": "YouTube",
       "discord": "Discord",
-      "spotify": "Spotify"
+      "spotify": "Spotify",
+      "musicCommands": "Music Bot"
     },
     "account": {
       "changePassword": "Change Password",
@@ -342,6 +343,19 @@
       "saving": "Saving...",
       "toastSaved": "Spotify settings saved",
       "toastSaveFailed": "Failed to save"
+    },
+    "musicCommands": {
+      "title": "Music Bot Commands",
+      "description": "Restrict Music Bot commands to server groups, and enable now-playing notifications in the TeamSpeak channel. Groups are those of the currently selected server.",
+      "noServerHint": "Select a server to list its groups.",
+      "musicGroup": "Group for music commands (!play, !skip, …)",
+      "adminGroup": "Group for admin commands (!move, !moveall, !notif)",
+      "openToAll": "None (open to all)",
+      "notifyNowPlaying": "Announce the current track in the TS channel",
+      "save": "Save",
+      "saving": "Saving...",
+      "toastSaved": "Settings saved",
+      "toastSaveFailed": "Failed to save"
     }
   },
   "channels": {
@@ -556,7 +570,14 @@
     "deleteServerGroup": "Delete Server Group",
     "deleteConfirm": "Delete \"{{name}}\"?",
     "delete": "Delete",
-    "groupDeleted": "Group deleted"
+    "groupDeleted": "Group deleted",
+    "addMember": "Add member",
+    "addMemberTitle": "Add a member to the group",
+    "removeMember": "Remove from group",
+    "searchClient": "Search a connected client...",
+    "memberAdded": "Member added",
+    "memberRemoved": "Member removed",
+    "memberActionFailed": "Member action failed"
   },
   "tokens": {
     "title": "Privilege Keys",
