@@ -37,6 +37,13 @@ Frontend:
 **Files:**
 - Modify: `packages/backend/prisma/schema.prisma` (after the `SpotifySettings` model, ~line 301)
 
+> **Deployment note:** the backend container creates/updates tables at startup
+> via `npx prisma db push` (see `Dockerfile.backend` CMD), **not** `migrate
+> deploy`. So no migration file is needed — the new table is created from
+> `schema.prisma` on the VM at container start. Locally there is no database
+> and no `.env`, so we only regenerate the Prisma **client** (no DB required);
+> do **not** run `prisma migrate dev` (it would fail without a database).
+
 - [ ] **Step 1: Add the model**
 
 Insert after the `SpotifySettings` model block:
@@ -51,13 +58,14 @@ model MusicCommandSettings {
 }
 ```
 
-- [ ] **Step 2: Create the migration and regenerate the client**
+- [ ] **Step 2: Regenerate the Prisma client (no DB needed)**
 
 Run (from `packages/backend`):
 ```bash
-npx prisma migrate dev --name music_command_settings
+npx prisma generate
 ```
-Expected: a new migration is created under `prisma/migrations/`, applied, and the Prisma client is regenerated. `prisma.musicCommandSettings` becomes available.
+Expected: `Generated Prisma Client ... to ./generated/prisma`. The client now
+includes `MusicCommandSettings`, so `prisma.musicCommandSettings` is available.
 
 - [ ] **Step 3: Verify the type exists**
 
@@ -70,7 +78,7 @@ Expected: PASS (no errors). The generated client now includes `MusicCommandSetti
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/backend/prisma/schema.prisma packages/backend/prisma/migrations packages/backend/generated
+git add packages/backend/prisma/schema.prisma packages/backend/generated
 git commit -m "feat(db): add MusicCommandSettings singleton model"
 ```
 
