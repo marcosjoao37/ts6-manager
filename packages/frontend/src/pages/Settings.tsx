@@ -6,6 +6,8 @@ import { serversApi } from '@/api/servers.api';
 import { settingsApi, proxyApi } from '@/api/settings.api';
 import { discordApi, type DiscordSettings } from '@/api/discord.api';
 import { spotifyApi } from '@/api/spotify.api';
+import { musicCommandSettingsApi } from '@/api/music-command-settings.api';
+import { useServerGroups } from '@/hooks/use-groups';
 import { journalApi } from '@/api/journal.api';
 import { musicBotsApi } from '@/api/music.api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -21,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare, Music } from 'lucide-react';
+import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare, Music, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage } from '@/i18n';
@@ -44,6 +46,7 @@ export default function Settings() {
           {isAdmin && <TabsTrigger value="youtube"><Youtube className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.youtube')}</TabsTrigger>}
           {isAdmin && <TabsTrigger value="discord"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.discord')}</TabsTrigger>}
           {isAdmin && <TabsTrigger value="spotify"><Music className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.spotify')}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="musicCommands"><Bot className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.musicCommands')}</TabsTrigger>}
         </TabsList>
 
         {isAdmin && (
@@ -77,6 +80,12 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="spotify" className="mt-4">
             <SpotifyTab />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="musicCommands" className="mt-4">
+            <MusicCommandsTab />
           </TabsContent>
         )}
       </Tabs>
@@ -1180,6 +1189,94 @@ function SpotifyTab() {
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? t('settings.spotify.saving') : t('settings.spotify.save')}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Music Bot Commands Tab ──────────────────────────────────
+
+const NO_GROUP = 'none';
+
+function MusicCommandsTab() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['music-command-settings'],
+    queryFn: musicCommandSettingsApi.get,
+  });
+  const { data: groupsData } = useServerGroups();
+  const groups = Array.isArray(groupsData) ? groupsData : [];
+
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false,
+  });
+
+  useEffect(() => {
+    if (settings) setForm({
+      musicCommandSgid: settings.musicCommandSgid ? String(settings.musicCommandSgid) : NO_GROUP,
+      adminCommandSgid: settings.adminCommandSgid ? String(settings.adminCommandSgid) : NO_GROUP,
+      notifyNowPlaying: settings.notifyNowPlaying,
+    });
+  }, [settings]);
+
+  const save = useMutation({
+    mutationFn: () => musicCommandSettingsApi.update({
+      musicCommandSgid: form.musicCommandSgid === NO_GROUP ? null : parseInt(form.musicCommandSgid),
+      adminCommandSgid: form.adminCommandSgid === NO_GROUP ? null : parseInt(form.adminCommandSgid),
+      notifyNowPlaying: form.notifyNowPlaying,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['music-command-settings'] });
+      toast.success(t('settings.musicCommands.toastSaved'));
+    },
+    onError: (err: any) => toast.error(err.response?.data?.error || t('settings.musicCommands.toastSaveFailed')),
+  });
+
+  if (isLoading || !settings) return <PageLoader />;
+
+  const groupSelect = (value: string, onChange: (v: string) => void) => (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NO_GROUP}>{t('settings.musicCommands.openToAll')}</SelectItem>
+        {groups.map((g: any) => (
+          <SelectItem key={g.sgid} value={String(g.sgid)}>{g.name} (#{g.sgid})</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">{t('settings.musicCommands.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 max-w-xl">
+        <p className="text-[11px] text-muted-foreground">{t('settings.musicCommands.description')}</p>
+
+        {groups.length === 0 && (
+          <p className="text-[11px] text-amber-500">{t('settings.musicCommands.noServerHint')}</p>
+        )}
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.musicCommands.musicGroup')}</Label>
+          {groupSelect(form.musicCommandSgid, (v) => setForm((f) => ({ ...f, musicCommandSgid: v }))) }
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.musicCommands.adminGroup')}</Label>
+          {groupSelect(form.adminCommandSgid, (v) => setForm((f) => ({ ...f, adminCommandSgid: v }))) }
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch checked={form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
+          <Label className="text-xs">{t('settings.musicCommands.notifyNowPlaying')}</Label>
+        </div>
+
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? t('settings.musicCommands.saving') : t('settings.musicCommands.save')}
         </Button>
       </CardContent>
     </Card>
