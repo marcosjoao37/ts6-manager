@@ -374,7 +374,8 @@
     "toastUpdated": "Salon mis à jour",
     "toastUpdateFailed": "Échec de la mise à jour du salon",
     "toastMoved": "Salon déplacé",
-    "toastMoveFailed": "Échec du déplacement du salon"
+    "toastMoveFailed": "Échec du déplacement du salon",
+    "dropToRoot": "Déposer ici pour mettre à la racine"
   },
   "clients": {
     "title": "Clients",

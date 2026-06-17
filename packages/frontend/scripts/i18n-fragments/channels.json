@@ -31,7 +31,8 @@
       "toastUpdated": "Channel updated",
       "toastUpdateFailed": "Failed to update channel",
       "toastMoved": "Channel moved",
-      "toastMoveFailed": "Failed to move channel"
+      "toastMoveFailed": "Failed to move channel",
+      "dropToRoot": "Drop here to move to top level"
     },
     "fr": {
       "away": "Absent",
@@ -63,7 +64,8 @@
       "toastUpdated": "Salon mis à jour",
       "toastUpdateFailed": "Échec de la mise à jour du salon",
       "toastMoved": "Salon déplacé",
-      "toastMoveFailed": "Échec du déplacement du salon"
+      "toastMoveFailed": "Échec du déplacement du salon",
+      "dropToRoot": "Déposer ici pour mettre à la racine"
     },
     "de": {
       "away": "Abwesend",
@@ -95,7 +97,8 @@
       "toastUpdated": "Kanal aktualisiert",
       "toastUpdateFailed": "Kanal konnte nicht aktualisiert werden",
       "toastMoved": "Kanal verschoben",
-      "toastMoveFailed": "Kanal konnte nicht verschoben werden"
+      "toastMoveFailed": "Kanal konnte nicht verschoben werden",
+      "dropToRoot": "Hier ablegen, um auf die oberste Ebene zu verschieben"
     },
     "es": {
       "away": "Ausente",
@@ -127,7 +130,8 @@
       "toastUpdated": "Canal actualizado",
       "toastUpdateFailed": "Error al actualizar el canal",
       "toastMoved": "Canal movido",
-      "toastMoveFailed": "Error al mover el canal"
+      "toastMoveFailed": "Error al mover el canal",
+      "dropToRoot": "Suelta aquí para mover al nivel superior"
     },
     "it": {
       "away": "Assente",
@@ -159,7 +163,8 @@
       "toastUpdated": "Canale aggiornato",
       "toastUpdateFailed": "Impossibile aggiornare il canale",
       "toastMoved": "Canale spostato",
-      "toastMoveFailed": "Impossibile spostare il canale"
+      "toastMoveFailed": "Impossibile spostare il canale",
+      "dropToRoot": "Trascina qui per spostare al livello principale"
     }
   }
 }

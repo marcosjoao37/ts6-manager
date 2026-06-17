@@ -374,7 +374,8 @@
     "toastUpdated": "Kanal aktualisiert",
     "toastUpdateFailed": "Kanal konnte nicht aktualisiert werden",
     "toastMoved": "Kanal verschoben",
-    "toastMoveFailed": "Kanal konnte nicht verschoben werden"
+    "toastMoveFailed": "Kanal konnte nicht verschoben werden",
+    "dropToRoot": "Hier ablegen, um auf die oberste Ebene zu verschieben"
   },
   "clients": {
     "title": "Clients",

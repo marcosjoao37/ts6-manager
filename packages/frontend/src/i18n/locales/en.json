@@ -374,7 +374,8 @@
     "toastUpdated": "Channel updated",
     "toastUpdateFailed": "Failed to update channel",
     "toastMoved": "Channel moved",
-    "toastMoveFailed": "Failed to move channel"
+    "toastMoveFailed": "Failed to move channel",
+    "dropToRoot": "Drop here to move to top level"
   },
   "clients": {
     "title": "Clients",

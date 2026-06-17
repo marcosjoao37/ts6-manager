@@ -236,6 +236,7 @@ export default function Channels() {
   const [editForm, setEditForm] = useState({ channel_name: '', channel_topic: '', channel_password: '' });
   const [newName, setNewName] = useState('');
   const [draggedCid, setDraggedCid] = useState<number | null>(null);
+  const [dropOverRoot, setDropOverRoot] = useState(false);
 
   const tree = useMemo(() => {
     if (!channelData || !Array.isArray(channelData)) return [];
@@ -304,6 +305,18 @@ export default function Channels() {
     });
   };
 
+  const handleDropToRoot = (cid: number) => {
+    const dragged = Array.isArray(channelData)
+      ? channelData.find((ch: any) => Number(ch.cid) === cid)
+      : undefined;
+    // Already a top-level channel: nothing to do.
+    if (dragged && Number(dragged.pid) === 0) return;
+    moveChannel.mutate({ cid, data: { cpid: 0 } }, {
+      onSuccess: () => toast.success(t('channels.toastMoved')),
+      onError: () => toast.error(t('channels.toastMoveFailed')),
+    });
+  };
+
   const totalClients = clientsByChannel.size > 0
     ? Array.from(clientsByChannel.values()).reduce((sum, arr) => sum + arr.length, 0)
     : 0;
@@ -334,6 +347,25 @@ export default function Channels() {
         <CardContent>
           <ScrollArea className="h-[600px]">
             <div className="space-y-0">
+              {isAdmin && draggedCid !== null && (
+                <div
+                  className={cn(
+                    'mb-1 rounded-sm border border-dashed border-border/60 px-3 py-2 text-center text-xs text-muted-foreground transition-colors',
+                    dropOverRoot && 'border-primary/60 bg-primary/10 text-primary',
+                  )}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropOverRoot(true); }}
+                  onDragLeave={() => setDropOverRoot(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDropOverRoot(false);
+                    const cid = Number(e.dataTransfer.getData('text/plain'));
+                    if (cid) handleDropToRoot(cid);
+                  }}
+                >
+                  {t('channels.dropToRoot')}
+                </div>
+              )}
               {tree.map((node) => (
                 <ChannelTreeNode
                   key={node.cid}

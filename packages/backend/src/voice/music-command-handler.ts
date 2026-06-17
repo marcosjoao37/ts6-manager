@@ -3,8 +3,25 @@ import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
 import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from './music-ops.js';
+import type { ConnectionPool } from '../ts-client/connection-pool.js';
+import type { WebQueryClient } from '../ts-client/webquery-client.js';
 
 const CMD_PREFIX = '!';
+
+/**
+ * Splits a command argument string into tokens, honouring single and double
+ * quotes so channel/user names containing spaces can be passed as one token
+ * (e.g. `!move "John Doe" "Salon de jeu"`). Unquoted runs split on whitespace.
+ */
+function tokenizeArgs(input: string): string[] {
+  const tokens: string[] = [];
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(input)) !== null) {
+    tokens.push(m[1] ?? m[2] ?? m[3] ?? '');
+  }
+  return tokens;
+}
 
 /** Formats a number of seconds as m:ss (or h:mm:ss past an hour). */
 function formatTime(totalSeconds: number): string {
@@ -23,6 +40,7 @@ const MUSIC_COMMANDS = new Set([
   'radio', 'play', 'spotify', 'stop', 'pause', 'skip', 'next', 'prev',
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
   'stream', 'stopstream', 'viewers',
+  'move', 'moveall', 'channels',
   'help', 'aide', 'info',
 ]);
 
@@ -35,10 +53,14 @@ const MUSIC_COMMANDS = new Set([
  */
 export class MusicCommandHandler {
   private registeredBots = new Set<number>();
+  // Maps a music bot to the virtual server id (sid) of the TS server it sits
+  // on, resolved once from its voice port via serveridgetbyport.
+  private sidCache = new Map<number, number>();
 
   constructor(
     private prisma: PrismaClient,
     private voiceBotManager: VoiceBotManager,
+    private connectionPool: ConnectionPool,
   ) {}
 
   /**
@@ -135,6 +157,15 @@ export class MusicCommandHandler {
           break;
         case 'viewers':
           this.handleViewers(bot, reply);
+          break;
+        case 'channels':
+          await this.handleChannels(botId, reply);
+          break;
+        case 'move':
+          await this.handleMove(botId, reply, args);
+          break;
+        case 'moveall':
+          await this.handleMoveAll(botId, bot, reply, args);
           break;
         case 'help':
         case 'aide':
@@ -481,6 +512,234 @@ export class MusicCommandHandler {
     reply(lines.join('\n'));
   }
 
+  // ─── Channel / Client Management ──────────────────────────
+
+  /**
+   * Resolve the WebQuery client + virtual server id (sid) for a music bot.
+   * The bot only knows its UDP voice port; serveridgetbyport maps that to the
+   * sid. Result is cached per bot. Falls back to sid=1 if the lookup fails.
+   */
+  private async getServer(botId: number): Promise<{ client: WebQueryClient; sid: number }> {
+    const dbBot = await this.prisma.musicBot.findUnique({
+      where: { id: botId },
+      select: { serverConfigId: true, voicePort: true },
+    });
+    if (!dbBot) throw new Error('Configuration du bot introuvable.');
+
+    const client = await this.connectionPool.getOrLoad(dbBot.serverConfigId);
+
+    let sid = this.sidCache.get(botId);
+    if (!sid) {
+      try {
+        const res = await client.execute(0, 'serveridgetbyport', { virtualserver_port: dbBot.voicePort });
+        const entry = Array.isArray(res) ? res[0] : res;
+        sid = parseInt(entry?.server_id) || 1;
+      } catch {
+        sid = 1; // single-server fallback
+      }
+      this.sidCache.set(botId, sid);
+    }
+
+    return { client, sid };
+  }
+
+  /** Fetch the live channel list (array form) for a virtual server. */
+  private async fetchChannels(client: WebQueryClient, sid: number): Promise<any[]> {
+    const res = await client.execute(sid, 'channellist');
+    return Array.isArray(res) ? res : res ? [res] : [];
+  }
+
+  /** Fetch the live client list (array form) for a virtual server. */
+  private async fetchClients(client: WebQueryClient, sid: number): Promise<any[]> {
+    const res = await client.execute(sid, 'clientlist');
+    return Array.isArray(res) ? res : res ? [res] : [];
+  }
+
+  /** True for the spacer pseudo-channels used purely for visual separation. */
+  private isSpacer(name: string): boolean {
+    return name.startsWith('[spacer') || name.startsWith('[*spacer');
+  }
+
+  /**
+   * Resolve a channel reference — either a numeric cid or a (possibly
+   * space-containing) channel name — to a channel entry. Name matching is
+   * case-insensitive: exact match first, then a unique substring match.
+   * Throws a user-facing message on no/ambiguous match.
+   */
+  private resolveChannel(channels: any[], ref: string): any {
+    const query = ref.trim();
+
+    // Numeric → channel id
+    if (/^\d+$/.test(query)) {
+      const cid = Number(query);
+      const byId = channels.find((c) => Number(c.cid) === cid);
+      if (!byId) throw new Error(`Aucun salon avec l'ID ${cid}. Utilisez !channels pour la liste.`);
+      return byId;
+    }
+
+    const lower = query.toLowerCase();
+    const named = channels.filter((c) => !this.isSpacer(String(c.channel_name)));
+
+    const exact = named.filter((c) => String(c.channel_name).toLowerCase() === lower);
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) {
+      throw new Error(`Plusieurs salons nommés « ${query} ». Précisez avec l'ID (voir !channels).`);
+    }
+
+    const partial = named.filter((c) => String(c.channel_name).toLowerCase().includes(lower));
+    if (partial.length === 1) return partial[0];
+    if (partial.length > 1) {
+      const ids = partial.slice(0, 6).map((c) => `[${c.cid}] ${c.channel_name}`).join(', ');
+      throw new Error(`Plusieurs salons correspondent à « ${query} » : ${ids}. Précisez avec l'ID.`);
+    }
+
+    throw new Error(`Salon introuvable : « ${query} ». Utilisez !channels pour la liste.`);
+  }
+
+  private async handleChannels(botId: number, reply: ReplyFn): Promise<void> {
+    const { client, sid } = await this.getServer(botId);
+    const channels = await this.fetchChannels(client, sid);
+    if (channels.length === 0) {
+      reply('Aucun salon.');
+      return;
+    }
+
+    // Build a tree (cid → children) so the list mirrors the channel hierarchy.
+    const norm = channels.map((c) => ({
+      cid: Number(c.cid),
+      pid: Number(c.pid),
+      order: Number(c.channel_order) || 0,
+      name: String(c.channel_name),
+    }));
+    const childrenOf = new Map<number, typeof norm>();
+    for (const c of norm) {
+      if (!childrenOf.has(c.pid)) childrenOf.set(c.pid, []);
+      childrenOf.get(c.pid)!.push(c);
+    }
+    for (const list of childrenOf.values()) list.sort((a, b) => a.order - b.order);
+
+    const lines: string[] = [];
+    const MAX = 60;
+    const walk = (pid: number, depth: number): void => {
+      for (const c of childrenOf.get(pid) ?? []) {
+        if (lines.length < MAX && !this.isSpacer(c.name)) {
+          lines.push(`${'  '.repeat(depth)}[${c.cid}] ${c.name}`);
+        }
+        walk(c.cid, depth + 1);
+      }
+    };
+    walk(0, 0);
+
+    if (norm.length > MAX) lines.push(`  ... et ${norm.length - MAX} de plus`);
+
+    // Send in chunks to stay under the ~1KB per-message limit on long lists.
+    const header = `Salons (${norm.length}) :`;
+    let buf = header;
+    for (const line of lines) {
+      if (buf.length + 1 + line.length > 900) {
+        reply(buf);
+        buf = line;
+      } else {
+        buf += '\n' + line;
+      }
+    }
+    if (buf) reply(buf);
+  }
+
+  private async handleMove(botId: number, reply: ReplyFn, args: string): Promise<void> {
+    const tokens = tokenizeArgs(args);
+    if (tokens.length < 2) {
+      reply('Usage : !move <pseudo> <salon|id>  — guillemets pour les noms avec espaces, ex. !move "John Doe" "Salon 1"');
+      return;
+    }
+
+    const userQuery = tokens[0];
+    const channelRef = tokens.slice(1).join(' ');
+
+    const { client, sid } = await this.getServer(botId);
+    const [channels, clients] = await Promise.all([
+      this.fetchChannels(client, sid),
+      this.fetchClients(client, sid),
+    ]);
+
+    const channel = this.resolveChannel(channels, channelRef);
+    const target = this.resolveClient(clients, userQuery);
+
+    await client.execute(sid, 'clientmove', { clid: target.clid, cid: channel.cid });
+    reply(`Déplacé : ${target.client_nickname} → ${channel.channel_name}`);
+  }
+
+  private async handleMoveAll(botId: number, bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
+    const channelRef = tokenizeArgs(args).join(' ').trim();
+    if (!channelRef) {
+      reply('Usage : !moveall <salon|id>  — déplace tous les utilisateurs vers ce salon.');
+      return;
+    }
+
+    const { client, sid } = await this.getServer(botId);
+    const [channels, clients] = await Promise.all([
+      this.fetchChannels(client, sid),
+      this.fetchClients(client, sid),
+    ]);
+
+    const channel = this.resolveChannel(channels, channelRef);
+    const cid = Number(channel.cid);
+
+    // Real users only (client_type 0), excluding the bot itself and anyone
+    // already in the destination channel.
+    const toMove = clients.filter((c) =>
+      String(c.client_type) === '0' &&
+      Number(c.clid) !== bot.ts3ClientId &&
+      Number(c.cid) !== cid,
+    );
+
+    if (toMove.length === 0) {
+      reply(`Personne à déplacer vers ${channel.channel_name}.`);
+      return;
+    }
+
+    let moved = 0;
+    const failed: string[] = [];
+    // Sequential to stay friendly with the server's flood protection.
+    for (const c of toMove) {
+      try {
+        await client.execute(sid, 'clientmove', { clid: c.clid, cid });
+        moved++;
+      } catch (err: any) {
+        failed.push(String(c.client_nickname || c.clid));
+      }
+    }
+
+    let msg = `${moved} utilisateur(s) déplacé(s) vers ${channel.channel_name}.`;
+    if (failed.length) msg += ` Échec pour : ${failed.join(', ')}.`;
+    reply(msg);
+  }
+
+  /**
+   * Resolve a user reference (pseudo) to a connected client. Matches only real
+   * clients (client_type 0), case-insensitively: exact first, then a unique
+   * substring match. Throws a user-facing message on no/ambiguous match.
+   */
+  private resolveClient(clients: any[], ref: string): any {
+    const lower = ref.trim().toLowerCase();
+    const real = clients.filter((c) => String(c.client_type) === '0');
+
+    const exact = real.filter((c) => String(c.client_nickname).toLowerCase() === lower);
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) {
+      throw new Error(`Plusieurs clients nommés « ${ref} ». Soyez plus précis.`);
+    }
+
+    const partial = real.filter((c) => String(c.client_nickname).toLowerCase().includes(lower));
+    if (partial.length === 1) return partial[0];
+    if (partial.length > 1) {
+      const names = partial.slice(0, 6).map((c) => c.client_nickname).join(', ');
+      throw new Error(`Plusieurs clients correspondent à « ${ref} » : ${names}. Soyez plus précis.`);
+    }
+
+    throw new Error(`Utilisateur introuvable : « ${ref} ».`);
+  }
+
   private handleHelp(reply: ReplyFn): void {
     reply([
       'Commandes musicales disponibles :',
@@ -499,6 +758,9 @@ export class MusicCommandHandler {
       '  !stream <url> [qual] Diffuser une vidéo (presets : 480p, 720p, 1080p)',
       '  !stopstream          Arrêter la diffusion vidéo',
       '  !viewers             Lister les spectateurs du stream vidéo',
+      '  !channels            Lister les salons et leur ID',
+      '  !move <user> <salon> Déplacer un utilisateur (nom ou ID ; "guillemets" si espaces)',
+      '  !moveall <salon>     Déplacer tous les utilisateurs vers un salon',
       '  !help / !aide        Afficher cette aide',
     ].join('\n'));
   }

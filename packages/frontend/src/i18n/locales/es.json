@@ -374,7 +374,8 @@
     "toastUpdated": "Canal actualizado",
     "toastUpdateFailed": "Error al actualizar el canal",
     "toastMoved": "Canal movido",
-    "toastMoveFailed": "Error al mover el canal"
+    "toastMoveFailed": "Error al mover el canal",
+    "dropToRoot": "Suelta aquí para mover al nivel superior"
   },
   "clients": {
     "title": "Clientes",
