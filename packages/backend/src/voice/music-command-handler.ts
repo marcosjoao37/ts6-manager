@@ -5,6 +5,7 @@ import type { QueueItem } from './playlist/queue.js';
 import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from './music-ops.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
+import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
 
 const CMD_PREFIX = '!';
 
@@ -40,9 +41,13 @@ const MUSIC_COMMANDS = new Set([
   'radio', 'play', 'spotify', 'stop', 'pause', 'skip', 'next', 'prev',
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
   'stream', 'stopstream', 'viewers',
-  'move', 'moveall', 'channels',
+  'move', 'moveall', 'channels', 'notif',
   'help', 'aide', 'info',
 ]);
+
+interface MusicCommandSettingsRow extends MusicCommandAccessSettings {
+  notifyNowPlaying: boolean;
+}
 
 /**
  * Handles text-based music commands (!radio, !play, !stop, etc.)
@@ -56,6 +61,10 @@ export class MusicCommandHandler {
   // Maps a music bot to the virtual server id (sid) of the TS server it sits
   // on, resolved once from its voice port via serveridgetbyport.
   private sidCache = new Map<number, number>();
+  // Short-lived cache of the global MusicCommandSettings row. WebUI edits are
+  // picked up within the TTL; !notif invalidates it immediately.
+  private settingsCache: { at: number; value: MusicCommandSettingsRow } | null = null;
+  private static readonly SETTINGS_TTL_MS = 5000;
 
   constructor(
     private prisma: PrismaClient,
@@ -113,6 +122,9 @@ export class MusicCommandHandler {
 
     console.log(`[MusicCmd] Bot ${botId}: !${command} ${args} (from clid=${userClid}, ${inChannel ? 'channel' : 'private'})`);
 
+    // Access control: music vs admin tier, gated by configured server groups.
+    if (!(await this.checkAccess(botId, command, userClid, reply))) return;
+
     try {
       switch (command) {
         case 'radio':
@@ -166,6 +178,9 @@ export class MusicCommandHandler {
           break;
         case 'moveall':
           await this.handleMoveAll(botId, bot, reply, args);
+          break;
+        case 'notif':
+          await this.handleNotif(reply);
           break;
         case 'help':
         case 'aide':
@@ -543,6 +558,57 @@ export class MusicCommandHandler {
     return { client, sid };
   }
 
+  /** Load the global command settings, cached for SETTINGS_TTL_MS. */
+  private async getSettings(): Promise<MusicCommandSettingsRow> {
+    if (this.settingsCache && Date.now() - this.settingsCache.at < MusicCommandHandler.SETTINGS_TTL_MS) {
+      return this.settingsCache.value;
+    }
+    const row = await this.prisma.musicCommandSettings.findFirst();
+    const value: MusicCommandSettingsRow = {
+      musicCommandSgid: row?.musicCommandSgid ?? null,
+      adminCommandSgid: row?.adminCommandSgid ?? null,
+      notifyNowPlaying: row?.notifyNowPlaying ?? false,
+    };
+    this.settingsCache = { at: Date.now(), value };
+    return value;
+  }
+
+  private invalidateSettings(): void {
+    this.settingsCache = null;
+  }
+
+  /** Resolve a server group's display name (best-effort, for messages). */
+  private async groupName(client: WebQueryClient, sid: number, sgid: number): Promise<string> {
+    try {
+      const res = await client.execute(sid, 'servergrouplist');
+      const arr = Array.isArray(res) ? res : res ? [res] : [];
+      const g = arr.find((x: any) => Number(x.sgid) === sgid);
+      return g?.name ? String(g.name) : `#${sgid}`;
+    } catch {
+      return `#${sgid}`;
+    }
+  }
+
+  /**
+   * Returns true if the invoker may run `command`. On denial it replies with a
+   * message and returns false. Open/unconfigured tiers always pass.
+   */
+  private async checkAccess(botId: number, command: string, userClid: number, reply: ReplyFn): Promise<boolean> {
+    const settings = await this.getSettings();
+    const required = requiredSgid(command, settings);
+    if (required == null) return true;
+
+    const { client, sid } = await this.getServer(botId);
+    const info = await client.execute(sid, 'clientinfo', { clid: String(userClid) });
+    const entry = Array.isArray(info) ? info[0] : info;
+    const groups = parseServerGroupIds(entry?.client_servergroups);
+    if (groups.includes(required)) return true;
+
+    const name = await this.groupName(client, sid, required);
+    reply(`⛔ Commande réservée au groupe « ${name} ».`);
+    return false;
+  }
+
   /** Fetch the live channel list (array form) for a virtual server. */
   private async fetchChannels(client: WebQueryClient, sid: number): Promise<any[]> {
     const res = await client.execute(sid, 'channellist');
@@ -715,6 +781,20 @@ export class MusicCommandHandler {
     reply(msg);
   }
 
+  private async handleNotif(reply: ReplyFn): Promise<void> {
+    const row = await this.prisma.musicCommandSettings.findFirst();
+    const next = !(row?.notifyNowPlaying ?? false);
+    if (row) {
+      await this.prisma.musicCommandSettings.update({ where: { id: row.id }, data: { notifyNowPlaying: next } });
+    } else {
+      await this.prisma.musicCommandSettings.create({ data: { notifyNowPlaying: next } });
+    }
+    this.invalidateSettings();
+    reply(next
+      ? '🔔 Notifications du titre en cours : activées (tous les bots).'
+      : '🔕 Notifications du titre en cours : désactivées.');
+  }
+
   /**
    * Resolve a user reference (pseudo) to a connected client. Matches only real
    * clients (client_type 0), case-insensitively: exact first, then a unique
@@ -761,6 +841,7 @@ export class MusicCommandHandler {
       '  !channels            Lister les salons et leur ID',
       '  !move <user> <salon> Déplacer un utilisateur (nom ou ID ; "guillemets" si espaces)',
       '  !moveall <salon>     Déplacer tous les utilisateurs vers un salon',
+      '  !notif               Activer/désactiver la notif du titre en cours (canal TS)',
       '  !help / !aide        Afficher cette aide',
     ].join('\n'));
   }
