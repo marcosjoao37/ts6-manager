@@ -65,6 +65,8 @@ export class MusicCommandHandler {
   // picked up within the TTL; !notif invalidates it immediately.
   private settingsCache: { at: number; value: MusicCommandSettingsRow } | null = null;
   private static readonly SETTINGS_TTL_MS = 5000;
+  // nowPlaying listeners, kept so they can be detached in unregisterBot.
+  private nowPlayingListeners = new Map<number, { bot: VoiceBot; listener: (item: QueueItem) => void }>();
 
   constructor(
     private prisma: PrismaClient,
@@ -86,11 +88,23 @@ export class MusicCommandHandler {
       });
     });
 
+    const npListener = (item: QueueItem) => {
+      this.onNowPlaying(bot, item).catch((err) =>
+        console.error(`[MusicCmd] now-playing notif failed on bot ${botId}: ${err.message}`));
+    };
+    bot.on('nowPlaying', npListener);
+    this.nowPlayingListeners.set(botId, { bot, listener: npListener });
+
     console.log(`[MusicCmd] Registered text command listener on bot ${botId}`);
   }
 
   unregisterBot(botId: number): void {
     this.registeredBots.delete(botId);
+    const entry = this.nowPlayingListeners.get(botId);
+    if (entry) {
+      entry.bot.off('nowPlaying', entry.listener);
+      this.nowPlayingListeners.delete(botId);
+    }
   }
 
   private async onTextMessage(botId: number, bot: VoiceBot, data: Record<string, string>): Promise<void> {
@@ -575,6 +589,14 @@ export class MusicCommandHandler {
 
   private invalidateSettings(): void {
     this.settingsCache = null;
+  }
+
+  /** Post a "now playing" line in the bot's current TS channel when enabled. */
+  private async onNowPlaying(bot: VoiceBot, item: QueueItem): Promise<void> {
+    const settings = await this.getSettings();
+    if (!settings.notifyNowPlaying) return;
+    const artist = item.artist ? `${item.artist} - ` : '';
+    bot.sendChannelMessage(`♪ Now playing : ${artist}${item.title}`);
   }
 
   /** Resolve a server group's display name (best-effort, for messages). */
