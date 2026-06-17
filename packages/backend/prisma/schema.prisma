@@ -300,6 +300,14 @@ model SpotifySettings {
   updatedAt      DateTime @updatedAt
 }
 
+model MusicCommandSettings {
+  id               Int      @id @default(autoincrement())
+  musicCommandSgid Int?     // server group allowed to run music commands (null = open to all)
+  adminCommandSgid Int?     // server group allowed to run move/moveall/notif (null = open to all)
+  notifyNowPlaying Boolean  @default(false) // post "now playing" in the bot's TS channel
+  updatedAt        DateTime @updatedAt
+}
+
 model WebBan {
   id        Int       @id @default(autoincrement())
   ip        String    @unique
