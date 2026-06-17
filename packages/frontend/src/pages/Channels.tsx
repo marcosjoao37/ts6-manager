@@ -347,10 +347,26 @@ export default function Channels() {
         <CardContent>
           <ScrollArea className="h-[600px]">
             <div className="space-y-0">
+              {tree.map((node) => (
+                <ChannelTreeNode
+                  key={node.cid}
+                  node={node}
+                  isAdmin={isAdmin}
+                  clientsByChannel={clientsByChannel}
+                  onDelete={(cid, name) => setDeleteTarget({ cid, name })}
+                  onEdit={handleEditOpen}
+                  onDrop={handleDrop}
+                  draggedCid={draggedCid}
+                  setDraggedCid={setDraggedCid}
+                />
+              ))}
+              {/* Root drop zone — rendered at the BOTTOM so it never shifts the
+                  channel rows when it appears mid-drag (a top-of-list zone
+                  pushed every row down ~40px, making nesting drops miss). */}
               {isAdmin && draggedCid !== null && (
                 <div
                   className={cn(
-                    'mb-1 rounded-sm border border-dashed border-border/60 px-3 py-2 text-center text-xs text-muted-foreground transition-colors',
+                    'mt-1 rounded-sm border border-dashed border-border/60 px-3 py-2 text-center text-xs text-muted-foreground transition-colors',
                     dropOverRoot && 'border-primary/60 bg-primary/10 text-primary',
                   )}
                   onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropOverRoot(true); }}
@@ -366,19 +382,6 @@ export default function Channels() {
                   {t('channels.dropToRoot')}
                 </div>
               )}
-              {tree.map((node) => (
-                <ChannelTreeNode
-                  key={node.cid}
-                  node={node}
-                  isAdmin={isAdmin}
-                  clientsByChannel={clientsByChannel}
-                  onDelete={(cid, name) => setDeleteTarget({ cid, name })}
-                  onEdit={handleEditOpen}
-                  onDrop={handleDrop}
-                  draggedCid={draggedCid}
-                  setDraggedCid={setDraggedCid}
-                />
-              ))}
             </div>
           </ScrollArea>
         </CardContent>
