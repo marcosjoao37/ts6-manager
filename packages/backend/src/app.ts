@@ -35,6 +35,7 @@ import { setupRoutes } from './routes/setup.routes.js';
 import { settingsRoutes } from './routes/settings.routes.js';
 import { discordRoutes } from './routes/discord.routes.js';
 import { spotifyRoutes } from './routes/spotify.routes.js';
+import { musicCommandSettingsRoutes } from './routes/music-command-settings.routes.js';
 import { journalRoutes } from './routes/journal.routes.js';
 import { requireServerAccess } from './middleware/server-access.js';
 import { requireIntParams } from './middleware/validate-params.js';
@@ -135,6 +136,7 @@ export function createApp(): Express {
   app.use('/api/settings', settingsRoutes);
   app.use('/api/discord', discordRoutes);
   app.use('/api/spotify', spotifyRoutes);
+  app.use('/api/music-command-settings', musicCommandSettingsRoutes);
   app.use('/api/journal', journalRoutes);
 
   // Error handler (must be last)
