@@ -60,7 +60,7 @@ export async function loadSamlRuntime(prisma: any): Promise<void> {
     idpCert: cert,
     wantAssertionsSigned: true,
     audience: spEntityId,
-    validateInResponseTo: ValidateInResponseTo.ifPresent,
+    validateInResponseTo: ValidateInResponseTo.always,
   });
   runtime = {
     enabled: true, spEntityId, autoProvision: s.autoProvision, defaultRole: s.defaultRole,

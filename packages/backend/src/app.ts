@@ -56,7 +56,7 @@ export function createApp(): Express {
   app.use(cors({ origin: config.frontendUrl, credentials: true }));
   app.use(express.json({ limit: '10mb' }));
   // The IdP posts the SAMLResponse as application/x-www-form-urlencoded (ACS endpoint).
-  app.use(express.urlencoded({ extended: false }));
+  app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(cookieParser());
 
   // Health check
