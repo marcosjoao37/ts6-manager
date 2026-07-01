@@ -15,6 +15,9 @@ export interface DiscordSettings {
   notifyLeaveTemplate: string | null;
   notifyEmbed: boolean;
   notifAutoDeleteSeconds: number;
+  notifyAway: boolean;
+  notifyAwayTemplate: string | null;
+  notifyBackTemplate: string | null;
   flowMessageTrigger: boolean;
   commandRoleIds: string[];
   defaultMusicBotId: number | null;
