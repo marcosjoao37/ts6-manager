@@ -30,10 +30,15 @@ import {
   queueEmbed,
   DEFAULT_JOIN_TEMPLATE,
   DEFAULT_LEAVE_TEMPLATE,
+  awayStatusEmbed,
+  DEFAULT_AWAY_TEMPLATE,
+  DEFAULT_BACK_TEMPLATE,
   type ServerStats,
 } from './embeds.js';
+import { diffAwayState, type AwayClient } from './away-diff.js';
 
 const STATS_PANEL_INTERVAL_MS = 60_000;
+const AWAY_POLL_INTERVAL_MS = 10_000;
 
 export interface DiscordStatus {
   enabled: boolean;
@@ -61,6 +66,8 @@ export class DiscordBridge {
   private eventBridge: EventBridge | null = null;
   private voiceRelay: DiscordVoiceRelay | null = null;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
+  private awayTimer: ReturnType<typeof setInterval> | null = null;
+  private clientAwayState = new Map<string, boolean>(); // clid → isAway
   private nowPlayingListeners = new Map<number, (item: QueueItem) => void>();
   private clientNicknames = new Map<string, string>(); // clid → nickname (for leave events)
   private clientChannels = new Map<string, string>(); // clid → current channel id (for channel mode)
@@ -173,6 +180,7 @@ export class DiscordBridge {
 
     this.attachNowPlayingToAllBots();
     await this.startTsEventBridge();
+    this.startAwayPoll();
   }
 
   async stop(): Promise<void> {
@@ -181,6 +189,11 @@ export class DiscordBridge {
       clearInterval(this.statsTimer);
       this.statsTimer = null;
     }
+    if (this.awayTimer) {
+      clearInterval(this.awayTimer);
+      this.awayTimer = null;
+    }
+    this.clientAwayState.clear();
     if (this.voiceRelay) {
       this.voiceRelay.destroy();
       this.voiceRelay = null;
@@ -542,6 +555,63 @@ export class DiscordBridge {
     } catch (err: any) {
       console.warn(`[Discord] Could not seed client state: ${err.message}`);
     }
+  }
+
+  // ─── AFK (away) notifications ───────────────────────────────
+
+  private startAwayPoll(): void {
+    const settings = this.settings;
+    if (!settings?.notifyAway) return;
+    if (!settings.notificationsChannelId || !settings.serverConfigId) return;
+    const epoch = this.startEpoch;
+    this.clientAwayState.clear();
+    const tick = () => {
+      if (epoch !== this.startEpoch) return;
+      this.pollAwayState().catch((err) => {
+        console.error(`[Discord] Away poll failed: ${err.message}`);
+      });
+    };
+    this.awayTimer = setInterval(tick, AWAY_POLL_INTERVAL_MS);
+    tick();
+  }
+
+  private async pollAwayState(): Promise<void> {
+    const settings = this.settings;
+    if (!settings?.serverConfigId) return;
+    const watchedChannel = settings.notifyChannelId;
+
+    const client = await this.pool.getOrLoad(settings.serverConfigId);
+    const list = await client.execute(settings.virtualServerId, 'clientlist', { '-away': '' });
+    const current: AwayClient[] = (Array.isArray(list) ? list : [])
+      .filter((c: any) => String(c.client_type) === '0')
+      .filter((c: any) => !watchedChannel || String(c.cid) === watchedChannel)
+      .map((c: any) => ({
+        clid: String(c.clid),
+        cid: String(c.cid),
+        isAway: Number(c.client_away) === 1,
+        nickname: c.client_nickname || `Client #${c.clid}`,
+      }));
+
+    const { changes, next } = diffAwayState(this.clientAwayState, current);
+    this.clientAwayState = next;
+    for (const change of changes) {
+      await this.notifyAwayChange(change.nickname, change.cid, change.isAway);
+    }
+  }
+
+  private async notifyAwayChange(nickname: string, channelId: string, isAway: boolean): Promise<void> {
+    const channel = await this.resolveChannelName(channelId);
+    const totalMembers = await this.countChannelMembers(channelId);
+    const template = isAway
+      ? (this.settings?.notifyAwayTemplate || DEFAULT_AWAY_TEMPLATE)
+      : (this.settings?.notifyBackTemplate || DEFAULT_BACK_TEMPLATE);
+    const action = isAway ? '💤' : '✅';
+    const message = renderTemplate(template, { user: nickname, channel, totalMembers, action });
+    const payload = this.settings?.notifyEmbed
+      ? { embeds: [awayStatusEmbed(message, isAway)] }
+      : { content: message };
+    console.log(`[Discord] notify away=${isAway} → channel=${this.settings?.notificationsChannelId} msg="${message}"`);
+    await this.postToChannel(this.settings?.notificationsChannelId, payload);
   }
 
   private async onTsEvent(eventName: string, data: Record<string, string>): Promise<void> {
