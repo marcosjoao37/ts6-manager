@@ -388,7 +388,8 @@
       "spInfo": "Auf der IdP-Seite anzugeben (Authentik):",
       "spMetadataUrl": "SP-Metadaten-URL",
       "acsUrl": "ACS-URL (Assertion Consumer Service)",
-      "saved": "SSO-Einstellungen gespeichert"
+      "saved": "SSO-Einstellungen gespeichert",
+      "saveError": "Speichern der SSO-Einstellungen fehlgeschlagen"
     }
   },
   "channels": {

@@ -388,7 +388,8 @@
       "spInfo": "À renseigner côté IdP (Authentik) :",
       "spMetadataUrl": "URL de metadata du SP",
       "acsUrl": "URL ACS (Assertion Consumer Service)",
-      "saved": "Réglages SSO enregistrés"
+      "saved": "Réglages SSO enregistrés",
+      "saveError": "Échec de l'enregistrement des réglages SSO"
     }
   },
   "channels": {

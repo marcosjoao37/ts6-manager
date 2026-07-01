@@ -388,7 +388,8 @@
       "spInfo": "Da configurare lato IdP (Authentik):",
       "spMetadataUrl": "URL dei metadati del SP",
       "acsUrl": "URL ACS (Assertion Consumer Service)",
-      "saved": "Impostazioni SSO salvate"
+      "saved": "Impostazioni SSO salvate",
+      "saveError": "Salvataggio delle impostazioni SSO non riuscito"
     }
   },
   "channels": {

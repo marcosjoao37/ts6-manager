@@ -1172,7 +1172,7 @@ function SamlTab() {
       qc.invalidateQueries({ queryKey: ['saml-settings'] });
       toast.success(t('settings.saml.saved'));
     },
-    onError: (err: any) => toast.error(err?.response?.data?.error || 'Failed to save SSO settings'),
+    onError: (err: any) => toast.error(err?.response?.data?.error || t('settings.saml.saveError')),
   });
 
   if (isLoading || !settings) return <PageLoader />;
