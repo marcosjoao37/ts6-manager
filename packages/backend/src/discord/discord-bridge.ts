@@ -567,7 +567,7 @@ export class DiscordBridge {
     this.clientAwayState.clear();
     const tick = () => {
       if (epoch !== this.startEpoch) return;
-      this.pollAwayState().catch((err) => {
+      this.pollAwayState(epoch).catch((err) => {
         console.error(`[Discord] Away poll failed: ${err.message}`);
       });
     };
@@ -575,13 +575,14 @@ export class DiscordBridge {
     tick();
   }
 
-  private async pollAwayState(): Promise<void> {
+  private async pollAwayState(epoch: number): Promise<void> {
     const settings = this.settings;
     if (!settings?.serverConfigId) return;
     const watchedChannel = settings.notifyChannelId;
 
     const client = await this.pool.getOrLoad(settings.serverConfigId);
     const list = await client.execute(settings.virtualServerId, 'clientlist', { '-away': '' });
+    if (epoch !== this.startEpoch) return;
     const current: AwayClient[] = (Array.isArray(list) ? list : [])
       .filter((c: any) => String(c.client_type) === '0')
       .filter((c: any) => !watchedChannel || String(c.cid) === watchedChannel)
