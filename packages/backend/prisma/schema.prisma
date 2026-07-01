@@ -11,7 +11,7 @@ datasource db {
 model User {
   id           Int       @id @default(autoincrement())
   username     String    @unique
-  passwordHash String
+  passwordHash String?
   displayName  String
   role         String    @default("viewer")
   enabled      Boolean   @default(true)
@@ -27,9 +27,14 @@ model User {
   mustChangePassword Boolean @default(false) // force a password change at next login
   language         String? // UI language (en/fr/de/es/it); null = browser default
 
+  authProvider String  @default("local") // "local" | "saml"
+  externalId   String? // SAML nameID (stable key)
+
   serverAccess   UserServerAccess[]
   refreshTokens  RefreshToken[]
   trustedDevices TrustedDevice[]
+
+  @@unique([authProvider, externalId])
 }
 
 model RefreshToken {
@@ -331,4 +336,23 @@ model ConnectionLog {
   createdAt      DateTime @default(now())
 
   @@index([source, createdAt])
+}
+
+model SAMLSettings {
+  id              Int      @id @default(autoincrement())
+  enabled         Boolean  @default(false)
+  idpMetadataUrl  String?
+  idpMetadataXml  String?  // encrypted
+  idpEntityId     String?
+  idpSsoUrl       String?
+  idpCertificate  String?  // encrypted (PEM/base64)
+  spEntityId      String?
+  autoProvision   Boolean  @default(true)
+  defaultRole     String   @default("viewer")
+  attrUsername    String   @default("http://schemas.goauthentik.io/2021/02/saml/username")
+  attrEmail       String   @default("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
+  attrDisplayName String   @default("http://schemas.goauthentik.io/2021/02/saml/displayname")
+  attrRole        String?
+  roleAdminValue  String?
+  updatedAt       DateTime @updatedAt
 }

@@ -16,6 +16,11 @@ import { TRUSTED_COOKIE_NAME } from '../utils/trusted-device.js';
 
 export const authRoutes: Router = Router();
 
+/** A user can attempt local password login only if enabled and has a local password. */
+export function canLocalLogin(user: { enabled: boolean; passwordHash: string | null } | null): boolean {
+  return !!user && user.enabled && !!user.passwordHash;
+}
+
 // Short-lived token proving the password step passed, scoped to the MFA step.
 const MFA_CHALLENGE_TTL = '5m';
 function signMfaChallenge(userId: number): string {
@@ -103,12 +108,12 @@ authRoutes.post('/login', async (req: Request, res: Response, next) => {
     }
     const user = await prisma.user.findUnique({ where: { username } });
 
-    if (!user || !user.enabled) {
+    if (!canLocalLogin(user)) {
       journal?.recordWebLogin(String(username), req.ip || '', false);
       throw new AppError(401, 'Invalid credentials');
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    const valid = await bcrypt.compare(password, user.passwordHash as string);
     if (!valid) {
       journal?.recordWebLogin(user.username, req.ip || '', false);
       throw new AppError(401, 'Invalid credentials');
