@@ -281,6 +281,9 @@ model DiscordSettings {
   notifyLeaveTemplate    String?
   notifyEmbed            Boolean  @default(false)
   notifAutoDeleteSeconds Int      @default(0) // 0 = keep messages
+  notifyAway             Boolean  @default(false)
+  notifyAwayTemplate     String?
+  notifyBackTemplate     String?
   flowMessageTrigger     Boolean  @default(false)
   commandRoleIds         String?  // JSON array of Discord role IDs; null/empty = open to everyone
   statsMessageId         String?
