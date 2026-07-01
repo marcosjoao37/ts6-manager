@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { nanoid } from 'nanoid';
 import { config } from '../config.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { AppError } from '../middleware/error-handler.js';
@@ -13,6 +12,7 @@ import { isIpWebBanned } from '../utils/web-ban.js';
 import QRCode from 'qrcode';
 import { createTrustedDevice, clearTrustedCookie, resolveTrustedCookie } from '../utils/trusted-device-service.js';
 import { TRUSTED_COOKIE_NAME } from '../utils/trusted-device.js';
+import { issueSession, gateAfterPassword, signMfaChallenge } from '../auth/session.js';
 
 export const authRoutes: Router = Router();
 
@@ -22,33 +22,10 @@ export function canLocalLogin(user: { enabled: boolean; passwordHash: string | n
 }
 
 // Short-lived token proving the password step passed, scoped to the MFA step.
-const MFA_CHALLENGE_TTL = '5m';
-function signMfaChallenge(userId: number): string {
-  return jwt.sign({ mfa: true, id: userId }, config.jwtSecret, { expiresIn: MFA_CHALLENGE_TTL } as jwt.SignOptions);
-}
 function verifyMfaChallenge(token: string): number {
   const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as any;
   if (!payload?.mfa || !payload.id) throw new AppError(401, 'Invalid MFA session');
   return payload.id;
-}
-
-// Issue access + refresh tokens and the user payload (shared by login and the MFA step).
-async function issueSession(prisma: any, user: any) {
-  const payload = { id: user.id, username: user.username, role: user.role };
-  const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtAccessExpiry } as jwt.SignOptions);
-  const refreshToken = crypto.randomBytes(64).toString('hex');
-  const family = nanoid();
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  await prisma.refreshToken.create({ data: { token: refreshToken, userId: user.id, expiresAt, family } });
-  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-
-  return {
-    accessToken,
-    refreshToken,
-    user: { id: user.id, username: user.username, displayName: user.displayName, role: user.role, language: user.language },
-  };
 }
 
 // Short-lived token proving auth fully passed, scoped to the forced password change.
@@ -59,16 +36,6 @@ function verifyChangeToken(token: string): number {
   const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as any;
   if (!payload?.pwchange || !payload.id) throw new AppError(401, 'Invalid session');
   return payload.id;
-}
-
-/**
- * Gating applied once the password (and any forced password change) is done:
- * require the MFA second factor / enrollment, otherwise issue the session.
- */
-async function gateAfterPassword(prisma: any, user: any) {
-  if (user.mfaEnabled) return { mfaRequired: true, mfaToken: signMfaChallenge(user.id) };
-  if (user.mfaRequired) return { mfaSetupRequired: true, mfaToken: signMfaChallenge(user.id) };
-  return issueSession(prisma, user);
 }
 
 // The caller's own trusted-device selector (first segment of the cookie), or null.
