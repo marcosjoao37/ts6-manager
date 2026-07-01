@@ -9,6 +9,7 @@ import { MusicCommandHandler } from './voice/music-command-handler.js';
 import { DiscordBridge } from './discord/discord-bridge.js';
 import { ConnectionJournal } from './connection-journal.js';
 import { applyTrustProxy, loadTrustProxy } from './routes/settings.routes.js';
+import { loadSamlRuntime } from './auth/saml/saml-config.js';
 import { config } from './config.js';
 import { setYtCookieFile } from './voice/audio/youtube.js';
 import jwt from 'jsonwebtoken';
@@ -102,6 +103,9 @@ async function main() {
   app.locals.prisma = prisma;
   app.locals.connectionPool = connectionPool;
   app.locals.wss = wss;
+
+  // Load the SAML SP config/instance from the DB (no-op if SAML is unconfigured/disabled)
+  await loadSamlRuntime(prisma);
 
   // Initialize Bot Engine
   const botEngine = new BotEngine(prisma, connectionPool, wss, app);

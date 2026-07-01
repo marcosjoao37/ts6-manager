@@ -21,6 +21,14 @@ export function canLocalLogin(user: { enabled: boolean; passwordHash: string | n
   return !!user && user.enabled && !!user.passwordHash;
 }
 
+// Endpoints that re-verify the current password (change-password, MFA disable, PUT
+// /password) must reject SSO accounts before reaching bcrypt.compare: passwordHash
+// is null for SAML-provisioned users, and bcrypt.compare(x, null) throws.
+export function requirePasswordHash(passwordHash: string | null): string {
+  if (!passwordHash) throw new AppError(400, 'Not available for SSO accounts');
+  return passwordHash;
+}
+
 // Short-lived token proving the password step passed, scoped to the MFA step.
 function verifyMfaChallenge(token: string): number {
   const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as any;
@@ -148,7 +156,7 @@ authRoutes.post('/login/change-password', async (req: Request, res: Response, ne
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.enabled) throw new AppError(401, 'Invalid session');
 
-    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    const valid = await bcrypt.compare(currentPassword, requirePasswordHash(user.passwordHash));
     if (!valid) throw new AppError(401, 'Current password is incorrect');
 
     const pwError = validatePassword(newPassword, await loadPasswordPolicy(prisma));
@@ -421,7 +429,7 @@ authRoutes.post('/mfa/disable', authMiddleware, async (req: Request, res: Respon
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user) throw new AppError(404, 'User not found');
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    const valid = await bcrypt.compare(password, requirePasswordHash(user.passwordHash));
     if (!valid) throw new AppError(401, 'Password is incorrect');
     if (user.mfaRequired) throw new AppError(403, 'MFA is required by an administrator and cannot be disabled');
 
@@ -444,7 +452,7 @@ authRoutes.put('/password', authMiddleware, async (req: Request, res: Response, 
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user) throw new AppError(404, 'User not found');
 
-    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    const valid = await bcrypt.compare(currentPassword, requirePasswordHash(user.passwordHash));
     if (!valid) throw new AppError(401, 'Current password is incorrect');
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
