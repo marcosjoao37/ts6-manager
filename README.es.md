@@ -373,6 +373,44 @@ Cuando un bot de música está conectado a un canal, los usuarios de ese canal p
 
 `!move`, `!moveall` y `!notif` son comandos de administrador; el acceso a los comandos de música y de administrador puede restringirse a grupos específicos del servidor de TeamSpeak en **Configuración → Comandos de música**.
 
+## Configuración SSO / SAML
+
+Inicio de sesión único (SSO) SAML 2.0 opcional, iniciado por el SP, que funciona **junto con** el inicio de sesión local. Se configura en **Configuración → SSO / SAML** (solo administradores). El SSO solo se activa cuando **Habilitar SSO** está activado **y** tanto la **URL de SSO del IdP** como el **certificado de firma del IdP** están rellenados; hasta entonces, el botón "Iniciar sesión con SSO" permanece oculto y los endpoints SAML están inactivos.
+
+**Proporciona esto a tu proveedor de identidad (se muestra de solo lectura en la pestaña):**
+
+| Valor | Qué es | Cómo se construye |
+|-------|--------|--------------------|
+| URL de metadatos del SP | El EntityID / audiencia del proveedor de servicios que el IdP debe apuntar | `<FRONTEND_URL>/api/auth/saml/metadata` |
+| URL ACS | Assertion Consumer Service — donde el IdP envía (POST) la respuesta SAML | `<FRONTEND_URL>/api/auth/saml/acs` |
+
+`<FRONTEND_URL>` es la variable de entorno `FRONTEND_URL` (el origen público de tu aplicación).
+
+**Campos:**
+
+| Campo | Descripción | Predeterminado | Obligatorio | Valores admisibles |
+|-------|-------------|-----------------|-------------|----------------------|
+| Habilitar SSO (SAML) | Interruptor principal. Cuando está desactivado, el SSO queda oculto y todos los endpoints SAML devuelven 404 | `off` | — | on / off |
+| ID de entidad del IdP | El emisor / EntityID del proveedor de identidad. Es informativo, para referencia; la aserción se confía mediante el certificado + el enlace de audiencia | vacío | no | cualquier cadena (normalmente una URL/URN) |
+| URL de SSO del IdP | El endpoint SSO de **redirección** SAML del IdP al que se envía la solicitud de inicio de sesión (AuthnRequest) | vacío | **sí** (para habilitar) | una URL `https://` |
+| Certificado de firma del IdP | El certificado de firma público X.509 del IdP utilizado para verificar la firma de la aserción. Solo escritura: se almacena cifrado, se muestra únicamente como establecido/no establecido | vacío | **sí** (para habilitar) | PEM (`-----BEGIN CERTIFICATE-----…`) o cuerpo en base64 sin formato (se envuelve automáticamente) |
+| Aprovisionar cuentas automáticamente | Crear una cuenta local en el primer inicio de sesión SSO correcto (JIT). Cuando está desactivado, se rechaza un inicio de sesión SAML de una cuenta desconocida | `on` | no | on / off |
+| Rol predeterminado para cuentas SSO | Rol asignado cuando ningún mapeo de administrador coincide (véase el atributo de rol más abajo) | `viewer` | no | `viewer` o `admin` |
+| Atributo: nombre de usuario | Atributo de la aserción asignado al nombre de usuario de la cuenta. Si falta, recurre a la parte local del correo electrónico y luego al NameID | reclamación de nombre de usuario de Authentik (`http://schemas.goauthentik.io/2021/02/saml/username`) | no | cualquier nombre de atributo que envíe tu IdP |
+| Atributo: correo electrónico | Atributo de la aserción asignado al correo electrónico | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | no | cualquier nombre de atributo |
+| Atributo: nombre para mostrar | Atributo de la aserción asignado al nombre para mostrar (recurre al nombre de usuario) | reclamación de nombre para mostrar de Authentik (`http://schemas.goauthentik.io/2021/02/saml/displayname`) | no | cualquier nombre de atributo |
+| Atributo: rol / grupo | Atributo de la aserción (a menudo `groups`) cuyos valores se comprueban para el mapeo de administrador. Déjalo vacío para dar a todos los usuarios SSO el rol predeterminado | vacío | no | cualquier nombre de atributo |
+| Valor que concede el rol de administrador | Si este valor exacto aparece en el atributo de rol/grupo, la cuenta se convierte en `admin`; de lo contrario, obtiene el rol predeterminado | vacío | no | la cadena exacta de grupo/rol de tu IdP (p. ej. `ts6-admins`) |
+
+**Notas de comportamiento:**
+
+- **Clave de identidad:** las cuentas se emparejan mediante el **NameID** de SAML; configura un formato de NameID **persistente** en el IdP. Un NameID *transitorio* cambia en cada inicio de sesión y crearía una cuenta nueva cada vez.
+- **Sincronización de rol:** el rol se **reevalúa en cada inicio de sesión** (el IdP es la autoridad). Un ascenso manual realizado dentro de la aplicación se sobrescribe en el siguiente inicio de sesión SSO.
+- **MFA:** la verificación de MFA de la aplicación sigue aplicándose después de una aserción válida (si la cuenta tiene la MFA habilitada). Las cuentas SSO **no tienen contraseña local** y no pueden usar los flujos de contraseña local / cambio de contraseña.
+- **Postura de seguridad (v1):** la firma de la aserción es **obligatoria**, la audiencia debe ser igual a la URL de metadatos del SP, y se aplica la validación contra repetición de `InResponseTo`. El SP **no** firma sus AuthnRequests. La importación de metadatos del IdP por URL/XML aún no está implementada; introduce la URL de SSO y el certificado manualmente.
+
+**Mapeo rápido de Authentik:** *URL de SSO del IdP* = el **SSO URL (Redirect)** del proveedor; *Certificado de firma del IdP* = el **Signing Certificate** del proveedor; *ID de entidad del IdP* = el **Issuer** del proveedor. Para el mapeo de administrador, expón un atributo de grupos (Property Mapping) y establece **Valor que concede el rol de administrador** al nombre de tu grupo de administradores.
+
 ## Requisitos
 
 - Servidor TeamSpeak con **WebQuery HTTP** habilitado (no raw/telnet)

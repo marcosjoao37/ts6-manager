@@ -373,6 +373,44 @@ Wenn ein Musik-Bot mit einem Kanal verbunden ist, können Benutzer in diesem Kan
 
 `!move`, `!moveall` und `!notif` sind Admin-Befehle; der Zugriff auf Musik- und Admin-Befehle kann unter **Einstellungen → Musikbefehle** auf bestimmte TeamSpeak-Servergruppen beschränkt werden.
 
+## SSO / SAML-Konfiguration
+
+Optionales SP-initiiertes SAML-2.0-Single-Sign-On, das **zusätzlich** zum lokalen Login läuft. Konfigurieren Sie es unter **Einstellungen → SSO / SAML** (nur Admin). SSO wird erst aktiv, wenn **SSO aktivieren** eingeschaltet ist **und** sowohl die **IdP-SSO-URL** als auch das **IdP-Signaturzertifikat** ausgefüllt sind – bis dahin bleibt die Schaltfläche „Über SSO anmelden" ausgeblendet und die SAML-Endpunkte sind inaktiv.
+
+**Diese Angaben an Ihren Identity Provider weitergeben (im Tab schreibgeschützt angezeigt):**
+
+| Wert | Was es ist | Wie es gebildet wird |
+|-------|------------|-----------------|
+| SP-Metadaten-URL | Die EntityID / Audience des Service Providers, auf die der IdP zielen muss | `<FRONTEND_URL>/api/auth/saml/metadata` |
+| ACS-URL | Assertion Consumer Service – wohin der IdP die SAML-Antwort per POST sendet | `<FRONTEND_URL>/api/auth/saml/acs` |
+
+`<FRONTEND_URL>` ist die Umgebungsvariable `FRONTEND_URL` (der öffentliche Ursprung Ihrer App).
+
+**Felder:**
+
+| Feld | Beschreibung | Standard | Erforderlich | Zulässige Werte |
+|-------|-------------|---------|----------|-------------------|
+| SSO (SAML) aktivieren | Hauptschalter. Wenn aus, ist SSO ausgeblendet und alle SAML-Endpunkte liefern 404 | `aus` | — | ein / aus |
+| IdP-Entity-ID | Der Issuer / die EntityID des Identity Providers. Dient nur zur Information; die Assertion wird über Zertifikat + Audience-Bindung vertraut | leer | nein | beliebige Zeichenkette (meist eine URL/URN) |
+| IdP-SSO-URL | Der **Redirect**-SSO-Endpunkt des IdP, an den die Login-Anfrage (AuthnRequest) gesendet wird | leer | **ja** (zur Aktivierung) | eine `https://`-URL |
+| IdP-Signaturzertifikat | Das **öffentliche** X.509-Signaturzertifikat des IdP zur Prüfung der Assertion-Signatur. Nur schreibend: wird verschlüsselt gespeichert, angezeigt nur als gesetzt/nicht gesetzt | leer | **ja** (zur Aktivierung) | PEM (`-----BEGIN CERTIFICATE-----…`) oder reiner Base64-Inhalt (wird automatisch umschlossen) |
+| Konten automatisch anlegen | Beim ersten erfolgreichen SSO-Login ein lokales Konto anlegen (JIT). Wenn aus, wird ein SAML-Login für ein unbekanntes Konto abgelehnt | `ein` | nein | ein / aus |
+| Standardrolle für SSO-Konten | Rolle, die vergeben wird, wenn kein Admin-Mapping zutrifft (siehe Rollen-Attribut unten) | `viewer` | nein | `viewer` oder `admin` |
+| Attribut: Benutzername | Assertion-Attribut, das dem Kontonamen zugeordnet wird. Falls nicht vorhanden, wird auf den lokalen Teil der E-Mail-Adresse, dann auf die NameID zurückgegriffen | Authentik-Benutzername-Claim (`http://schemas.goauthentik.io/2021/02/saml/username`) | nein | beliebiger Attributname, den Ihr IdP sendet |
+| Attribut: E-Mail | Assertion-Attribut, das der E-Mail-Adresse zugeordnet wird | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | nein | beliebiger Attributname |
+| Attribut: Anzeigename | Assertion-Attribut, das dem Anzeigenamen zugeordnet wird (fällt zurück auf den Benutzernamen) | Authentik-Anzeigename-Claim (`http://schemas.goauthentik.io/2021/02/saml/displayname`) | nein | beliebiger Attributname |
+| Attribut: Rolle / Gruppe | Assertion-Attribut (oft `groups`), dessen Werte für das Admin-Mapping geprüft werden. Leer lassen, um jedem SSO-Benutzer die Standardrolle zu geben | leer | nein | beliebiger Attributname |
+| Wert, der die Admin-Rolle vergibt | Wenn genau dieser Wert im Rollen-/Gruppen-Attribut vorkommt, wird das Konto zu `admin`; andernfalls erhält es die Standardrolle | leer | nein | die exakte Gruppen-/Rollenzeichenkette Ihres IdP (z. B. `ts6-admins`) |
+
+**Verhaltenshinweise:**
+
+- **Identitätsschlüssel:** Konten werden anhand der SAML-**NameID** abgeglichen – konfigurieren Sie am IdP ein **persistentes** NameID-Format. Eine *transiente* NameID ändert sich bei jedem Login und würde jedes Mal ein neues Konto anlegen.
+- **Rollen-Synchronisierung:** Die Rolle wird **bei jedem Login neu ausgewertet** (der IdP ist maßgeblich). Eine manuelle Beförderung innerhalb der App wird beim nächsten SSO-Login überschrieben.
+- **MFA:** Die MFA-Sperre der App gilt auch nach einer gültigen Assertion weiterhin (falls für das Konto MFA aktiviert ist). SSO-Konten haben **kein lokales Passwort** und können die lokalen Passwort- / Passwort-ändern-Abläufe nicht nutzen.
+- **Sicherheitsstatus (v1):** Die Assertion-Signatur ist **erforderlich**, die Audience muss der SP-Metadaten-URL entsprechen, und die `InResponseTo`-Replay-Prüfung wird durchgesetzt. Der SP signiert seine AuthnRequests **nicht**. Der Import von IdP-Metadaten per URL/XML ist noch nicht implementiert – geben Sie SSO-URL und Zertifikat manuell ein.
+
+**Schnelles Authentik-Mapping:** *IdP-SSO-URL* = die **SSO URL (Redirect)** des Providers; *IdP-Signaturzertifikat* = das **Signing Certificate** des Providers; *IdP-Entity-ID* = der **Issuer** des Providers. Für das Admin-Mapping ein Gruppen-Attribut (Property Mapping) bereitstellen und **Wert, der die Admin-Rolle vergibt** auf den Namen Ihrer Admin-Gruppe setzen.
+
 ## Anforderungen
 
 - TeamSpeak-Server mit aktiviertem **WebQuery HTTP** (kein Raw-/Telnet-Modus)
