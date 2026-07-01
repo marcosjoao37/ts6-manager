@@ -65,6 +65,18 @@ export function renderTemplate(template: string, vars: { user: string; channel: 
 export const DEFAULT_JOIN_TEMPLATE = '{action} {user} a rejoint le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)';
 export const DEFAULT_LEAVE_TEMPLATE = '{action} {user} a quitté le canal {channel} du TeamSpeak ({TotalMembersOfChannel} connectés)';
 
+export const DEFAULT_AWAY_TEMPLATE = '💤 {user} est passé AFK';
+export const DEFAULT_BACK_TEMPLATE = '✅ {user} est de retour';
+
+/** AFK status notification (embed style) from an already-rendered message. */
+export function awayStatusEmbed(message: string, isAway: boolean) {
+  return {
+    color: isAway ? COLORS.purple : COLORS.green,
+    description: message,
+    timestamp: new Date().toISOString(),
+  };
+}
+
 export function nowPlayingEmbed(botName: string, item: { title: string; artist?: string; duration?: number }) {
   const artist = item.artist && item.artist !== 'Unknown' ? `${item.artist} — ` : '';
   return {

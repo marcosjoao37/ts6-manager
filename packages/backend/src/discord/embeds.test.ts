@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  awayStatusEmbed,
   clientConnectedEmbed,
   clientDisconnectedEmbed,
   nowPlayingEmbed,
@@ -10,6 +11,8 @@ import {
   formatBytes,
   renderTemplate,
   DEFAULT_JOIN_TEMPLATE,
+  DEFAULT_AWAY_TEMPLATE,
+  DEFAULT_BACK_TEMPLATE,
 } from './embeds.js';
 
 describe('discord embeds', () => {
@@ -59,5 +62,31 @@ describe('discord embeds', () => {
     expect(formatDuration(125)).toBe('2:05');
     expect(formatUptime(3660)).toBe('1h 1m');
     expect(formatBytes(512)).toBe('512 o');
+  });
+});
+
+describe('awayStatusEmbed', () => {
+  it('colore en violet et garde le message quand AFK', () => {
+    const e = awayStatusEmbed('Bob est passé AFK', true);
+    expect(e.color).toBe(0x9b59b6);
+    expect(e.description).toBe('Bob est passé AFK');
+    expect(typeof e.timestamp).toBe('string');
+  });
+
+  it('colore en vert quand de retour', () => {
+    const e = awayStatusEmbed('Bob est de retour', false);
+    expect(e.color).toBe(0x2ecc71);
+  });
+});
+
+describe('templates AFK par défaut', () => {
+  it('rend le template away avec le pseudo', () => {
+    const msg = renderTemplate(DEFAULT_AWAY_TEMPLATE, { user: 'Bob', channel: 'Lobby', totalMembers: 3, action: '💤' });
+    expect(msg).toBe('💤 Bob est passé AFK');
+  });
+
+  it('rend le template back avec le pseudo', () => {
+    const msg = renderTemplate(DEFAULT_BACK_TEMPLATE, { user: 'Bob', channel: 'Lobby', totalMembers: 3, action: '✅' });
+    expect(msg).toBe('✅ Bob est de retour');
   });
 });
