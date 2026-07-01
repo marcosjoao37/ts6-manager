@@ -13,6 +13,26 @@ export interface AwayChange {
 }
 
 /**
+ * Map a raw `clientlist` response into the AwayClient shape used by
+ * diffAwayState, filtering out non-regular clients (ServerQuery, etc.) and,
+ * when a channel is being watched, clients outside that channel.
+ */
+export function mapAwayClients(
+  list: unknown,
+  watchedChannel: string | null | undefined,
+): AwayClient[] {
+  return (Array.isArray(list) ? list : [])
+    .filter((c: any) => String(c.client_type) === '0')
+    .filter((c: any) => !watchedChannel || String(c.cid) === watchedChannel)
+    .map((c: any) => ({
+      clid: String(c.clid),
+      cid: String(c.cid),
+      isAway: Number(c.client_away) === 1,
+      nickname: c.client_nickname || `Client #${c.clid}`,
+    }));
+}
+
+/**
  * Compare the previous away-state map against the current client list.
  * On first run (empty prev) it seeds without emitting changes, to avoid
  * spamming a notification for every already-away client at startup/reload.

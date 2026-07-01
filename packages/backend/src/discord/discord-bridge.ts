@@ -35,7 +35,7 @@ import {
   DEFAULT_BACK_TEMPLATE,
   type ServerStats,
 } from './embeds.js';
-import { diffAwayState, type AwayClient } from './away-diff.js';
+import { diffAwayState, mapAwayClients, type AwayClient } from './away-diff.js';
 
 const STATS_PANEL_INTERVAL_MS = 60_000;
 const AWAY_POLL_INTERVAL_MS = 10_000;
@@ -583,15 +583,7 @@ export class DiscordBridge {
     const client = await this.pool.getOrLoad(settings.serverConfigId);
     const list = await client.execute(settings.virtualServerId, 'clientlist', { '-away': '' });
     if (epoch !== this.startEpoch) return;
-    const current: AwayClient[] = (Array.isArray(list) ? list : [])
-      .filter((c: any) => String(c.client_type) === '0')
-      .filter((c: any) => !watchedChannel || String(c.cid) === watchedChannel)
-      .map((c: any) => ({
-        clid: String(c.clid),
-        cid: String(c.cid),
-        isAway: Number(c.client_away) === 1,
-        nickname: c.client_nickname || `Client #${c.clid}`,
-      }));
+    const current: AwayClient[] = mapAwayClients(list, watchedChannel);
 
     const { changes, next } = diffAwayState(this.clientAwayState, current);
     this.clientAwayState = next;
