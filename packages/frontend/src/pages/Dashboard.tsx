@@ -10,7 +10,7 @@ import { WidgetManagerModal } from '@/components/widget/WidgetManagerModal';
 import { formatBytes, formatUptime } from '@/lib/utils';
 import { Users, Activity, Clock, Hash, ArrowDownToLine, ArrowUpFromLine, Wifi, Server, LayoutGrid } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface StatsCardProps {
@@ -49,25 +49,32 @@ export default function Dashboard() {
   const [bandwidthHistory, setBandwidthHistory] = useState<any[]>([]);
   const [showWidgets, setShowWidgets] = useState(false);
 
-  // Reset bandwidth history when switching to a different server
-  useEffect(() => { setBandwidthHistory([]); }, [selectedConfigId, selectedSid]);
+  // Reset bandwidth history when switching to a different server (adjusted during render,
+  // per React's "you don't need an effect" guidance, instead of a setState-in-effect).
+  const serverKey = `${selectedConfigId}:${selectedSid}`;
+  const [prevServerKey, setPrevServerKey] = useState(serverKey);
+  if (serverKey !== prevServerKey) {
+    setPrevServerKey(serverKey);
+    setBandwidthHistory([]);
+  }
 
-  // Build bandwidth history from periodic data
-  useEffect(() => {
-    if (data) {
-      setBandwidthHistory((prev) => {
-        const next = [
-          ...prev,
-          {
-            time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            in: data.bandwidth.incoming,
-            out: data.bandwidth.outgoing,
-          },
-        ];
-        return next.slice(-30); // Keep last 30 data points
-      });
-    }
-  }, [data]);
+  // Build bandwidth history from periodic data. React Query hands back a new `data` reference
+  // on every successful fetch, so identity comparison acts as the "new data point" guard.
+  const [lastData, setLastData] = useState<typeof data>(undefined);
+  if (data && data !== lastData && serverKey === prevServerKey) {
+    setLastData(data);
+    setBandwidthHistory((prev) => {
+      const next = [
+        ...prev,
+        {
+          time: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          in: data.bandwidth.incoming,
+          out: data.bandwidth.outgoing,
+        },
+      ];
+      return next.slice(-30); // Keep last 30 data points
+    });
+  }
 
   if (!selectedConfigId || !selectedSid) {
     return (

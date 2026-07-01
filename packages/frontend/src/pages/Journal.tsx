@@ -35,10 +35,14 @@ function BanDialog({ entry, source, onClose }: { entry: ConnectionLogEntry | nul
   const [duration, setDuration] = useState(0);
   const [reason, setReason] = useState('');
 
-  // Pre-check the target matching the current tab each time the dialog opens.
-  useEffect(() => {
+  // Pre-check the target matching the current tab each time the dialog opens
+  // (or when the source tab changes while it is open).
+  const seedKey = entry ? `${source}:${entry.id}` : null;
+  const [prevSeedKey, setPrevSeedKey] = useState<string | null>(seedKey);
+  if (seedKey !== prevSeedKey) {
+    setPrevSeedKey(seedKey);
     if (entry) { setWeb(source === 'web'); setTs(source === 'teamspeak'); setDuration(0); setReason(''); }
-  }, [entry, source]);
+  }
 
   const ban = useMutation({
     mutationFn: () => journalApi.ban({
@@ -160,7 +164,12 @@ export default function Journal() {
   const country = useDebounced(countryF);
 
   // Reset to page 1 whenever a filter, sort or tab changes.
-  useEffect(() => { setPage(1); }, [source, hideBots, sort, dir, login, ip, country, resultF]);
+  const filterKey = JSON.stringify([source, hideBots, sort, dir, login, ip, country, resultF]);
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['journal', source, page, hideBots, sort, dir, login, ip, country, resultF],

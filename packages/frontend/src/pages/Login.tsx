@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -74,17 +74,33 @@ export default function Login() {
     authApi.samlStatus().then((s) => setSamlEnabled(s.enabled)).catch(() => {});
   }, []);
 
-  // SSO handoff: SsoCallback navigates here with { state: { mfa } } when the
-  // SAML exchange resolved to an MFA challenge instead of a full session.
-  // Reuse the same routeAuth() used by the password flow to enter 'setup'/'code'.
+  // SSO handoff: SsoCallback navigates here with { state: { mfa } } when the SAML
+  // exchange resolved to an MFA challenge (never a full session — SsoCallback
+  // handles those). mfaState is therefore always { mfaRequired } or
+  // { mfaSetupRequired }. Enter the right step with pure setState during render
+  // (StrictMode-safe); the enrollment QR fetch (a network call) runs in the
+  // ref-guarded effect below, and a second effect clears the navigation state.
+  const mfaState = (location.state as { mfa?: any } | null)?.mfa;
+  const [mfaConsumed, setMfaConsumed] = useState(false);
+  const ssoSetupFetchedRef = useRef(false);
+  if (mfaState && !mfaConsumed) {
+    setMfaConsumed(true);
+    setMfaToken(mfaState.mfaToken);
+    setStep(mfaState.mfaSetupRequired ? 'setup' : 'code');
+  }
   useEffect(() => {
-    const mfa = (location.state as { mfa?: any } | null)?.mfa;
-    if (mfa) {
-      routeAuth(mfa);
-      navigate(location.pathname, { replace: true, state: null });
+    // SSO enrollment: fetch the TOTP QR once (password flow already sets `qr`
+    // before showing 'setup', so `!qr` targets only the SSO path).
+    if (step === 'setup' && mfaToken && !qr && !ssoSetupFetchedRef.current) {
+      ssoSetupFetchedRef.current = true;
+      authApi.mfaSetup(mfaToken)
+        .then((s) => setQr(s.qrDataUrl))
+        .catch(() => setError(t('login.ssoError.generic')));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [step, mfaToken, qr, t]);
+  useEffect(() => {
+    if (mfaState) navigate(location.pathname, { replace: true, state: null });
+  }, [mfaState, navigate, location.pathname]);
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 

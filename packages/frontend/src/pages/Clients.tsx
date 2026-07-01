@@ -104,7 +104,7 @@ export default function Clients() {
       });
     }
     return cols;
-  }, [isAdmin, kickClient, banClient]);
+  }, [isAdmin, kickClient, banClient, t]);
 
   if (!selectedConfigId || !selectedSid) return <EmptyState icon={Users} title={t('clients.noServerSelected')} />;
   if (isLoading) return <PageLoader />;

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { musicRequestsApi } from '@/api/music-requests.api';
 import { musicBotsApi } from '@/api/music.api';
@@ -1291,12 +1291,8 @@ function RadioTab() {
   const stationList = (Array.isArray(stations) ? stations : []) as RadioStationInfo[];
   const presetList = (Array.isArray(presets) ? presets : []) as RadioPreset[];
 
-  // Auto-select first running bot
-  useEffect(() => {
-    if (!selectedBotId && runningBots.length > 0) {
-      setSelectedBotId(runningBots[0].id);
-    }
-  }, [runningBots, selectedBotId]);
+  // Auto-select first running bot when none explicitly chosen
+  const effectiveBotId = selectedBotId ?? runningBots[0]?.id ?? null;
 
   const handleAddStation = () => {
     if (!configId || !addForm.name || !addForm.url) return;
@@ -1321,11 +1317,11 @@ function RadioTab() {
   };
 
   const handlePlay = (stationId: number) => {
-    if (!selectedBotId) {
+    if (!effectiveBotId) {
       toast.error(t('musicBots.toast.selectRunningBot'));
       return;
     }
-    playRadio.mutate({ botId: selectedBotId, stationId }, {
+    playRadio.mutate({ botId: effectiveBotId, stationId }, {
       onSuccess: () => toast.success(t('musicBots.toast.playingRadio')),
       onError: () => toast.error(t('musicBots.toast.playRadioFailed')),
     });
@@ -1352,7 +1348,7 @@ function RadioTab() {
 
         <Label className="text-xs text-muted-foreground">{t('musicBots.radio.playOn')}</Label>
         <Select
-          value={selectedBotId ? String(selectedBotId) : ''}
+          value={effectiveBotId ? String(effectiveBotId) : ''}
           onValueChange={(v) => setSelectedBotId(parseInt(v))}
         >
           <SelectTrigger className="w-48">
@@ -1404,7 +1400,7 @@ function RadioTab() {
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => handlePlay(station.id)}
-                    disabled={!selectedBotId || playRadio.isPending}
+                    disabled={!effectiveBotId || playRadio.isPending}
                   >
                     <Play className="h-4 w-4 ml-0.5" />
                   </Button>
@@ -1510,15 +1506,11 @@ function VideoTab() {
   const bots = Array.isArray(data) ? data : [];
   const [selectedBotId, setSelectedBotId] = useState<number | null>(null);
 
-  // Auto-select first running bot
+  // Auto-select first running bot when none explicitly chosen
   const runningBots = bots.filter((b: MusicBotSummary) => b.status !== 'stopped' && b.status !== 'error');
-  useEffect(() => {
-    if (!selectedBotId && runningBots.length > 0) {
-      setSelectedBotId(runningBots[0].id);
-    }
-  }, [runningBots, selectedBotId]);
+  const effectiveBotId = selectedBotId ?? runningBots[0]?.id ?? null;
 
-  const selectedBot = bots.find((b: MusicBotSummary) => b.id === selectedBotId);
+  const selectedBot = bots.find((b: MusicBotSummary) => b.id === effectiveBotId);
 
   return (
     <div className="space-y-4">
@@ -1530,7 +1522,7 @@ function VideoTab() {
           <div className="flex items-center gap-3">
             <Label className="shrink-0">{t('musicBots.video.selectBot')}</Label>
             <Select
-              value={selectedBotId ? String(selectedBotId) : ''}
+              value={effectiveBotId ? String(effectiveBotId) : ''}
               onValueChange={(v) => setSelectedBotId(parseInt(v))}
             >
               <SelectTrigger className="w-64">
@@ -1563,30 +1555,31 @@ function QueueTab() {
   const { t } = useTranslation();
   const { data: bots } = useMusicBots();
   const [selectedBot, setSelectedBot] = useState<number | null>(null);
-  const { data: state } = useMusicBotState(selectedBot);
+  const botList = useMemo(() => (Array.isArray(bots) ? bots : []), [bots]);
+
+  // Auto-select first running bot when none explicitly chosen
+  const effectiveBot = useMemo(() => {
+    if (selectedBot) return selectedBot;
+    if (botList.length === 0) return null;
+    const running = botList.find((b: any) => b.status !== 'stopped');
+    return running?.id ?? botList[0]?.id ?? null;
+  }, [selectedBot, botList]);
+
+  const { data: state } = useMusicBotState(effectiveBot);
   const removeFromQueue = useRemoveFromQueue();
   const clearQueue = useClearQueue();
   const playFromQueue = usePlayFromQueue();
   const moveQueueItem = useMoveQueueItem();
 
-  const botList = Array.isArray(bots) ? bots : [];
   const queue: any[] = state?.queue ?? [];
   const currentIndex: number = state?.currentIndex ?? -1;
-
-  // Auto-select first running bot
-  useEffect(() => {
-    if (!selectedBot && botList.length > 0) {
-      const running = botList.find((b: any) => b.status !== 'stopped');
-      setSelectedBot(running?.id ?? botList[0]?.id ?? null);
-    }
-  }, [botList, selectedBot]);
 
   return (
     <div className="space-y-4">
       {/* Bot selector */}
       <div className="flex items-center gap-3">
         <Label className="text-xs text-muted-foreground">{t('musicBots.queue.botLabel')}</Label>
-        <Select value={selectedBot ? String(selectedBot) : ''} onValueChange={(v) => setSelectedBot(parseInt(v))}>
+        <Select value={effectiveBot ? String(effectiveBot) : ''} onValueChange={(v) => setSelectedBot(parseInt(v))}>
           <SelectTrigger className="w-48 h-8 text-xs"><SelectValue placeholder={t('musicBots.queue.selectBot')} /></SelectTrigger>
           <SelectContent>
             {botList.map((b: any) => (
@@ -1597,14 +1590,14 @@ function QueueTab() {
         {queue.length > 0 && (
           <div className="flex items-center gap-2 ml-auto">
             <Badge variant="secondary" className="text-[10px]">{t('musicBots.queue.tracks', { n: queue.length })}</Badge>
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => selectedBot && clearQueue.mutate(selectedBot)}>
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => effectiveBot && clearQueue.mutate(effectiveBot)}>
               <Trash2 className="h-3 w-3 mr-1" /> {t('musicBots.queue.clear')}
             </Button>
           </div>
         )}
       </div>
 
-      {!selectedBot ? (
+      {!effectiveBot ? (
         <EmptyState icon={Music} title={t('musicBots.queue.selectBotTitle')} />
       ) : queue.length === 0 ? (
         <EmptyState icon={ListMusic} title={t('musicBots.queue.empty')} />
@@ -1634,7 +1627,7 @@ function QueueTab() {
                     <div className="min-w-0">
                       <button
                         className="text-xs truncate block text-left hover:text-primary transition-colors w-full"
-                        onClick={() => selectedBot && playFromQueue.mutate({ botId: selectedBot, index: i })}
+                        onClick={() => effectiveBot && playFromQueue.mutate({ botId: effectiveBot, index: i })}
                         title={t('musicBots.queue.clickToPlay')}
                       >
                         {item.title}
@@ -1651,7 +1644,7 @@ function QueueTab() {
                       {i > 0 && (
                         <button
                           className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          onClick={() => selectedBot && moveQueueItem.mutate({ botId: selectedBot, from: i, to: i - 1 })}
+                          onClick={() => effectiveBot && moveQueueItem.mutate({ botId: effectiveBot, from: i, to: i - 1 })}
                           title={t('musicBots.queue.moveUp')}
                         >
                           <GripVertical className="h-3 w-3 rotate-180" />
@@ -1660,7 +1653,7 @@ function QueueTab() {
                       {i < queue.length - 1 && (
                         <button
                           className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          onClick={() => selectedBot && moveQueueItem.mutate({ botId: selectedBot, from: i, to: i + 1 })}
+                          onClick={() => effectiveBot && moveQueueItem.mutate({ botId: effectiveBot, from: i, to: i + 1 })}
                           title={t('musicBots.queue.moveDown')}
                         >
                           <GripVertical className="h-3 w-3" />
@@ -1670,7 +1663,7 @@ function QueueTab() {
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                        onClick={() => selectedBot && removeFromQueue.mutate({ botId: selectedBot, index: i })}
+                        onClick={() => effectiveBot && removeFromQueue.mutate({ botId: effectiveBot, index: i })}
                         title={t('musicBots.queue.removeTooltip')}
                       >
                         <X className="h-3 w-3" />

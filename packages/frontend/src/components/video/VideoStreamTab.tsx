@@ -42,7 +42,10 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
   const [framerate, setFramerate] = useState('30');
   const [bitrate, setBitrate] = useState('2500k');
 
-  const { data: streamStatus } = useVideoStreamStatus(botId);
+  // `dataUpdatedAt` is the timestamp (ms) of the last successful refetch — it's
+  // read from query cache state (pure) rather than calling Date.now() during
+  // render, and ticks forward every `refetchInterval` while the tab is open.
+  const { data: streamStatus, dataUpdatedAt } = useVideoStreamStatus(botId);
   const startStream = useStartVideoStream();
   const stopStream = useStopVideoStream();
   const setSource = useSetStreamSource();
@@ -228,7 +231,7 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
                 )}
                 {streamStatus.startedAt && (
                   <span>
-                    Uptime: <strong>{formatDuration(Date.now() - streamStatus.startedAt)}</strong>
+                    Uptime: <strong>{formatDuration(dataUpdatedAt - streamStatus.startedAt)}</strong>
                   </span>
                 )}
               </div>
@@ -253,7 +256,7 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
             ) : (
               <div className="space-y-2">
                 {streamStatus.viewers.map((viewer: any) => {
-                  const duration = Math.floor((Date.now() - viewer.joinedAt) / 1000);
+                  const duration = Math.floor((dataUpdatedAt - viewer.joinedAt) / 1000);
                   const mins = Math.floor(duration / 60);
                   const secs = duration % 60;
                   return (

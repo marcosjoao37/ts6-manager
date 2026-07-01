@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useBot, useUpdateBot } from '@/hooks/use-bots';
@@ -165,26 +165,27 @@ export default function BotEditor() {
   const [connectFrom, setConnectFrom] = useState<{ nodeId: string; port: string } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Load flow data
-  useEffect(() => {
-    if (bot) {
-      setBotName(bot.name || '');
-      try {
-        const flow = typeof bot.flowData === 'string' ? JSON.parse(bot.flowData) : bot.flowData;
-        const loadedNodes: FlowNode[] = flow?.nodes || [];
-        const loadedEdges: FlowEdge[] = (flow?.edges || []).map((e: any) => ({
-          ...e,
-          sourcePort: e.sourcePort || 'out',
-          targetPort: e.targetPort || 'in',
-        }));
-        setNodes(loadedNodes);
-        setEdges(loadedEdges);
-      } catch {
-        setNodes([]);
-        setEdges([]);
-      }
+  // Load flow data when the bot arrives/changes (adjust state during render,
+  // guarded by the loaded object's identity — no setState-in-effect).
+  const [seededBot, setSeededBot] = useState<typeof bot | undefined>(undefined);
+  if (bot && bot !== seededBot) {
+    setSeededBot(bot);
+    setBotName(bot.name || '');
+    try {
+      const flow = typeof bot.flowData === 'string' ? JSON.parse(bot.flowData) : bot.flowData;
+      const loadedNodes: FlowNode[] = flow?.nodes || [];
+      const loadedEdges: FlowEdge[] = (flow?.edges || []).map((e: any) => ({
+        ...e,
+        sourcePort: e.sourcePort || 'out',
+        targetPort: e.targetPort || 'in',
+      }));
+      setNodes(loadedNodes);
+      setEdges(loadedEdges);
+    } catch {
+      setNodes([]);
+      setEdges([]);
     }
-  }, [bot]);
+  }
 
   const handleSave = () => {
     if (!botId) return;
@@ -198,7 +199,7 @@ export default function BotEditor() {
   };
 
   const addNode = (type: string, label: string) => {
-    const id = `node_${Date.now()}`;
+    const id = `node_${crypto.randomUUID()}`;
     setNodes((prev) => [...prev, { id, type, label, config: {}, x: 220 + Math.random() * 200, y: 80 + prev.length * 90 }]);
     setSelectedNode(id);
   };
