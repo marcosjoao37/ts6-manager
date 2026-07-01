@@ -15,9 +15,11 @@ Evoluzione consolidata e orientata all'affidabilità di [clusterzx/ts6-manager](
 - Autenticazione a due fattori (TOTP) con codici di recupero monouso; gli amministratori possono richiedere MFA per singolo utente e forzare il cambio password al prossimo accesso
 - Opzione "Computer fidato": salta la password **e** MFA su un dispositivo scelto per 30 giorni tramite un cookie `httpOnly` revocabile, con un elenco di dispositivi revocabile dal tuo account
 - Policy password configurabile (lunghezza minima e complessità)
+- **SSO tramite SAML** — single sign-on opzionale accanto al login locale, con provisioning degli account just-in-time e ruoli mappati dal tuo identity provider
 
 **Integrazione Discord**
 - Bridge Discord: comandi slash (`/play`, `/skip`, `/queue`, …), notifiche di connessione/disconnessione TeamSpeak e presenza, e un pannello live delle statistiche del server
+- Notifiche AFK: pubblica su Discord quando un utente diventa AFK o torna attivo nel canale osservato
 - Il bot musicale può trasmettere in streaming anche in un canale vocale Discord
 - Limita chi può eseguire i comandi del bot a un insieme scelto di ruoli Discord
 
@@ -53,10 +55,6 @@ Basato sulla **WebQuery HTTP API** (il sostituto di ServerQuery nelle versioni m
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## Prossimamente
-
-- **SSO tramite SAML** — single sign-on con il tuo identity provider (Okta, Entra ID, Keycloak, Google Workspace, …) in modo che gli utenti accedano con il proprio account aziendale.
-
 ## Screenshot
 
 ### Dashboard
@@ -88,6 +86,9 @@ Inizia rapidamente con template di flow predefiniti. Copre casi d'uso comuni com
 - Opzione "Computer fidato": un cookie revocabile di 30 giorni che salta sia la password che MFA su quel dispositivo; i dispositivi fidati sono elencati e revocabili dal tuo account
 - Policy password configurabile (lunghezza minima e complessità)
 - Lingua dell'interfaccia per utente (inglese, francese, tedesco, spagnolo, italiano)
+- SSO opzionale tramite SAML 2.0 (SP-initiated), mostrato come pulsante "Accedi tramite SSO" accanto al login locale
+- Provisioning degli account just-in-time (attivabile/disattivabile) con il ruolo mappato da un gruppo/attributo SAML, rivalutato a ogni accesso, oltre a un ruolo predefinito configurabile
+- Il controllo MFA si applica comunque dopo un login SAML; gli account SSO non hanno una password locale e non possono usare i flussi di password locale
 
 ### Gestione del Server
 - Dashboard con statistiche live del server, grafico della banda e panoramica della capacità
@@ -113,13 +114,16 @@ Inizia rapidamente con template di flow predefiniti. Copre casi d'uso comuni com
 - Controllo del volume, pausa, avanzamento, precedente, riproduzione casuale, ripetizione
 - Supporto audio stereo con pacing stabile a 20ms
 - Riconnessione automatica con backoff esponenziale in caso di disconnessione
-- Comandi di testo nel canale per il controllo a mani libere
+- Comandi di testo nel canale per il controllo a mani libere, inclusi comandi per elencare i canali e per spostare gli utenti
+- Limita i comandi musicali e i comandi di amministrazione a specifici gruppi server TeamSpeak
+- Notifica opzionale del brano in riproduzione pubblicata nel canale TeamSpeak del bot
 - Tracciamento della cronologia delle richieste musicali
 
 ### Integrazione Discord
 - Bot bridge Discord con comandi slash: `/play`, `/stop`, `/pause`, `/skip`, `/next`, `/prev`, `/queue`, `/volume`, `/nowplaying`, `/stats`, `/join`, `/leave`
 - Limita i comandi ai ruoli Discord selezionati (admin/proprietario sempre autorizzati; vuoto = aperto a tutti)
 - Notifiche di connessione/disconnessione TeamSpeak e presenza per canale, con stile embed o testo semplice e auto-eliminazione opzionale
+- Notifiche AFK: pubblica un messaggio personalizzabile quando un utente diventa AFK o torna attivo nel canale osservato (condivide lo stile embed/testo semplice e l'auto-eliminazione)
 - Pannello statistiche server live mantenuto aggiornato in un canale Discord
 - Il bot musicale può trasmettere il proprio audio in un canale vocale Discord
 - Trigger messaggi Discord e azione di invio messaggi disponibili nel Bot Flow Engine
@@ -161,6 +165,7 @@ Inizia rapidamente con template di flow predefiniti. Copre casi d'uso comuni com
 - Protezione SSRF su tutte le richieste HTTP in uscita, URL FFmpeg e redirect webhook
 - Rate limiting sugli endpoint di autenticazione
 - JWT access + rotazione refresh token con rilevamento del riutilizzo
+- SSO SAML con validazione delle asserzioni firmate, binding dell'audience, protezione anti-replay e codici di accesso monouso
 - Controllo degli accessi basato sui ruoli (admin / viewer)
 - Controllo degli accessi per server per configurazioni multi-tenant
 - Accesso ai comandi Discord limitato per ruolo
@@ -170,6 +175,8 @@ Inizia rapidamente con template di flow predefiniti. Copre casi d'uso comuni com
 ### Impostazioni e Amministrazione
 - Gestione degli utenti con applicazione MFA e cambio password forzato
 - Impostazioni di integrazione Discord, Spotify e YouTube
+- Configurazione dell'identity provider SSO / SAML: URL SSO dell'IdP e certificato di firma, mappatura di attributi e ruoli, opzione di auto-provisioning e ruolo predefinito (i metadati SP e gli URL ACS da configurare lato IdP sono mostrati nella scheda)
+- Impostazioni dei comandi musicali: limita i comandi per gruppo server TeamSpeak e attiva/disattiva la notifica del brano in riproduzione
 - Gestione file cookie yt-dlp per accedere a contenuti YouTube con restrizione d'età o riservati ai membri (carica un file o incolla direttamente nell'interfaccia)
 - Gestione del diario delle connessioni e dei ban IP
 - Pannello impostazioni riservato agli amministratori
@@ -348,13 +355,23 @@ Quando un bot musicale è connesso a un canale, gli utenti in quel canale posson
 | `!radio <id>` | Riproduci una stazione radio |
 | `!play <url>` | Riproduci dall'URL YouTube |
 | `!play` | Riprendi la riproduzione in pausa |
+| `!spotify <url>` | Riproduci da un link a traccia/album/playlist Spotify |
+| `!queue <url>` / `!add <url>` | Aggiungi una traccia alla coda |
 | `!stop` | Ferma la riproduzione |
 | `!pause` | Attiva/disattiva pausa/ripresa |
 | `!skip` / `!next` | Traccia successiva nella coda |
 | `!prev` | Traccia precedente |
 | `!vol` | Mostra il volume corrente |
 | `!vol <0-100>` | Imposta il volume |
-| `!np` | Mostra la traccia corrente |
+| `!np` / `!nowplaying` | Mostra la traccia corrente |
+| `!info` | Traccia corrente con avanzamento della riproduzione |
+| `!help` / `!aide` | Elenca i comandi disponibili |
+| `!channels` | Elenca i canali con i rispettivi ID |
+| `!move <user> <channel>` | Sposta un utente in un canale (admin) |
+| `!moveall <channel>` | Sposta tutti in un canale (admin) |
+| `!notif` | Attiva/disattiva la notifica del brano in riproduzione (admin) |
+
+`!move`, `!moveall` e `!notif` sono comandi di amministrazione; l'accesso ai comandi musicali e ai comandi di amministrazione può essere limitato a specifici gruppi server TeamSpeak in **Impostazioni → Comandi Musicali**.
 
 ## Requisiti
 

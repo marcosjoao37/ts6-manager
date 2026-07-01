@@ -15,9 +15,11 @@ Interface de gestion web pour les serveurs TeamSpeak. Contrôlez les serveurs vi
 - Authentification à deux facteurs (TOTP) avec codes de récupération à usage unique ; les administrateurs peuvent exiger le MFA par utilisateur et forcer un changement de mot de passe à la prochaine connexion
 - Option « ordinateur de confiance » : ignorer le mot de passe **et** le MFA sur un appareil choisi pendant 30 jours via un cookie `httpOnly` révocable, avec une liste d'appareils révocables depuis votre compte
 - Politique de mot de passe configurable (longueur minimale + complexité)
+- **SSO via SAML** — authentification unique optionnelle en complément de la connexion locale, avec provisionnement de compte à la volée (just-in-time) et rôles mappés depuis votre fournisseur d'identité
 
 **Intégration Discord**
 - Passerelle Discord : commandes slash (`/play`, `/skip`, `/queue`, …), notifications de connexion/déconnexion TeamSpeak et de présence, ainsi qu'un panneau de statistiques du serveur en temps réel
+- Notifications AFK : publier sur Discord lorsqu'un utilisateur passe AFK ou revient dans le canal surveillé
 - Le bot musical peut également diffuser dans un salon vocal Discord
 - Restreindre l'accès aux commandes du bot à un ensemble de rôles Discord sélectionnés
 
@@ -53,10 +55,6 @@ Construit sur l'**API HTTP WebQuery** (le remplaçant de ServerQuery dans les ve
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## Bientôt disponible
-
-- **SSO via SAML** — authentification unique auprès de votre fournisseur d'identité (Okta, Entra ID, Keycloak, Google Workspace, …) pour que les utilisateurs se connectent avec leur compte d'organisation.
-
 ## Captures d'écran
 
 ### Tableau de bord
@@ -88,6 +86,9 @@ Démarrez rapidement grâce à des modèles de flux préconstruits. Couvre les c
 - Option « ordinateur de confiance » : un cookie révocable de 30 jours qui ignore à la fois le mot de passe et le MFA sur cet appareil ; les appareils de confiance sont listés et révocables depuis votre compte
 - Politique de mot de passe configurable (longueur minimale + complexité)
 - Langue d'interface par utilisateur (anglais, français, allemand, espagnol, italien)
+- SSO optionnel via SAML 2.0 (initié par le fournisseur de service), affiché comme un bouton « Se connecter via SSO » à côté de la connexion locale
+- Provisionnement de compte à la volée (activable/désactivable) avec le rôle mappé depuis un groupe/attribut SAML, réévalué à chaque connexion, plus un rôle par défaut configurable
+- Le contrôle MFA s'applique toujours après une connexion SAML ; les comptes SSO n'ont pas de mot de passe local et ne peuvent pas utiliser les parcours de mot de passe local
 
 ### Gestion du serveur
 - Tableau de bord avec statistiques du serveur en direct, graphique de bande passante et vue d'ensemble de la capacité
@@ -113,13 +114,16 @@ Démarrez rapidement grâce à des modèles de flux préconstruits. Couvre les c
 - Contrôle du volume, pause, suivant, précédent, lecture aléatoire, répétition
 - Support audio stéréo avec un cadencement stable de 20 ms
 - Reconnexion automatique avec reprise exponentielle en cas de déconnexion
-- Commandes texte dans le canal pour un contrôle sans les mains
+- Commandes texte dans le canal pour un contrôle sans les mains, y compris la liste des canaux et les commandes de déplacement
+- Restreindre les commandes musicales et les commandes d'administration à des groupes de serveurs TeamSpeak spécifiques
+- Notification optionnelle « lecture en cours » publiée dans le canal TeamSpeak du bot
 - Suivi de l'historique des requêtes musicales
 
 ### Intégration Discord
 - Bot passerelle Discord avec commandes slash : `/play`, `/stop`, `/pause`, `/skip`, `/next`, `/prev`, `/queue`, `/volume`, `/nowplaying`, `/stats`, `/join`, `/leave`
 - Restreindre les commandes aux rôles Discord sélectionnés (admins/propriétaire toujours autorisés ; vide = ouvert à tous)
 - Notifications de connexion/déconnexion TeamSpeak et de présence à l'échelle du canal, avec style embed ou texte brut et suppression automatique optionnelle
+- Notifications AFK : publier un message personnalisable lorsqu'un utilisateur passe AFK ou revient dans le canal surveillé (partage le style embed/texte brut et la suppression automatique)
 - Panneau de statistiques du serveur en direct maintenu à jour dans un salon Discord
 - Le bot musical peut diffuser son audio dans un salon vocal Discord
 - Déclencheur de message Discord et action d'envoi de message disponibles dans le moteur de flux bot
@@ -161,6 +165,7 @@ Démarrez rapidement grâce à des modèles de flux préconstruits. Couvre les c
 - Protection SSRF sur toutes les requêtes HTTP sortantes, les URLs FFmpeg et les redirections de webhook
 - Limitation du débit sur les points de terminaison d'authentification
 - JWT : rotation des tokens d'accès et de rafraîchissement avec détection de réutilisation
+- SSO SAML avec validation des assertions signées, liaison d'audience, protection contre le rejeu et codes de connexion à usage unique
 - Contrôle d'accès basé sur les rôles (admin / lecteur)
 - Contrôle d'accès par serveur pour les configurations multi-tenant
 - Accès aux commandes Discord restreint par rôle
@@ -170,6 +175,8 @@ Démarrez rapidement grâce à des modèles de flux préconstruits. Couvre les c
 ### Paramètres & Administration
 - Gestion des utilisateurs avec application du MFA et changement de mot de passe forcé
 - Paramètres d'intégration Discord, Spotify et YouTube
+- Configuration du fournisseur d'identité SSO / SAML : URL SSO de l'IdP et certificat de signature, mappage des attributs et des rôles, activation du provisionnement automatique et rôle par défaut (les URL de métadonnées SP et ACS à configurer côté IdP sont affichées dans l'onglet)
+- Paramètres des commandes musicales : restreindre les commandes par groupe de serveurs TeamSpeak et activer/désactiver la notification « lecture en cours »
 - Gestion des fichiers de cookies yt-dlp pour accéder au contenu YouTube réservé aux membres ou à accès restreint par âge (uploadez un fichier ou collez directement dans l'interface)
 - Journal de connexion et gestion des bannissements d'IP
 - Panneau de paramètres réservé aux administrateurs
@@ -347,13 +354,23 @@ Lorsqu'un bot musical est connecté à un canal, les utilisateurs de ce canal pe
 | `!radio <id>` | Jouer une station radio |
 | `!play <url>` | Lire depuis une URL YouTube |
 | `!play` | Reprendre la lecture en pause |
+| `!spotify <url>` | Lire depuis un lien Spotify (piste/album/playlist) |
+| `!queue <url>` / `!add <url>` | Ajouter une piste à la file d'attente |
 | `!stop` | Arrêter la lecture |
 | `!pause` | Basculer pause/lecture |
 | `!skip` / `!next` | Piste suivante dans la file |
 | `!prev` | Piste précédente |
 | `!vol` | Afficher le volume actuel |
 | `!vol <0-100>` | Régler le volume |
-| `!np` | Afficher la piste en cours |
+| `!np` / `!nowplaying` | Afficher la piste en cours |
+| `!info` | Piste en cours avec la progression de lecture |
+| `!help` / `!aide` | Lister les commandes disponibles |
+| `!channels` | Lister les canaux avec leurs identifiants |
+| `!move <user> <channel>` | Déplacer un utilisateur vers un canal (admin) |
+| `!moveall <channel>` | Déplacer tout le monde vers un canal (admin) |
+| `!notif` | Activer/désactiver la notification « lecture en cours » (admin) |
+
+`!move`, `!moveall` et `!notif` sont des commandes d'administration ; l'accès aux commandes musicales et aux commandes d'administration peut être restreint à des groupes de serveurs TeamSpeak spécifiques dans **Paramètres → Commandes musicales**.
 
 ## Prérequis
 

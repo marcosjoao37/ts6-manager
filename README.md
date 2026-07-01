@@ -15,9 +15,11 @@ Hardened, reliability-focused evolution of [clusterzx/ts6-manager](https://githu
 - Two-factor authentication (TOTP) with one-time recovery codes; admins can require MFA per user and force a password change at next logon
 - "Trusted computer" option: skip password **and** MFA on a chosen device for 30 days via a revocable `httpOnly` cookie, with a device list you can revoke from your account
 - Configurable password policy (minimum length + complexity)
+- **SSO via SAML** — optional single sign-on alongside local login, with just-in-time account provisioning and roles mapped from your identity provider
 
 **Discord integration**
 - Discord bridge: slash commands (`/play`, `/skip`, `/queue`, …), TeamSpeak connect/leave + presence notifications, and a live server-stats panel
+- AFK notifications: post to Discord when a user goes AFK or comes back in the watched channel
 - The music bot can also stream into a Discord voice channel
 - Restrict who may run the bot's commands to a chosen set of Discord roles
 
@@ -53,10 +55,6 @@ Built on the **WebQuery HTTP API** (the ServerQuery replacement in modern TeamSp
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## Coming Soon
-
-- **SSO via SAML** — single sign-on against your identity provider (Okta, Entra ID, Keycloak, Google Workspace, …) so users log in with their organization account.
-
 ## Screenshots
 
 ### Dashboard
@@ -88,6 +86,9 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 - "Trusted computer" option: a revocable 30-day cookie that skips both password and MFA on that device; trusted devices are listed and revocable from your account
 - Configurable password policy (minimum length + complexity)
 - Per-user UI language (English, French, German, Spanish, Italian)
+- Optional SSO via SAML 2.0 (SP-initiated), shown as a "Sign in via SSO" button next to local login
+- Just-in-time account provisioning (toggleable) with the role mapped from a SAML group/attribute, re-evaluated on each login, plus a configurable default role
+- The MFA gate still applies after a SAML login; SSO accounts have no local password and cannot use the local password flows
 
 ### Server Management
 - Dashboard with live server stats, bandwidth graph, and capacity overview
@@ -113,13 +114,16 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 - Volume control, pause, skip, previous, shuffle, repeat
 - Stereo audio support with stable 20ms pacing
 - Auto-reconnect with exponential backoff on disconnect
-- In-channel text commands for hands-free control
+- In-channel text commands for hands-free control, including channel listing and move commands
+- Restrict music commands and admin commands to specific TeamSpeak server groups
+- Optional now-playing notification posted in the bot's TeamSpeak channel
 - Music request history tracking
 
 ### Discord Integration
 - Discord bridge bot with slash commands: `/play`, `/stop`, `/pause`, `/skip`, `/next`, `/prev`, `/queue`, `/volume`, `/nowplaying`, `/stats`, `/join`, `/leave`
 - Restrict commands to selected Discord roles (admins/owner always allowed; empty = open to everyone)
 - TeamSpeak connect/leave and channel-scoped presence notifications, with embed or plain style and optional auto-delete
+- AFK notifications: post a customizable message when a user goes AFK or comes back in the watched channel (shares the embed/plain style and auto-delete)
 - Live server-stats panel kept up to date in a Discord channel
 - The music bot can stream its audio into a Discord voice channel
 - Discord message trigger and send-message action available in the Bot Flow Engine
@@ -161,6 +165,7 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 - SSRF protection on all outbound HTTP requests, FFmpeg URLs, and webhook redirects
 - Rate limiting on authentication endpoints
 - JWT access + refresh token rotation with reuse detection
+- SAML SSO with signed-assertion validation, audience binding, replay protection, and one-time login codes
 - Role-based access control (admin / viewer)
 - Per-server access control for multi-tenant setups
 - Discord command access restricted by role
@@ -170,6 +175,8 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 ### Settings & Administration
 - User management with MFA enforcement and forced password change
 - Discord, Spotify, and YouTube integration settings
+- SSO / SAML identity-provider configuration: IdP SSO URL & signing certificate, attribute and role mapping, auto-provisioning toggle and default role (the SP metadata and ACS URLs to configure on the IdP side are shown in the tab)
+- Music command settings: restrict commands by TeamSpeak server group and toggle the now-playing notification
 - yt-dlp cookie file management for accessing age-restricted or member-only YouTube content (upload a file or paste directly in the UI)
 - Connection journal and IP ban management
 - Admin-only settings panel
@@ -348,13 +355,23 @@ When a music bot is connected to a channel, users in that channel can control it
 | `!radio <id>` | Play a radio station |
 | `!play <url>` | Play from YouTube URL |
 | `!play` | Resume paused playback |
+| `!spotify <url>` | Play from a Spotify track/album/playlist link |
+| `!queue <url>` / `!add <url>` | Add a track to the queue |
 | `!stop` | Stop playback |
 | `!pause` | Toggle pause/resume |
 | `!skip` / `!next` | Next track in queue |
 | `!prev` | Previous track |
 | `!vol` | Show current volume |
 | `!vol <0-100>` | Set volume |
-| `!np` | Show current track |
+| `!np` / `!nowplaying` | Show current track |
+| `!info` | Current track with playback progress |
+| `!help` / `!aide` | List available commands |
+| `!channels` | List channels with their IDs |
+| `!move <user> <channel>` | Move a user to a channel (admin) |
+| `!moveall <channel>` | Move everyone to a channel (admin) |
+| `!notif` | Toggle the now-playing notification (admin) |
+
+`!move`, `!moveall`, and `!notif` are admin commands; access to music and admin commands can be restricted to specific TeamSpeak server groups under **Settings → Music Commands**.
 
 ## Requirements
 

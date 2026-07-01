@@ -15,9 +15,11 @@ Evolución reforzada y orientada a la fiabilidad de [clusterzx/ts6-manager](http
 - Autenticación de dos factores (TOTP) con códigos de recuperación de un solo uso; los administradores pueden exigir MFA por usuario y forzar un cambio de contraseña en el próximo inicio de sesión
 - Opción "Equipo de confianza": omite la contraseña **y** el MFA en un dispositivo elegido durante 30 días mediante una cookie `httpOnly` revocable, con una lista de dispositivos que puedes revocar desde tu cuenta
 - Política de contraseñas configurable (longitud mínima y complejidad)
+- **SSO mediante SAML** — inicio de sesión único opcional junto al inicio de sesión local, con aprovisionamiento de cuentas just-in-time y roles asignados desde tu proveedor de identidad
 
 **Integración con Discord**
 - Puente Discord: comandos de barra diagonal (`/play`, `/skip`, `/queue`, …), notificaciones de conexión/salida a TeamSpeak y de presencia, y un panel de estadísticas del servidor en directo
+- Notificaciones de AFK: publica en Discord cuando un usuario se pone AFK o vuelve en el canal vigilado
 - El bot de música también puede transmitir audio a un canal de voz de Discord
 - Restricción de quién puede ejecutar los comandos del bot a un conjunto específico de roles de Discord
 
@@ -53,10 +55,6 @@ Construido sobre la **API HTTP WebQuery** (el sustituto de ServerQuery en las ve
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## Próximamente
-
-- **SSO mediante SAML** — inicio de sesión único contra tu proveedor de identidad (Okta, Entra ID, Keycloak, Google Workspace, …) para que los usuarios inicien sesión con su cuenta corporativa.
-
 ## Capturas de pantalla
 
 ### Panel de control
@@ -88,6 +86,9 @@ Empieza rápidamente con plantillas de flujo predefinidas. Cubre casos de uso co
 - Opción "Equipo de confianza": una cookie revocable de 30 días que omite tanto la contraseña como el MFA en ese dispositivo; los dispositivos de confianza se listan y pueden revocarse desde tu cuenta
 - Política de contraseñas configurable (longitud mínima y complejidad)
 - Idioma de la interfaz por usuario (inglés, francés, alemán, español, italiano)
+- SSO opcional mediante SAML 2.0 (iniciado por el SP), mostrado como un botón "Iniciar sesión mediante SSO" junto al inicio de sesión local
+- Aprovisionamiento de cuentas just-in-time (activable) con el rol asignado a partir de un grupo o atributo SAML, reevaluado en cada inicio de sesión, además de un rol predeterminado configurable
+- El control de MFA sigue aplicándose después de un inicio de sesión SAML; las cuentas SSO no tienen contraseña local y no pueden usar los flujos de contraseña local
 
 ### Gestión del servidor
 - Panel de control con estadísticas en directo, gráfico de ancho de banda y resumen de capacidad
@@ -113,13 +114,16 @@ Empieza rápidamente con plantillas de flujo predefinidas. Cubre casos de uso co
 - Control de volumen, pausa, saltar, anterior, aleatorio, repetición
 - Compatibilidad con audio estéreo con pacing estable de 20 ms
 - Reconexión automática con retroceso exponencial en caso de desconexión
-- Comandos de texto en el canal para control manos libres
+- Comandos de texto en el canal para control manos libres, incluyendo listado de canales y comandos de movimiento
+- Restringe los comandos de música y de administrador a grupos específicos del servidor de TeamSpeak
+- Notificación opcional de reproducción actual publicada en el canal de TeamSpeak del bot
 - Historial de solicitudes de música
 
 ### Integración con Discord
 - Bot puente de Discord con comandos de barra diagonal: `/play`, `/stop`, `/pause`, `/skip`, `/next`, `/prev`, `/queue`, `/volume`, `/nowplaying`, `/stats`, `/join`, `/leave`
 - Restringe los comandos a roles de Discord seleccionados (administradores/propietario siempre permitidos; vacío = abierto a todos)
 - Notificaciones de conexión/salida a TeamSpeak y de presencia por canal, con estilo de embed o texto plano y eliminación automática opcional
+- Notificaciones de AFK: publica un mensaje personalizable cuando un usuario se pone AFK o vuelve en el canal vigilado (comparte el estilo de embed/texto plano y la eliminación automática)
 - Panel de estadísticas del servidor en directo actualizado en un canal de Discord
 - El bot de música puede transmitir su audio a un canal de voz de Discord
 - Disparador de mensajes de Discord y acción de envío de mensajes disponible en el Motor de flujos de bot
@@ -161,6 +165,7 @@ Empieza rápidamente con plantillas de flujo predefinidas. Cubre casos de uso co
 - Protección SSRF en todas las solicitudes HTTP salientes, URLs de FFmpeg y redirecciones de webhooks
 - Limitación de velocidad en los endpoints de autenticación
 - JWT de acceso + rotación de tokens de actualización con detección de reutilización
+- SSO SAML con validación de aserciones firmadas, vinculación de audiencia, protección contra repetición y códigos de inicio de sesión de un solo uso
 - Control de acceso basado en roles (admin / viewer)
 - Control de acceso por servidor para configuraciones multi-inquilino
 - Acceso a comandos de Discord restringido por rol
@@ -170,6 +175,8 @@ Empieza rápidamente con plantillas de flujo predefinidas. Cubre casos de uso co
 ### Configuración y administración
 - Gestión de usuarios con aplicación de MFA y cambio forzado de contraseña
 - Configuración de integración con Discord, Spotify y YouTube
+- Configuración del proveedor de identidad SSO / SAML: URL de SSO del IdP y certificado de firma, asignación de atributos y roles, activación del aprovisionamiento automático y rol predeterminado (los metadatos del SP y las URL de ACS que hay que configurar en el IdP se muestran en la pestaña)
+- Configuración de comandos de música: restringe los comandos por grupo de servidor de TeamSpeak y activa o desactiva la notificación de reproducción actual
 - Gestión de archivos de cookies de yt-dlp para acceder a contenido de YouTube con restricción de edad o solo para miembros (sube un archivo o pega directamente en la interfaz)
 - Gestión del diario de conexiones y de baneos de IP
 - Panel de configuración solo para administradores
@@ -348,13 +355,23 @@ Cuando un bot de música está conectado a un canal, los usuarios de ese canal p
 | `!radio <id>` | Reproducir una estación de radio |
 | `!play <url>` | Reproducir desde una URL de YouTube |
 | `!play` | Reanudar la reproducción en pausa |
+| `!spotify <url>` | Reproducir desde un enlace de pista/álbum/lista de reproducción de Spotify |
+| `!queue <url>` / `!add <url>` | Añadir una pista a la cola |
 | `!stop` | Detener la reproducción |
 | `!pause` | Alternar pausa/reanudar |
 | `!skip` / `!next` | Pista siguiente en la cola |
 | `!prev` | Pista anterior |
 | `!vol` | Mostrar el volumen actual |
 | `!vol <0-100>` | Establecer el volumen |
-| `!np` | Mostrar la pista actual |
+| `!np` / `!nowplaying` | Mostrar la pista actual |
+| `!info` | Pista actual con el progreso de reproducción |
+| `!help` / `!aide` | Listar los comandos disponibles |
+| `!channels` | Listar los canales con sus ID |
+| `!move <user> <channel>` | Mover a un usuario a un canal (admin) |
+| `!moveall <channel>` | Mover a todos a un canal (admin) |
+| `!notif` | Alternar la notificación de reproducción actual (admin) |
+
+`!move`, `!moveall` y `!notif` son comandos de administrador; el acceso a los comandos de música y de administrador puede restringirse a grupos específicos del servidor de TeamSpeak en **Configuración → Comandos de música**.
 
 ## Requisitos
 

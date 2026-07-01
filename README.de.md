@@ -15,9 +15,11 @@ Eine robuste, auf Zuverlässigkeit ausgerichtete Weiterentwicklung von [clusterz
 - Zwei-Faktor-Authentifizierung (TOTP) mit Einmal-Wiederherstellungscodes; Administratoren können MFA pro Benutzer erzwingen und beim nächsten Anmelden eine Passwortänderung verlangen
 - Option „Vertrauenswürdiger Computer": Passwort **und** MFA auf einem gewählten Gerät für 30 Tage per widerrufbarem `httpOnly`-Cookie überspringen, mit einer Geräteliste, die vom Konto aus widerrufbar ist
 - Konfigurierbares Passwortrichtlinien-System (Mindestlänge + Komplexität)
+- **SSO via SAML** — optionales Single Sign-On zusätzlich zur lokalen Anmeldung, mit Just-in-Time-Kontoerstellung und Rollen, die von Ihrem Identity Provider zugeordnet werden
 
 **Discord-Integration**
 - Discord-Bridge: Slash-Befehle (`/play`, `/skip`, `/queue`, …), TeamSpeak-Verbindungs-/Trennbenachrichtigungen und Anwesenheitsmeldungen sowie ein Live-Serverstatistik-Panel
+- AFK-Benachrichtigungen: Meldung an Discord, wenn ein Benutzer im überwachten Kanal AFK wird oder zurückkehrt
 - Der Musik-Bot kann auch in einen Discord-Sprachkanal streamen
 - Einschränkung, welche Discord-Rollen die Bot-Befehle ausführen dürfen
 
@@ -53,10 +55,6 @@ Basiert auf der **WebQuery HTTP API** (dem ServerQuery-Ersatz in modernen TeamSp
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## Demnächst verfügbar
-
-- **SSO via SAML** — Single Sign-On gegen Ihren Identity Provider (Okta, Entra ID, Keycloak, Google Workspace, …), sodass sich Benutzer mit ihrem Organisationskonto anmelden können.
-
 ## Screenshots
 
 ### Dashboard
@@ -88,6 +86,9 @@ Starten Sie schnell mit vorgefertigten Flow-Vorlagen. Deckt häufige Anwendungsf
 - Option „Vertrauenswürdiger Computer": ein widerrufbares 30-Tage-Cookie, das Passwort und MFA auf dem jeweiligen Gerät überspringt; vertrauenswürdige Geräte werden aufgelistet und sind vom Konto aus widerrufbar
 - Konfigurierbares Passwortrichtlinien-System (Mindestlänge + Komplexität)
 - Sprachauswahl der UI pro Benutzer (Englisch, Französisch, Deutsch, Spanisch, Italienisch)
+- Optionales SSO via SAML 2.0 (SP-initiiert), angezeigt als Schaltfläche „Über SSO anmelden" neben der lokalen Anmeldung
+- Just-in-Time-Kontoerstellung (umschaltbar) mit der Rolle, die aus einer SAML-Gruppe/einem SAML-Attribut zugeordnet und bei jeder Anmeldung neu ausgewertet wird, sowie einer konfigurierbaren Standardrolle
+- Die MFA-Prüfung gilt weiterhin nach einer SAML-Anmeldung; SSO-Konten haben kein lokales Passwort und können die lokalen Passwort-Abläufe nicht nutzen
 
 ### Serververwaltung
 - Dashboard mit Live-Serverstatistiken, Bandbreitengraph und Kapazitätsübersicht
@@ -113,13 +114,16 @@ Starten Sie schnell mit vorgefertigten Flow-Vorlagen. Deckt häufige Anwendungsf
 - Lautstärkeregelung, Pause, Überspringen, Zurück, Zufallswiedergabe, Wiederholen
 - Stereo-Audio-Unterstützung mit stabilem 20-ms-Takt
 - Automatische Wiederverbindung mit exponentiellem Backoff bei Verbindungsabbruch
-- Textbefehle im Kanal für freihändige Steuerung
+- Textbefehle im Kanal für freihändige Steuerung, einschließlich Kanalauflistung und Verschiebe-Befehlen
+- Musikbefehle und Admin-Befehle auf bestimmte TeamSpeak-Servergruppen beschränken
+- Optionale „Jetzt läuft"-Benachrichtigung im TeamSpeak-Kanal des Bots
 - Verlaufsverfolgung von Musikanfragen
 
 ### Discord-Integration
 - Discord-Bridge-Bot mit Slash-Befehlen: `/play`, `/stop`, `/pause`, `/skip`, `/next`, `/prev`, `/queue`, `/volume`, `/nowplaying`, `/stats`, `/join`, `/leave`
 - Befehle auf ausgewählte Discord-Rollen beschränken (Admins/Owner immer erlaubt; leer = offen für alle)
 - TeamSpeak-Verbindungs-/Trennbenachrichtigungen und kanalspezifische Anwesenheitsmeldungen, mit Embed- oder Nur-Text-Stil und optionalem automatischen Löschen
+- AFK-Benachrichtigungen: eine anpassbare Nachricht senden, wenn ein Benutzer im überwachten Kanal AFK wird oder zurückkehrt (nutzt denselben Embed-/Nur-Text-Stil und das automatische Löschen)
 - Live-Serverstatistik-Panel, das in einem Discord-Kanal aktuell gehalten wird
 - Der Musik-Bot kann sein Audio in einen Discord-Sprachkanal streamen
 - Discord-Nachrichten-Trigger und Nachricht-senden-Aktion in der Bot-Flow-Engine verfügbar
@@ -161,6 +165,7 @@ Starten Sie schnell mit vorgefertigten Flow-Vorlagen. Deckt häufige Anwendungsf
 - SSRF-Schutz für alle ausgehenden HTTP-Anfragen, FFmpeg-URLs und Webhook-Weiterleitungen
 - Rate-Limiting auf Authentifizierungsendpunkten
 - JWT-Zugriffstoken + Refresh-Token-Rotation mit Wiederverwendungserkennung
+- SAML-SSO mit Validierung signierter Assertions, Audience-Bindung, Replay-Schutz und Einmal-Anmeldecodes
 - Rollenbasierte Zugriffskontrolle (Admin / Betrachter)
 - Serverspezifische Zugriffskontrolle für Mehrmandanten-Setups
 - Discord-Befehlszugriff per Rolle eingeschränkt
@@ -170,6 +175,8 @@ Starten Sie schnell mit vorgefertigten Flow-Vorlagen. Deckt häufige Anwendungsf
 ### Einstellungen & Administration
 - Benutzerverwaltung mit MFA-Erzwingung und erzwungener Passwortänderung
 - Discord-, Spotify- und YouTube-Integrationseinstellungen
+- SSO/SAML-Identity-Provider-Konfiguration: IdP-SSO-URL & Signaturzertifikat, Attribut- und Rollenzuordnung, Umschalter für die automatische Kontoerstellung und Standardrolle (die auf Seiten des IdP zu konfigurierenden SP-Metadaten und ACS-URLs werden im Tab angezeigt)
+- Musikbefehls-Einstellungen: Befehle nach TeamSpeak-Servergruppe einschränken und die „Jetzt läuft"-Benachrichtigung umschalten
 - yt-dlp-Cookie-Datei-Verwaltung für den Zugriff auf altersbeschränkte oder mitgliedspflichtige YouTube-Inhalte (Datei hochladen oder direkt in der UI einfügen)
 - Verbindungsjournal und IP-Sperrverwaltung
 - Nur für Administratoren zugängliches Einstellungspanel
@@ -348,13 +355,23 @@ Wenn ein Musik-Bot mit einem Kanal verbunden ist, können Benutzer in diesem Kan
 | `!radio <id>` | Einen Radiosender abspielen |
 | `!play <url>` | Von YouTube-URL abspielen |
 | `!play` | Pausierte Wiedergabe fortsetzen |
+| `!spotify <url>` | Von einem Spotify-Track-/Album-/Playlist-Link abspielen |
+| `!queue <url>` / `!add <url>` | Einen Titel zur Warteschlange hinzufügen |
 | `!stop` | Wiedergabe stoppen |
 | `!pause` | Pause ein-/ausschalten |
 | `!skip` / `!next` | Nächster Titel in der Warteschlange |
 | `!prev` | Vorheriger Titel |
 | `!vol` | Aktuelle Lautstärke anzeigen |
 | `!vol <0-100>` | Lautstärke setzen |
-| `!np` | Aktuellen Titel anzeigen |
+| `!np` / `!nowplaying` | Aktuellen Titel anzeigen |
+| `!info` | Aktueller Titel mit Wiedergabefortschritt |
+| `!help` / `!aide` | Verfügbare Befehle auflisten |
+| `!channels` | Kanäle mit ihren IDs auflisten |
+| `!move <user> <channel>` | Einen Benutzer in einen Kanal verschieben (Admin) |
+| `!moveall <channel>` | Alle in einen Kanal verschieben (Admin) |
+| `!notif` | Die „Jetzt läuft"-Benachrichtigung umschalten (Admin) |
+
+`!move`, `!moveall` und `!notif` sind Admin-Befehle; der Zugriff auf Musik- und Admin-Befehle kann unter **Einstellungen → Musikbefehle** auf bestimmte TeamSpeak-Servergruppen beschränkt werden.
 
 ## Anforderungen
 
