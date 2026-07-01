@@ -46,4 +46,10 @@ export const authApi = {
     api.delete(`/auth/trusted/${id}`),
   trustedRevokeAll: () =>
     api.delete('/auth/trusted'),
+
+  // SAML SSO
+  samlStatus: (): Promise<{ enabled: boolean }> =>
+    api.get('/auth/saml/status').then((r) => r.data),
+  samlExchange: (code: string) =>
+    api.post('/auth/saml/exchange', { code }).then((r) => r.data),
 };

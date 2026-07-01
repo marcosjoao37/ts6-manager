@@ -24,6 +24,7 @@ const queryClient = new QueryClient({
 
 // Lazy-loaded pages
 const Login = lazy(() => import('@/pages/Login'));
+const SsoCallback = lazy(() => import('@/pages/SsoCallback'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const VirtualServers = lazy(() => import('@/pages/VirtualServers'));
 const Channels = lazy(() => import('@/pages/Channels'));
@@ -61,6 +62,7 @@ export function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/login/sso" element={<SsoCallback />} />
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/widget/:token" element={<WidgetPage />} />
 

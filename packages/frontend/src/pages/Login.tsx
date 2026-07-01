@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { authApi } from '@/api/auth.api';
+import api from '@/api/client';
 import { useAuthStore } from '@/stores/auth.store';
 import { applyUserLanguage } from '@/hooks/use-auth';
 import { useTranslation } from 'react-i18next';
@@ -31,22 +32,13 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [trustDevice, setTrustDevice] = useState(false);
   const [trustedName, setTrustedName] = useState('');
+  const [samlEnabled, setSamlEnabled] = useState(false);
 
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
-
-  useEffect(() => {
-    if (isAuthenticated) return; // already signed in — no need to peek
-    authApi.trustedPeek()
-      .then((res) => {
-        if (res.trusted) { setTrustedName(res.displayName || res.username); setStep('trusted'); }
-      })
-      .catch(() => { /* no trusted device */ });
-  }, [isAuthenticated]);
-
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const finish = (data: any) => {
     setAuth(data.accessToken, data.refreshToken, data.user);
@@ -68,6 +60,36 @@ export default function Login() {
       setStep('code'); // mfaRequired
     }
   };
+
+  useEffect(() => {
+    if (isAuthenticated) return; // already signed in — no need to peek
+    authApi.trustedPeek()
+      .then((res) => {
+        if (res.trusted) { setTrustedName(res.displayName || res.username); setStep('trusted'); }
+      })
+      .catch(() => { /* no trusted device */ });
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    authApi.samlStatus().then((s) => setSamlEnabled(s.enabled)).catch(() => {});
+  }, []);
+
+  // SSO handoff: SsoCallback navigates here with { state: { mfa } } when the
+  // SAML exchange resolved to an MFA challenge instead of a full session.
+  // Reuse the same routeAuth() used by the password flow to enter 'setup'/'code'.
+  useEffect(() => {
+    const mfa = (location.state as { mfa?: any } | null)?.mfa;
+    if (mfa) {
+      routeAuth(mfa);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+
+  // Absolute backend URL for the SSO redirect (same origin/base as the axios instance).
+  const ssoLoginUrl = `${api.defaults.baseURL?.replace(/\/$/, '')}/auth/saml/login`;
 
   const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,31 +193,43 @@ export default function Login() {
             )}
 
             {step === 'password' && (
-              <form onSubmit={handlePassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username" className="text-xs">{t('login.username')}</Label>
-                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="admin" autoComplete="username" autoFocus />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-xs">{t('login.password')}</Label>
-                  <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
-                </div>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <Checkbox checked={trustDevice} onCheckedChange={(v) => setTrustDevice(v === true)} />
-                    <span className="text-xs text-muted-foreground">{t('login.trustDevice')}</span>
-                  </label>
-                  {trustDevice && (
-                    <div className="flex items-start gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
-                      <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                      <span>{t('login.trustDeviceInfo')}</span>
+              <>
+                <form onSubmit={handlePassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-xs">{t('login.username')}</Label>
+                    <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="admin" autoComplete="username" autoFocus />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-xs">{t('login.password')}</Label>
+                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <Checkbox checked={trustDevice} onCheckedChange={(v) => setTrustDevice(v === true)} />
+                      <span className="text-xs text-muted-foreground">{t('login.trustDevice')}</span>
+                    </label>
+                    {trustDevice && (
+                      <div className="flex items-start gap-2 text-[11px] text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
+                        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{t('login.trustDeviceInfo')}</span>
+                      </div>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy || !username || !password}>
+                    {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.signingIn')}</> : t('login.signIn')}
+                  </Button>
+                </form>
+                {samlEnabled && (
+                  <>
+                    <div className="my-3 flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="h-px flex-1 bg-border" /> {t('login.or')} <div className="h-px flex-1 bg-border" />
                     </div>
-                  )}
-                </div>
-                <Button type="submit" className="w-full" disabled={busy || !username || !password}>
-                  {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> {t('login.signingIn')}</> : t('login.signIn')}
-                </Button>
-              </form>
+                    <a href={ssoLoginUrl} className="block">
+                      <Button type="button" variant="outline" className="w-full">{t('login.sso')}</Button>
+                    </a>
+                  </>
+                )}
+              </>
             )}
 
             {step === 'setup' && (
