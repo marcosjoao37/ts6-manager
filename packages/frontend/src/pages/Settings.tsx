@@ -1054,6 +1054,39 @@ function DiscordTab() {
             <Switch checked={!!form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
             <Label className="text-xs font-normal">{t('settings.discord.nowPlaying')}</Label>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={!!form.notifyAway}
+              onCheckedChange={(v) => setForm((f) => ({ ...f, notifyAway: v }))}
+            />
+            <Label className="text-xs font-normal">{t('settings.discord.awayStatus')}</Label>
+          </div>
+
+          {form.notifyAway && (
+            <div className="ml-9 space-y-2 border-l border-border pl-3">
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">{t('settings.discord.awayTemplate')}</Label>
+                <Input
+                  className="h-8 text-xs"
+                  placeholder="💤 {user} est passé AFK"
+                  value={form.notifyAwayTemplate || ''}
+                  onChange={(e) => setForm((f) => ({ ...f, notifyAwayTemplate: e.target.value || null }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px]">{t('settings.discord.backTemplate')}</Label>
+                <Input
+                  className="h-8 text-xs"
+                  placeholder="✅ {user} est de retour"
+                  value={form.notifyBackTemplate || ''}
+                  onChange={(e) => setForm((f) => ({ ...f, notifyBackTemplate: e.target.value || null }))}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">{t('settings.discord.awayHint')}</p>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <Switch checked={!!form.statsLiveEnabled} onCheckedChange={(v) => setForm((f) => ({ ...f, statsLiveEnabled: v }))} />
             <Label className="text-xs font-normal">{t('settings.discord.liveStatsPanel')}</Label>
