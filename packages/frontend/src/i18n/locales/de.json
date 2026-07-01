@@ -68,7 +68,18 @@
     "trustDevice": "Dies ist ein vertrauenswürdiger Computer",
     "trustDeviceInfo": "30 Tage lang meldet dich dieses Gerät automatisch an – ohne Passwort und ohne Zwei-Faktor-Code. Nutze dies nur auf einem privaten Gerät, das du kontrollierst. Du kannst es jederzeit unter Einstellungen → Konto widerrufen.",
     "continueAs": "Als {{name}} fortfahren",
-    "useAnotherAccount": "Mit einem anderen Konto anmelden"
+    "useAnotherAccount": "Mit einem anderen Konto anmelden",
+    "or": "oder",
+    "sso": "Über SSO anmelden",
+    "ssoProcessing": "Anmeldung läuft…",
+    "backToLogin": "Zurück zur Anmeldung",
+    "ssoError": {
+      "generic": "SSO-Anmeldung fehlgeschlagen",
+      "not_provisioned": "Konto nicht bereitgestellt. Bitte einen Administrator kontaktieren.",
+      "saml_failed": "SAML-Authentifizierung fehlgeschlagen",
+      "exchange_failed": "SSO-Sitzung ungültig oder abgelaufen",
+      "missing_code": "Ungültige SSO-Antwort"
+    }
   },
   "settings": {
     "title": "Einstellungen",
@@ -79,7 +90,8 @@
       "youtube": "YouTube",
       "discord": "Discord",
       "spotify": "Spotify",
-      "musicCommands": "Music-Bot"
+      "musicCommands": "Music-Bot",
+      "saml": "SSO / SAML"
     },
     "account": {
       "changePassword": "Passwort ändern",
@@ -360,6 +372,23 @@
       "saving": "Wird gespeichert...",
       "toastSaved": "Einstellungen gespeichert",
       "toastSaveFailed": "Speichern fehlgeschlagen"
+    },
+    "saml": {
+      "enable": "SSO-Authentifizierung (SAML) aktivieren",
+      "autoProvision": "Über SSO authentifizierte Konten automatisch bereitstellen",
+      "defaultRole": "Standardrolle für SSO-Konten",
+      "idpSsoUrl": "IdP-SSO-URL",
+      "idpCertificate": "Signaturzertifikat des IdP",
+      "idpEntityId": "IdP-Entity-ID",
+      "attrUsername": "Attribut: Benutzername",
+      "attrEmail": "Attribut: E-Mail",
+      "attrDisplayName": "Attribut: Anzeigename",
+      "attrRole": "Attribut: Rolle / Gruppe",
+      "roleAdminValue": "Wert, der die Admin-Rolle gewährt",
+      "spInfo": "Auf der IdP-Seite anzugeben (Authentik):",
+      "spMetadataUrl": "SP-Metadaten-URL",
+      "acsUrl": "ACS-URL (Assertion Consumer Service)",
+      "saved": "SSO-Einstellungen gespeichert"
     }
   },
   "channels": {

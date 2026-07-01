@@ -7,6 +7,7 @@ import { settingsApi, proxyApi } from '@/api/settings.api';
 import { discordApi, type DiscordSettings } from '@/api/discord.api';
 import { spotifyApi } from '@/api/spotify.api';
 import { musicCommandSettingsApi } from '@/api/music-command-settings.api';
+import { samlApi, type SamlSettings } from '@/api/saml.api';
 import { useServerGroups } from '@/hooks/use-groups';
 import { journalApi } from '@/api/journal.api';
 import { musicBotsApi } from '@/api/music.api';
@@ -23,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare, Music, Bot } from 'lucide-react';
+import { Users, Server, Plus, Trash2, Pencil, TestTube, Check, Lock, KeyRound, Youtube, Upload, FileText, MessagesSquare, Music, Bot, ShieldCheck, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, setLanguage } from '@/i18n';
@@ -45,6 +46,7 @@ export default function Settings() {
           {isAdmin && <TabsTrigger value="users"><Users className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.users')}</TabsTrigger>}
           {isAdmin && <TabsTrigger value="youtube"><Youtube className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.youtube')}</TabsTrigger>}
           {isAdmin && <TabsTrigger value="discord"><MessagesSquare className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.discord')}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="saml"><ShieldCheck className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.saml')}</TabsTrigger>}
           {isAdmin && <TabsTrigger value="spotify"><Music className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.spotify')}</TabsTrigger>}
           {isAdmin && <TabsTrigger value="musicCommands"><Bot className="h-3.5 w-3.5 mr-1" /> {t('settings.tabs.musicCommands')}</TabsTrigger>}
         </TabsList>
@@ -74,6 +76,12 @@ export default function Settings() {
         {isAdmin && (
           <TabsContent value="discord" className="mt-4">
             <DiscordTab />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="saml" className="mt-4">
+            <SamlTab />
           </TabsContent>
         )}
 
@@ -1140,6 +1148,139 @@ function DiscordTab() {
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
           {save.isPending ? t('settings.discord.savingReconnecting') : t('settings.discord.save')}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── SAML / SSO Tab ──────────────────────────────────────────
+
+function SamlTab() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { data: settings, isLoading } = useQuery({ queryKey: ['saml-settings'], queryFn: samlApi.settings });
+  const [form, setForm] = useState<Partial<SamlSettings> & { idpCertificate?: string }>({});
+
+  useEffect(() => {
+    if (settings) setForm({ ...settings, idpCertificate: '' });
+  }, [settings]);
+
+  const save = useMutation({
+    mutationFn: () => samlApi.updateSettings({ ...form, idpCertificate: form.idpCertificate || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['saml-settings'] });
+      toast.success(t('settings.saml.saved'));
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.error || 'Failed to save SSO settings'),
+  });
+
+  if (isLoading || !settings) return <PageLoader />;
+
+  const copy = (value?: string | null) => {
+    if (!value) return;
+    navigator.clipboard?.writeText(value);
+    toast.success(t('tokens.copied'));
+  };
+
+  const readOnlyField = (label: string, value: string) => (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-1">
+        <Input className="h-8 text-xs font-mono-data" value={value} readOnly onFocus={(e) => e.target.select()} />
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => copy(value)}>
+          <Copy className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">{t('settings.tabs.saml')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 max-w-xl">
+        <div className="flex items-center gap-2">
+          <Switch checked={!!form.enabled} onCheckedChange={(v) => setForm((f) => ({ ...f, enabled: v }))} />
+          <Label className="text-xs">{t('settings.saml.enable')}</Label>
+        </div>
+
+        <div className="space-y-2 rounded-md border border-border/50 p-3">
+          <p className="text-[10px] text-muted-foreground">{t('settings.saml.spInfo')}</p>
+          {readOnlyField(t('settings.saml.spMetadataUrl'), settings.spMetadataUrl)}
+          {readOnlyField(t('settings.saml.acsUrl'), settings.acsUrl)}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.saml.idpEntityId')}</Label>
+          <Input className="h-8 text-xs" value={form.idpEntityId || ''}
+            onChange={(e) => setForm((f) => ({ ...f, idpEntityId: e.target.value }))} />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.saml.idpSsoUrl')}</Label>
+          <Input className="h-8 text-xs" value={form.idpSsoUrl || ''}
+            onChange={(e) => setForm((f) => ({ ...f, idpSsoUrl: e.target.value }))} />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.saml.idpCertificate')}</Label>
+          <textarea
+            className="w-full h-24 rounded-md border border-border bg-background px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+            placeholder={settings.hasIdpCertificate ? '••••••••••••••••' : '-----BEGIN CERTIFICATE-----'}
+            value={form.idpCertificate || ''}
+            onChange={(e) => setForm((f) => ({ ...f, idpCertificate: e.target.value }))}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settings.saml.attrUsername')}</Label>
+            <Input className="h-8 text-xs" value={form.attrUsername || ''}
+              onChange={(e) => setForm((f) => ({ ...f, attrUsername: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settings.saml.attrEmail')}</Label>
+            <Input className="h-8 text-xs" value={form.attrEmail || ''}
+              onChange={(e) => setForm((f) => ({ ...f, attrEmail: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settings.saml.attrDisplayName')}</Label>
+            <Input className="h-8 text-xs" value={form.attrDisplayName || ''}
+              onChange={(e) => setForm((f) => ({ ...f, attrDisplayName: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t('settings.saml.attrRole')}</Label>
+            <Input className="h-8 text-xs" value={form.attrRole || ''}
+              onChange={(e) => setForm((f) => ({ ...f, attrRole: e.target.value || null }))} />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.saml.roleAdminValue')}</Label>
+          <Input className="h-8 text-xs" value={form.roleAdminValue || ''}
+            onChange={(e) => setForm((f) => ({ ...f, roleAdminValue: e.target.value || null }))} />
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
+          <Switch checked={!!form.autoProvision} onCheckedChange={(v) => setForm((f) => ({ ...f, autoProvision: v }))} />
+          <Label className="text-xs">{t('settings.saml.autoProvision')}</Label>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.saml.defaultRole')}</Label>
+          <Select value={form.defaultRole || 'viewer'} onValueChange={(v) => setForm((f) => ({ ...f, defaultRole: v as 'admin' | 'viewer' }))}>
+            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">{t('settings.users.roleAdmin')}</SelectItem>
+              <SelectItem value="viewer">{t('settings.users.roleViewer')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
+          {save.isPending ? t('common.loading') : t('common.save')}
         </Button>
       </CardContent>
     </Card>

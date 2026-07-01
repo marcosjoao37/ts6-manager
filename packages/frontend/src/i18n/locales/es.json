@@ -68,7 +68,18 @@
     "trustDevice": "Este es un ordenador de confianza",
     "trustDeviceInfo": "Durante 30 días, este dispositivo iniciará sesión automáticamente, sin contraseña ni código de doble factor. Úsalo solo en un dispositivo privado que controles. Puedes revocarlo en cualquier momento desde Ajustes → Cuenta.",
     "continueAs": "Continuar como {{name}}",
-    "useAnotherAccount": "Iniciar sesión con otra cuenta"
+    "useAnotherAccount": "Iniciar sesión con otra cuenta",
+    "or": "o",
+    "sso": "Iniciar sesión con SSO",
+    "ssoProcessing": "Iniciando sesión…",
+    "backToLogin": "Volver al inicio de sesión",
+    "ssoError": {
+      "generic": "Error al iniciar sesión con SSO",
+      "not_provisioned": "Cuenta no aprovisionada. Contacta con un administrador.",
+      "saml_failed": "Error en la autenticación SAML",
+      "exchange_failed": "Sesión SSO inválida o expirada",
+      "missing_code": "Respuesta SSO inválida"
+    }
   },
   "settings": {
     "title": "Ajustes",
@@ -79,7 +90,8 @@
       "youtube": "YouTube",
       "discord": "Discord",
       "spotify": "Spotify",
-      "musicCommands": "Music Bot"
+      "musicCommands": "Music Bot",
+      "saml": "SSO / SAML"
     },
     "account": {
       "changePassword": "Cambiar contraseña",
@@ -360,6 +372,23 @@
       "saving": "Guardando...",
       "toastSaved": "Ajustes guardados",
       "toastSaveFailed": "Error al guardar"
+    },
+    "saml": {
+      "enable": "Activar la autenticación SSO (SAML)",
+      "autoProvision": "Aprovisionar automáticamente las cuentas autenticadas vía SSO",
+      "defaultRole": "Rol predeterminado de las cuentas SSO",
+      "idpSsoUrl": "URL SSO del IdP",
+      "idpCertificate": "Certificado de firma del IdP",
+      "idpEntityId": "Entity ID del IdP",
+      "attrUsername": "Atributo: nombre de usuario",
+      "attrEmail": "Atributo: correo electrónico",
+      "attrDisplayName": "Atributo: nombre para mostrar",
+      "attrRole": "Atributo: rol / grupo",
+      "roleAdminValue": "Valor que otorga el rol de admin",
+      "spInfo": "A configurar en el IdP (Authentik):",
+      "spMetadataUrl": "URL de metadatos del SP",
+      "acsUrl": "URL ACS (Assertion Consumer Service)",
+      "saved": "Ajustes de SSO guardados"
     }
   },
   "channels": {

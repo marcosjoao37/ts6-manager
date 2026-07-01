@@ -68,7 +68,18 @@
     "trustDevice": "This is a trusted computer",
     "trustDeviceInfo": "For 30 days, this device will sign you in automatically — no password and no two-factor code. Only use this on a private device you control. You can revoke it anytime from Settings → Account.",
     "continueAs": "Continue as {{name}}",
-    "useAnotherAccount": "Sign in with a different account"
+    "useAnotherAccount": "Sign in with a different account",
+    "or": "or",
+    "sso": "Sign in via SSO",
+    "ssoProcessing": "Signing in…",
+    "backToLogin": "Back to sign in",
+    "ssoError": {
+      "generic": "SSO sign-in failed",
+      "not_provisioned": "Account not provisioned. Contact an administrator.",
+      "saml_failed": "SAML authentication failed",
+      "exchange_failed": "SSO session invalid or expired",
+      "missing_code": "Invalid SSO response"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -79,7 +90,8 @@
       "youtube": "YouTube",
       "discord": "Discord",
       "spotify": "Spotify",
-      "musicCommands": "Music Bot"
+      "musicCommands": "Music Bot",
+      "saml": "SSO / SAML"
     },
     "account": {
       "changePassword": "Change Password",
@@ -360,6 +372,23 @@
       "saving": "Saving...",
       "toastSaved": "Settings saved",
       "toastSaveFailed": "Failed to save"
+    },
+    "saml": {
+      "enable": "Enable SSO authentication (SAML)",
+      "autoProvision": "Automatically provision accounts authenticated via SSO",
+      "defaultRole": "Default role for SSO accounts",
+      "idpSsoUrl": "IdP SSO URL",
+      "idpCertificate": "IdP signing certificate",
+      "idpEntityId": "IdP Entity ID",
+      "attrUsername": "Attribute: username",
+      "attrEmail": "Attribute: email",
+      "attrDisplayName": "Attribute: display name",
+      "attrRole": "Attribute: role / group",
+      "roleAdminValue": "Value granting the admin role",
+      "spInfo": "To configure on the IdP side (Authentik):",
+      "spMetadataUrl": "SP metadata URL",
+      "acsUrl": "ACS URL (Assertion Consumer Service)",
+      "saved": "SSO settings saved"
     }
   },
   "channels": {

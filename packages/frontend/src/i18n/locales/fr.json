@@ -68,7 +68,18 @@
     "trustDevice": "Cet ordinateur est un PC de confiance",
     "trustDeviceInfo": "Pendant 30 jours, cet appareil vous connectera automatiquement, sans mot de passe ni code à deux facteurs. À n'utiliser que sur un appareil personnel que vous contrôlez. Vous pouvez le révoquer à tout moment depuis Paramètres → Compte.",
     "continueAs": "Continuer en tant que {{name}}",
-    "useAnotherAccount": "Se connecter avec un autre compte"
+    "useAnotherAccount": "Se connecter avec un autre compte",
+    "or": "ou",
+    "sso": "Se connecter via SSO",
+    "ssoProcessing": "Connexion en cours…",
+    "backToLogin": "Retour à la connexion",
+    "ssoError": {
+      "generic": "Échec de la connexion SSO",
+      "not_provisioned": "Compte non provisionné. Contactez un administrateur.",
+      "saml_failed": "L'authentification SAML a échoué",
+      "exchange_failed": "Session SSO invalide ou expirée",
+      "missing_code": "Réponse SSO invalide"
+    }
   },
   "settings": {
     "title": "Paramètres",
@@ -79,7 +90,8 @@
       "youtube": "YouTube",
       "discord": "Discord",
       "spotify": "Spotify",
-      "musicCommands": "Music Bot"
+      "musicCommands": "Music Bot",
+      "saml": "SSO / SAML"
     },
     "account": {
       "changePassword": "Changer le mot de passe",
@@ -360,6 +372,23 @@
       "saving": "Enregistrement...",
       "toastSaved": "Réglages enregistrés",
       "toastSaveFailed": "Échec de l'enregistrement"
+    },
+    "saml": {
+      "enable": "Activer l'authentification SSO (SAML)",
+      "autoProvision": "Provisionnement automatique des comptes authentifiés via SSO",
+      "defaultRole": "Rôle par défaut des comptes SSO",
+      "idpSsoUrl": "URL SSO de l'IdP",
+      "idpCertificate": "Certificat de signature de l'IdP",
+      "idpEntityId": "Entity ID de l'IdP",
+      "attrUsername": "Attribut : nom d'utilisateur",
+      "attrEmail": "Attribut : e-mail",
+      "attrDisplayName": "Attribut : nom affiché",
+      "attrRole": "Attribut : rôle / groupe",
+      "roleAdminValue": "Valeur accordant le rôle admin",
+      "spInfo": "À renseigner côté IdP (Authentik) :",
+      "spMetadataUrl": "URL de metadata du SP",
+      "acsUrl": "URL ACS (Assertion Consumer Service)",
+      "saved": "Réglages SSO enregistrés"
     }
   },
   "channels": {
