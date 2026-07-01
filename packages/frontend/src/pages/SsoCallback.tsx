@@ -10,13 +10,15 @@ export default function SsoCallback() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [error, setError] = useState<string | null>(null);
+  // Any error visible in the URL (or a missing code) is known synchronously
+  // during render — compute it up front so the effect only ever performs the
+  // async network call, never a synchronous setState.
+  const initialError = params.get('error') || (!params.get('code') ? 'missing_code' : null);
+  const [error, setError] = useState<string | null>(initialError);
 
   useEffect(() => {
-    const err = params.get('error');
-    if (err) { setError(err); return; }
     const code = params.get('code');
-    if (!code) { setError('missing_code'); return; }
+    if (initialError || !code) return;
     authApi.samlExchange(code)
       .then((res) => {
         if (res.accessToken) {
@@ -29,7 +31,7 @@ export default function SsoCallback() {
         }
       })
       .catch(() => setError('exchange_failed'));
-  }, [params, navigate, setAuth]);
+  }, [params, initialError, navigate, setAuth]);
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4 text-sm">

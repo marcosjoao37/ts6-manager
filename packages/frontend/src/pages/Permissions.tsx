@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { permissionsApi } from '@/api/permissions.api';
 import { useServerStore } from '@/stores/server.store';
@@ -129,7 +129,12 @@ export default function Permissions() {
   });
 
   // Reset entity when layer changes
-  useEffect(() => { setEntityId(null); setChanges(new Map()); }, [layer]);
+  const [prevLayer, setPrevLayer] = useState(layer);
+  if (layer !== prevLayer) {
+    setPrevLayer(layer);
+    setEntityId(null);
+    setChanges(new Map());
+  }
 
   // Parse permission definitions into categorized structure
   // TS WebQuery returns { permid, permname, permdesc } — NOT permsid

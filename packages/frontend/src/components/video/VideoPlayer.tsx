@@ -83,16 +83,13 @@ export function VideoPlayer({ botId, streaming }: VideoPlayerProps) {
   }, [botId, cleanup]);
 
   useEffect(() => {
-    if (streaming) {
-      // Small delay to ensure sidecar is ready
-      const timer = setTimeout(connect, 500);
-      return () => {
-        clearTimeout(timer);
-        cleanup();
-      };
-    } else {
+    if (!streaming) return;
+    // Small delay to ensure sidecar is ready
+    const timer = setTimeout(connect, 500);
+    return () => {
+      clearTimeout(timer);
       cleanup();
-    }
+    };
   }, [streaming, connect, cleanup]);
 
   if (!streaming) {

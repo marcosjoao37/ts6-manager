@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '@/api/bots.api';
 import { authApi } from '@/api/auth.api';
@@ -884,9 +884,11 @@ function DiscordTab() {
 
   const [form, setForm] = useState<Partial<DiscordSettings> & { botToken?: string }>({});
 
-  useEffect(() => {
-    if (settings) setForm({ ...settings, botToken: '' });
-  }, [settings]);
+  const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
+  if (settings && settings !== seededSettings) {
+    setSeededSettings(settings);
+    setForm({ ...settings, botToken: '' });
+  }
 
   const save = useMutation({
     mutationFn: () => discordApi.updateSettings({ ...form, botToken: form.botToken || undefined }),
@@ -1162,9 +1164,11 @@ function SamlTab() {
   const { data: settings, isLoading } = useQuery({ queryKey: ['saml-settings'], queryFn: samlApi.settings });
   const [form, setForm] = useState<Partial<SamlSettings> & { idpCertificate?: string }>({});
 
-  useEffect(() => {
-    if (settings) setForm({ ...settings, idpCertificate: '' });
-  }, [settings]);
+  const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
+  if (settings && settings !== seededSettings) {
+    setSeededSettings(settings);
+    setForm({ ...settings, idpCertificate: '' });
+  }
 
   const save = useMutation({
     mutationFn: () => samlApi.updateSettings({ ...form, idpCertificate: form.idpCertificate || undefined }),
@@ -1297,14 +1301,16 @@ function SpotifyTab() {
     enabled: false, clientId: '', clientSecret: '', maxAlbumTracks: 50,
   });
 
-  useEffect(() => {
-    if (settings) setForm({
+  const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
+  if (settings && settings !== seededSettings) {
+    setSeededSettings(settings);
+    setForm({
       enabled: settings.enabled,
       clientId: settings.clientId || '',
       clientSecret: '',
       maxAlbumTracks: settings.maxAlbumTracks,
     });
-  }, [settings]);
+  }
 
   const save = useMutation({
     mutationFn: () => spotifyApi.updateSettings({
@@ -1387,13 +1393,15 @@ function MusicCommandsTab() {
     musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false,
   });
 
-  useEffect(() => {
-    if (settings) setForm({
+  const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
+  if (settings && settings !== seededSettings) {
+    setSeededSettings(settings);
+    setForm({
       musicCommandSgid: settings.musicCommandSgid ? String(settings.musicCommandSgid) : NO_GROUP,
       adminCommandSgid: settings.adminCommandSgid ? String(settings.adminCommandSgid) : NO_GROUP,
       notifyNowPlaying: settings.notifyNowPlaying,
     });
-  }, [settings]);
+  }
 
   const save = useMutation({
     mutationFn: () => musicCommandSettingsApi.update({
@@ -1466,9 +1474,12 @@ function PasswordPolicyCard() {
   const [minLength, setMinLength] = useState(12);
   const [requireComplexity, setRequireComplexity] = useState(true);
 
-  useEffect(() => {
-    if (policy) { setMinLength(policy.minLength); setRequireComplexity(policy.requireComplexity); }
-  }, [policy]);
+  const [seededPolicy, setSeededPolicy] = useState<typeof policy>(undefined);
+  if (policy && policy !== seededPolicy) {
+    setSeededPolicy(policy);
+    setMinLength(policy.minLength);
+    setRequireComplexity(policy.requireComplexity);
+  }
 
   const save = useMutation({
     mutationFn: () => usersApi.updatePasswordPolicy({ minLength, requireComplexity }),
@@ -1513,7 +1524,11 @@ function JournalRetentionCard() {
   const { data } = useQuery({ queryKey: ['journal-retention'], queryFn: journalApi.retention });
   const [days, setDays] = useState(90);
 
-  useEffect(() => { if (data) setDays(data.retentionDays); }, [data]);
+  const [seededData, setSeededData] = useState<typeof data>(undefined);
+  if (data && data !== seededData) {
+    setSeededData(data);
+    setDays(data.retentionDays);
+  }
 
   const save = useMutation({
     mutationFn: () => journalApi.updateRetention(days),
@@ -1549,7 +1564,11 @@ function ReverseProxyCard() {
   const { data } = useQuery({ queryKey: ['proxy-settings'], queryFn: proxyApi.get });
   const [hops, setHops] = useState(1);
 
-  useEffect(() => { if (data) setHops(data.trustHops); }, [data]);
+  const [seededData, setSeededData] = useState<typeof data>(undefined);
+  if (data && data !== seededData) {
+    setSeededData(data);
+    setHops(data.trustHops);
+  }
 
   const save = useMutation({
     mutationFn: () => proxyApi.update(hops),
