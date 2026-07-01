@@ -12,7 +12,7 @@ import { isIpWebBanned } from '../utils/web-ban.js';
 import QRCode from 'qrcode';
 import { createTrustedDevice, clearTrustedCookie, resolveTrustedCookie } from '../utils/trusted-device-service.js';
 import { TRUSTED_COOKIE_NAME } from '../utils/trusted-device.js';
-import { issueSession, gateAfterPassword, signMfaChallenge } from '../auth/session.js';
+import { issueSession, gateAfterPassword } from '../auth/session.js';
 
 export const authRoutes: Router = Router();
 
