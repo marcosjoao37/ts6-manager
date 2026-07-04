@@ -58,6 +58,22 @@ export function chunkLyrics(header: string, lyrics: string, maxLen: number): str
   return chunks.map((c) => c.trim() === '' ? '' : c).filter((c) => c !== '');
 }
 
+/** Artist placeholders emitted by the downloaders when metadata is missing. */
+const UNKNOWN_ARTIST_SENTINELS = new Set(['Unknown', 'Unknown Artist']);
+
+/**
+ * Builds the fetchLyrics input and the user-facing label for a now-playing
+ * track: placeholder artists are treated as absent and the title is cleaned
+ * for search while the label keeps the original title.
+ */
+export function lyricsInputFromTrack(np: { artist?: string; title: string }): { input: LyricsQuery; label: string } {
+  const artist = np.artist && !UNKNOWN_ARTIST_SENTINELS.has(np.artist) ? np.artist : undefined;
+  return {
+    input: { artist, title: cleanTrackTitle(np.title) },
+    label: `${artist ? `${artist} — ` : ''}${np.title}`,
+  };
+}
+
 /** GET a JSON endpoint; null on any error, non-2xx or timeout. */
 async function getJson(url: string): Promise<unknown | null> {
   try {

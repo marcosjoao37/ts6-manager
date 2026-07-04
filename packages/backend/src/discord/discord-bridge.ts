@@ -18,7 +18,7 @@ import type { QueueItem } from '../voice/playlist/queue.js';
 import { EventBridge } from '../bot-engine/event-bridge.js';
 import { decrypt } from '../utils/crypto.js';
 import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from '../voice/music-ops.js';
-import { fetchLyrics, cleanTrackTitle } from '../voice/lyrics.js';
+import { fetchLyrics, lyricsInputFromTrack } from '../voice/lyrics.js';
 import { isCommandAllowed, parseRoleIds } from './command-permissions.js';
 import {
   clientConnectedEmbed,
@@ -443,9 +443,7 @@ export class DiscordBridge {
             await i.editReply('Rien en cours de lecture. Précise un titre : `/lyrics query`');
             return;
           }
-          const artist = np.artist && np.artist !== 'Unknown' ? np.artist : undefined;
-          input = { artist, title: cleanTrackTitle(np.title) };
-          label = `${artist ? `${artist} — ` : ''}${np.title}`;
+          ({ input, label } = lyricsInputFromTrack(np));
         }
 
         const result = await fetchLyrics(input);

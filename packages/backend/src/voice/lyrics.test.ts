@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cleanTrackTitle, chunkLyrics } from './lyrics.js';
+import { cleanTrackTitle, chunkLyrics, lyricsInputFromTrack } from './lyrics.js';
 
 describe('cleanTrackTitle', () => {
   it('strips bracketed YouTube noise', () => {
@@ -56,6 +56,38 @@ describe('chunkLyrics', () => {
 });
 
 import { fetchLyrics } from './lyrics.js';
+
+describe('lyricsInputFromTrack', () => {
+  it('keeps a real artist in both input and label', () => {
+    const { input, label } = lyricsInputFromTrack({ artist: 'Queen', title: 'Bohemian Rhapsody' });
+    expect(input).toEqual({ artist: 'Queen', title: 'Bohemian Rhapsody' });
+    expect(label).toBe('Queen — Bohemian Rhapsody');
+  });
+
+  it('treats the "Unknown" sentinel as an absent artist', () => {
+    const { input, label } = lyricsInputFromTrack({ artist: 'Unknown', title: 'Some Song' });
+    expect(input.artist).toBeUndefined();
+    expect(label).toBe('Some Song');
+  });
+
+  it('treats the "Unknown Artist" sentinel (Spotify metadata) as an absent artist', () => {
+    const { input, label } = lyricsInputFromTrack({ artist: 'Unknown Artist', title: 'Some Song' });
+    expect(input.artist).toBeUndefined();
+    expect(label).toBe('Some Song');
+  });
+
+  it('cleans the title for search but keeps the raw title in the label', () => {
+    const { input, label } = lyricsInputFromTrack({ artist: 'Artist', title: 'Song (Official Video)' });
+    expect(input.title).toBe('Song');
+    expect(label).toBe('Artist — Song (Official Video)');
+  });
+
+  it('handles a missing artist property', () => {
+    const { input, label } = lyricsInputFromTrack({ title: 'Some Song' });
+    expect(input.artist).toBeUndefined();
+    expect(label).toBe('Some Song');
+  });
+});
 
 function jsonResponse(body: unknown, status = 200) {
   return {

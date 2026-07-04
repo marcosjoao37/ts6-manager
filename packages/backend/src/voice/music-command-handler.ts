@@ -6,7 +6,7 @@ import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } f
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
-import { fetchLyrics, cleanTrackTitle, chunkLyrics } from './lyrics.js';
+import { fetchLyrics, chunkLyrics, lyricsInputFromTrack } from './lyrics.js';
 
 const CMD_PREFIX = '!';
 
@@ -560,9 +560,7 @@ export class MusicCommandHandler {
         reply('Aucune musique en cours. Usage : !lyrics [artiste - titre]');
         return;
       }
-      const artist = np.artist && np.artist !== 'Unknown' ? np.artist : undefined;
-      input = { artist, title: cleanTrackTitle(np.title) };
-      label = `${artist ? `${artist} - ` : ''}${np.title}`;
+      ({ input, label } = lyricsInputFromTrack(np));
     }
 
     reply('Recherche des paroles…');
