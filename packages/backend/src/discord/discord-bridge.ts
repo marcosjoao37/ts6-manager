@@ -125,7 +125,7 @@ export class DiscordBridge {
       // Privileged: must also be enabled in the Discord developer portal.
       intents.push(GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent);
     }
-    const client = new Client({ intents });
+    const client = new Client({ intents, allowedMentions: { parse: [] } });
     this.client = client;
 
     client.on(Events.ClientReady, () => {
