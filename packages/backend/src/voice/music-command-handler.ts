@@ -6,6 +6,7 @@ import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } f
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
+import { fetchLyrics, cleanTrackTitle, chunkLyrics } from './lyrics.js';
 
 const CMD_PREFIX = '!';
 
@@ -41,6 +42,7 @@ const MUSIC_COMMANDS = new Set([
   'radio', 'play', 'spotify', 'stop', 'pause', 'skip', 'next', 'prev',
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
   'stream', 'stopstream', 'viewers',
+  'lyrics', 'paroles',
   'move', 'moveall', 'channels', 'notif',
   'help', 'aide', 'info',
 ]);
@@ -174,6 +176,10 @@ export class MusicCommandHandler {
         case 'queue':
         case 'add':
           await this.handleQueue(bot, reply, args);
+          break;
+        case 'lyrics':
+        case 'paroles':
+          await this.handleLyrics(bot, reply, args);
           break;
         case 'stream':
           await this.handleStream(bot, reply, args);
@@ -541,6 +547,42 @@ export class MusicCommandHandler {
     reply(lines.join('\n'));
   }
 
+  private async handleLyrics(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
+    let input: { artist?: string; title?: string; query?: string };
+    let label: string;
+
+    if (args) {
+      input = { query: args };
+      label = args;
+    } else {
+      const np = bot.nowPlaying;
+      if (!np) {
+        reply('Aucune musique en cours. Usage : !lyrics [artiste - titre]');
+        return;
+      }
+      const artist = np.artist && np.artist !== 'Unknown' ? np.artist : undefined;
+      input = { artist, title: cleanTrackTitle(np.title) };
+      label = `${artist ? `${artist} - ` : ''}${np.title}`;
+    }
+
+    reply('Recherche des paroles…');
+    const result = await fetchLyrics(input);
+    if (!result) {
+      reply(`Paroles introuvables pour « ${label} ».`);
+      return;
+    }
+    if (result.instrumental) {
+      reply(`♪ ${result.artist} — ${result.title} : morceau instrumental.`);
+      return;
+    }
+
+    const header = `🎤 ${result.artist ? `${result.artist} — ` : ''}${result.title}`;
+    // Same per-message budget as !channels (~1KB TS limit).
+    for (const chunk of chunkLyrics(header, result.lyrics, 900)) {
+      reply(chunk);
+    }
+  }
+
   // ─── Channel / Client Management ──────────────────────────
 
   /**
@@ -866,6 +908,7 @@ export class MusicCommandHandler {
       '  !vol <0-100>         Régler ou afficher le volume',
       '  !np / !nowplaying    Titre en cours de lecture',
       '  !info                Détails du titre en cours (artiste, titre, lien direct)',
+      '  !lyrics [recherche]  Paroles de la piste en cours ou d\'une recherche (!paroles)',
       '  !stream <url> [qual] Diffuser une vidéo (presets : 480p, 720p, 1080p)',
       '  !stopstream          Arrêter la diffusion vidéo',
       '  !viewers             Lister les spectateurs du stream vidéo',
