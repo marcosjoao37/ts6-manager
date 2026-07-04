@@ -18,6 +18,7 @@ import type { QueueItem } from '../voice/playlist/queue.js';
 import { EventBridge } from '../bot-engine/event-bridge.js';
 import { decrypt } from '../utils/crypto.js';
 import { resolvePlayQuery, downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from '../voice/music-ops.js';
+import { fetchLyrics, cleanTrackTitle } from '../voice/lyrics.js';
 import { isCommandAllowed, parseRoleIds } from './command-permissions.js';
 import {
   clientConnectedEmbed,
@@ -28,6 +29,7 @@ import {
   nowPlayingEmbed,
   statsEmbed,
   queueEmbed,
+  lyricsEmbeds,
   DEFAULT_JOIN_TEMPLATE,
   DEFAULT_LEAVE_TEMPLATE,
   awayStatusEmbed,
@@ -289,6 +291,8 @@ export class DiscordBridge {
       new SlashCommandBuilder().setName('volume').setDescription('Régler le volume')
         .addIntegerOption((o) => o.setName('level').setDescription('0-100').setMinValue(0).setMaxValue(100).setRequired(true)),
       new SlashCommandBuilder().setName('nowplaying').setDescription('Piste en cours'),
+      new SlashCommandBuilder().setName('lyrics').setDescription('Paroles de la piste en cours ou d\'une recherche')
+        .addStringOption((o) => o.setName('query').setDescription('Artiste et titre — vide = piste en cours').setRequired(false)),
       new SlashCommandBuilder().setName('stats').setDescription('Stats du serveur TeamSpeak'),
       new SlashCommandBuilder().setName('join').setDescription('Faire venir le bot dans ton salon vocal'),
       new SlashCommandBuilder().setName('leave').setDescription('Faire quitter le salon vocal au bot'),
@@ -421,6 +425,45 @@ export class DiscordBridge {
           await i.reply({ content: 'Rien en cours de lecture.', ephemeral: true });
         } else {
           await i.reply({ embeds: [nowPlayingEmbed(bot.currentConfig.name, np)] });
+        }
+        break;
+      }
+      case 'lyrics': {
+        await i.deferReply();
+        const query = i.options.getString('query');
+
+        let input: { artist?: string; title?: string; query?: string };
+        let label: string;
+        if (query) {
+          input = { query };
+          label = query;
+        } else {
+          const np = this.musicBot().nowPlaying;
+          if (!np) {
+            await i.editReply('Rien en cours de lecture. Précise un titre : `/lyrics query`');
+            return;
+          }
+          const artist = np.artist && np.artist !== 'Unknown' ? np.artist : undefined;
+          input = { artist, title: cleanTrackTitle(np.title) };
+          label = `${artist ? `${artist} — ` : ''}${np.title}`;
+        }
+
+        const result = await fetchLyrics(input);
+        if (!result) {
+          await i.editReply(`❌ Paroles introuvables pour « ${label} ».`);
+          return;
+        }
+        if (result.instrumental) {
+          await i.editReply(`♪ **${result.artist} — ${result.title}** : morceau instrumental.`);
+          return;
+        }
+
+        // Discord allows up to 10 embeds per message, one is plenty here;
+        // longer lyrics go out as follow-ups in the same channel.
+        const embeds = lyricsEmbeds(result.artist, result.title, result.lyrics);
+        await i.editReply({ embeds: [embeds[0]] });
+        for (const embed of embeds.slice(1)) {
+          await i.followUp({ embeds: [embed] });
         }
         break;
       }
