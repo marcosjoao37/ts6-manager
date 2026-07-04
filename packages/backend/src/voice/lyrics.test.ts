@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanTrackTitle, chunkLyrics } from './lyrics.js';
 
 describe('cleanTrackTitle', () => {
@@ -52,5 +52,96 @@ describe('chunkLyrics', () => {
 
   it('works with an empty header (Discord mode)', () => {
     expect(chunkLyrics('', 'hello', 50)).toEqual(['hello']);
+  });
+});
+
+import { fetchLyrics } from './lyrics.js';
+
+function jsonResponse(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as Response;
+}
+
+describe('fetchLyrics', () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns the LRCLIB exact match first', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({
+      artistName: 'Queen', trackName: 'Bohemian Rhapsody',
+      plainLyrics: 'Is this the real life?', instrumental: false,
+    }));
+    const r = await fetchLyrics({ artist: 'Queen', title: 'Bohemian Rhapsody' });
+    expect(r).toMatchObject({ artist: 'Queen', lyrics: 'Is this the real life?', source: 'lrclib' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('lrclib.net/api/get?');
+  });
+
+  it('falls back to LRCLIB search when exact match 404s', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ message: 'not found' }, 404))
+      .mockResolvedValueOnce(jsonResponse([
+        { artistName: 'A', trackName: 'T', plainLyrics: '', instrumental: false },
+        { artistName: 'Queen', trackName: 'Bohemian Rhapsody', plainLyrics: 'lyrics here', instrumental: false },
+      ]));
+    const r = await fetchLyrics({ artist: 'Queen', title: 'Bohemian Rhapsody' });
+    expect(r).toMatchObject({ lyrics: 'lyrics here', source: 'lrclib' });
+    expect(String(fetchMock.mock.calls[1][0])).toContain('lrclib.net/api/search?');
+  });
+
+  it('skips the exact-match step for free-text queries', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([
+      { artistName: 'Queen', trackName: 'Bohemian Rhapsody', plainLyrics: 'found', instrumental: false },
+    ]));
+    const r = await fetchLyrics({ query: 'queen bohemian rhapsody' });
+    expect(r?.lyrics).toBe('found');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/search?');
+  });
+
+  it('falls back to lyrics.ovh when LRCLIB has nothing', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({}, 404))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ lyrics: 'ovh lyrics' }));
+    const r = await fetchLyrics({ artist: 'Queen', title: 'Bohemian Rhapsody' });
+    expect(r).toMatchObject({ lyrics: 'ovh lyrics', source: 'lyrics.ovh' });
+    expect(String(fetchMock.mock.calls[2][0])).toContain('api.lyrics.ovh/v1/');
+  });
+
+  it('returns null when every source fails or is empty', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(jsonResponse({ error: 'No lyrics found' }, 404));
+    const r = await fetchLyrics({ artist: 'Nobody', title: 'Nothing' });
+    expect(r).toBeNull();
+  });
+
+  it('reports LRCLIB instrumentals explicitly', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({
+      artistName: 'Vangelis', trackName: 'Chariots of Fire',
+      plainLyrics: null, instrumental: true,
+    }));
+    const r = await fetchLyrics({ artist: 'Vangelis', title: 'Chariots of Fire' });
+    expect(r).toMatchObject({ instrumental: true, lyrics: '' });
+  });
+
+  it('never calls lyrics.ovh without both artist and title', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    const r = await fetchLyrics({ query: 'unknown song' });
+    expect(r).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // search only
   });
 });

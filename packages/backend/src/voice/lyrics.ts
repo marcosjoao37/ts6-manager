@@ -57,3 +57,72 @@ export function chunkLyrics(header: string, lyrics: string, maxLen: number): str
   if (buf !== null) chunks.push(buf);
   return chunks.map((c) => c.trim() === '' ? '' : c).filter((c) => c !== '');
 }
+
+/** GET a JSON endpoint; null on any error, non-2xx or timeout. */
+async function getJson(url: string): Promise<unknown | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Maps an LRCLIB record to a LyricsResult; null if it has no usable lyrics. */
+function toLrclibResult(entry: any): LyricsResult | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const artist = String(entry.artistName ?? '');
+  const title = String(entry.trackName ?? '');
+  if (entry.instrumental === true) {
+    return { artist, title, lyrics: '', source: 'lrclib', instrumental: true };
+  }
+  const lyrics = typeof entry.plainLyrics === 'string' ? entry.plainLyrics.trim() : '';
+  if (!lyrics) return null;
+  return { artist, title, lyrics, source: 'lrclib', instrumental: false };
+}
+
+/**
+ * Fetches lyrics for a track. Cascade: LRCLIB exact match (when artist and
+ * title are known) → LRCLIB fuzzy search → lyrics.ovh (artist+title only).
+ * Every step swallows its own errors; null means "not found anywhere".
+ */
+export async function fetchLyrics(input: LyricsQuery): Promise<LyricsResult | null> {
+  const artist = input.artist?.trim() ?? '';
+  const title = input.title?.trim() ?? '';
+  const query = input.query?.trim() || [artist, title].filter(Boolean).join(' ');
+
+  // 1. LRCLIB exact match
+  if (artist && title) {
+    const data = await getJson(
+      `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`,
+    );
+    const r = toLrclibResult(data);
+    if (r) return r;
+  }
+
+  // 2. LRCLIB fuzzy search — first entry with usable lyrics wins
+  if (query) {
+    const data = await getJson(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
+    if (Array.isArray(data)) {
+      for (const entry of data) {
+        const r = toLrclibResult(entry);
+        if (r) return r;
+      }
+    }
+  }
+
+  // 3. lyrics.ovh fallback
+  if (artist && title) {
+    const data = await getJson(
+      `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`,
+    ) as { lyrics?: unknown } | null;
+    const lyrics = typeof data?.lyrics === 'string' ? data.lyrics.trim() : '';
+    if (lyrics) return { artist, title, lyrics, source: 'lyrics.ovh', instrumental: false };
+  }
+
+  return null;
+}
