@@ -584,10 +584,13 @@ export class DiscordBridge {
     // Own EventBridge instance: the flow engine prunes SSH connections its
     // flows no longer use, which would silently kill a shared subscription.
     this.eventBridge = new EventBridge(this.prisma);
+    const epoch = this.startEpoch;
     this.eventBridge.on('tsEvent', (_configId, _sid, eventName, data) => {
       if (eventName === 'notifycliententerview' || eventName === 'notifyclientmoved' || eventName === 'notifyclientleftview') {
         console.log(`[Discord] TS event ${eventName}: clid=${data.clid} ctid=${data.ctid ?? ''} cfid=${data.cfid ?? ''} type=${data.client_type ?? ''}`);
-        this.refreshMemberCountNickname().catch(() => { /* logged in the periodic path */ });
+        if (epoch === this.startEpoch) {
+          this.refreshMemberCountNickname().catch(() => { /* logged in the periodic path */ });
+        }
       }
       this.onTsEvent(eventName, data).catch((err) => {
         console.error(`[Discord] TS event handling failed: ${err.message}`);
@@ -677,7 +680,14 @@ export class DiscordBridge {
 
   /** Start the periodic member-count nickname refresh (watched-channel mode only). */
   private startNicknameUpdater(): void {
-    if (!this.settings?.notifyChannelId) return;
+    if (!this.settings?.notifyChannelId) {
+      // Feature disabled (or not configured) — drop any "(N)" suffix left
+      // over from a previous config so the nickname doesn't lag stale.
+      this.clearStaleCountSuffix().catch((err) => {
+        console.error(`[Discord] Nickname cleanup failed: ${err.message}`);
+      });
+      return;
+    }
     const epoch = this.startEpoch;
     const tick = () => {
       if (epoch !== this.startEpoch) return;
@@ -687,6 +697,27 @@ export class DiscordBridge {
     };
     this.nicknameTimer = setInterval(tick, NICKNAME_REFRESH_INTERVAL_MS);
     tick();
+  }
+
+  /** One-shot: strip a leftover "(N)" member-count suffix from the bot's
+   *  nickname (e.g. after the watched channel was unset). */
+  private async clearStaleCountSuffix(): Promise<void> {
+    const me = this.guild()?.members?.me; // guild() already guards a not-yet-ready client
+    if (!me) return;
+    const stripped = stripCountSuffix(me.displayName);
+    if (stripped === me.displayName) return;
+
+    try {
+      await me.setNickname(stripped);
+      this.lastAppliedNickname = stripped;
+    } catch (err: any) {
+      if (!this.nicknameWarned) {
+        this.nicknameWarned = true;
+        const warning = `Cannot update bot nickname: ${err.message} (missing "Change Nickname" permission?)`;
+        this.warnings.push(warning);
+        console.warn(`[Discord] ${warning}`);
+      }
+    }
   }
 
   /** Rename the bot to "Base (N)", N = watched-channel members (music bots excluded). */
@@ -792,6 +823,9 @@ export class DiscordBridge {
     const clids = new Set<string>();
     const nicknames = new Set<string>();
     for (const { bot } of this.voiceBotManager.getAllBots()) {
+      // clids are per-virtual-server integers — a bot's clid on another server
+      // must not exclude a human with the same clid on the watched server.
+      if (bot.currentConfig.serverConfigId !== this.settings?.serverConfigId) continue;
       if (bot.ts3ClientId > 0) clids.add(String(bot.ts3ClientId));
       const active = bot.status !== 'stopped' && bot.status !== 'error';
       if (active && bot.currentConfig.nickname) nicknames.add(bot.currentConfig.nickname);
