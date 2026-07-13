@@ -723,13 +723,17 @@ export class DiscordBridge {
     await this.postToChannel(this.settings?.notificationsChannelId, payload);
   }
 
-  /** Identity (clids + configured nicknames) of the currently running music bots. */
+  /** Identity (clids + configured nicknames) of the currently running music bots.
+   *  The nickname fallback only covers the connect window of a starting bot (clid
+   *  not yet known), so it must not apply to stopped/errored bots — a human whose
+   *  nickname collides with an inactive bot's name would be wrongly excluded. */
   private musicBotIdentity(): MusicBotIdentity {
     const clids = new Set<string>();
     const nicknames = new Set<string>();
     for (const { bot } of this.voiceBotManager.getAllBots()) {
       if (bot.ts3ClientId > 0) clids.add(String(bot.ts3ClientId));
-      if (bot.currentConfig.nickname) nicknames.add(bot.currentConfig.nickname);
+      const active = bot.status !== 'stopped' && bot.status !== 'error';
+      if (active && bot.currentConfig.nickname) nicknames.add(bot.currentConfig.nickname);
     }
     return { clids, nicknames };
   }
