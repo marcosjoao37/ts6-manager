@@ -38,6 +38,7 @@ import {
   type ServerStats,
 } from './embeds.js';
 import { diffAwayState, mapAwayClients, type AwayClient } from './away-diff.js';
+import { isMusicBotClient, countChannelClients, type MusicBotIdentity } from './member-count.js';
 
 const STATS_PANEL_INTERVAL_MS = 60_000;
 const AWAY_POLL_INTERVAL_MS = 10_000;
@@ -587,8 +588,10 @@ export class DiscordBridge {
     try {
       const client = await this.pool.getOrLoad(settings.serverConfigId);
       const list = await client.execute(settings.virtualServerId, 'clientlist');
+      const bots = this.musicBotIdentity();
       for (const c of Array.isArray(list) ? list : []) {
         if (String(c.client_type) !== '0') continue;
+        if (isMusicBotClient(String(c.clid), c.client_nickname || '', bots)) continue;
         const clid = String(c.clid);
         if (!this.clientNicknames.has(clid)) this.clientNicknames.set(clid, c.client_nickname || `Client #${clid}`);
         if (!this.clientChannels.has(clid)) this.clientChannels.set(clid, String(c.cid));
@@ -624,7 +627,9 @@ export class DiscordBridge {
     const client = await this.pool.getOrLoad(settings.serverConfigId);
     const list = await client.execute(settings.virtualServerId, 'clientlist', { '-away': '' });
     if (epoch !== this.startEpoch) return;
-    const current: AwayClient[] = mapAwayClients(list, watchedChannel);
+    const bots = this.musicBotIdentity();
+    const current: AwayClient[] = mapAwayClients(list, watchedChannel)
+      .filter((c) => !isMusicBotClient(c.clid, c.nickname, bots));
 
     const { changes, next } = diffAwayState(this.clientAwayState, current);
     this.clientAwayState = next;
@@ -657,6 +662,7 @@ export class DiscordBridge {
       const clid = String(data.clid);
       const nickname = data.client_nickname || `Client #${clid}`;
       const channelId = String(data.ctid || '');
+      if (isMusicBotClient(clid, nickname, this.musicBotIdentity())) return; // never track or announce music bots
       this.clientNicknames.set(clid, nickname);
       this.clientChannels.set(clid, channelId);
 
@@ -672,6 +678,7 @@ export class DiscordBridge {
 
     if (eventName === 'notifyclientmoved' && watchedChannel) {
       const clid = String(data.clid);
+      if (this.musicBotIdentity().clids.has(clid)) return; // music bots move silently
       const toChannel = String(data.ctid || '');
       const fromChannel = this.clientChannels.get(clid) ?? String(data.cfid || '');
       this.clientChannels.set(clid, toChannel);
@@ -716,16 +723,25 @@ export class DiscordBridge {
     await this.postToChannel(this.settings?.notificationsChannelId, payload);
   }
 
-  /** Number of real clients currently in the given TS channel. */
+  /** Identity (clids + configured nicknames) of the currently running music bots. */
+  private musicBotIdentity(): MusicBotIdentity {
+    const clids = new Set<string>();
+    const nicknames = new Set<string>();
+    for (const { bot } of this.voiceBotManager.getAllBots()) {
+      if (bot.ts3ClientId > 0) clids.add(String(bot.ts3ClientId));
+      if (bot.currentConfig.nickname) nicknames.add(bot.currentConfig.nickname);
+    }
+    return { clids, nicknames };
+  }
+
+  /** Number of real clients currently in the given TS channel (music bots excluded). */
   private async countChannelMembers(channelId: string): Promise<number> {
     const settings = this.settings;
     if (!settings?.serverConfigId) return 0;
     try {
       const client = await this.pool.getOrLoad(settings.serverConfigId);
       const list = await client.execute(settings.virtualServerId, 'clientlist');
-      return (Array.isArray(list) ? list : []).filter(
-        (c: any) => String(c.cid) === channelId && String(c.client_type) === '0',
-      ).length;
+      return countChannelClients(list, channelId, this.musicBotIdentity());
     } catch {
       return 0;
     }
