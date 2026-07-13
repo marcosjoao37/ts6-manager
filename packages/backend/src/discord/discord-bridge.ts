@@ -38,10 +38,17 @@ import {
   type ServerStats,
 } from './embeds.js';
 import { diffAwayState, mapAwayClients, type AwayClient } from './away-diff.js';
-import { isMusicBotClient, countChannelClients, type MusicBotIdentity } from './member-count.js';
+import {
+  isMusicBotClient,
+  countChannelClients,
+  stripCountSuffix,
+  formatCountNickname,
+  type MusicBotIdentity,
+} from './member-count.js';
 
 const STATS_PANEL_INTERVAL_MS = 60_000;
 const AWAY_POLL_INTERVAL_MS = 10_000;
+const NICKNAME_REFRESH_INTERVAL_MS = 60_000;
 
 export interface DiscordStatus {
   enabled: boolean;
@@ -70,6 +77,10 @@ export class DiscordBridge {
   private voiceRelay: DiscordVoiceRelay | null = null;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   private awayTimer: ReturnType<typeof setInterval> | null = null;
+  private nicknameTimer: ReturnType<typeof setInterval> | null = null;
+  private baseNickname: string | null = null;
+  private lastAppliedNickname: string | null = null;
+  private nicknameWarned = false;
   private clientAwayState = new Map<string, boolean>(); // clid → isAway
   private nowPlayingListeners = new Map<number, (item: QueueItem) => void>();
   private clientNicknames = new Map<string, string>(); // clid → nickname (for leave events)
@@ -137,6 +148,7 @@ export class DiscordBridge {
         console.error(`[Discord] ${this.lastError}`);
       });
       this.startStatsPanel();
+      this.startNicknameUpdater();
       this.startVoiceRelay().catch((err) => {
         console.error(`[Discord] Voice relay start failed: ${err.message}`);
       });
@@ -196,6 +208,13 @@ export class DiscordBridge {
       clearInterval(this.awayTimer);
       this.awayTimer = null;
     }
+    if (this.nicknameTimer) {
+      clearInterval(this.nicknameTimer);
+      this.nicknameTimer = null;
+    }
+    this.baseNickname = null;
+    this.lastAppliedNickname = null;
+    this.nicknameWarned = false;
     this.clientAwayState.clear();
     if (this.voiceRelay) {
       this.voiceRelay.destroy();
@@ -568,6 +587,7 @@ export class DiscordBridge {
     this.eventBridge.on('tsEvent', (_configId, _sid, eventName, data) => {
       if (eventName === 'notifycliententerview' || eventName === 'notifyclientmoved' || eventName === 'notifyclientleftview') {
         console.log(`[Discord] TS event ${eventName}: clid=${data.clid} ctid=${data.ctid ?? ''} cfid=${data.cfid ?? ''} type=${data.client_type ?? ''}`);
+        this.refreshMemberCountNickname().catch(() => { /* logged in the periodic path */ });
       }
       this.onTsEvent(eventName, data).catch((err) => {
         console.error(`[Discord] TS event handling failed: ${err.message}`);
@@ -651,6 +671,47 @@ export class DiscordBridge {
       : { content: message };
     console.log(`[Discord] notify away=${isAway} → channel=${this.settings?.notificationsChannelId} msg="${message}"`);
     await this.postToChannel(this.settings?.notificationsChannelId, payload);
+  }
+
+  // ─── Member-count nickname ──────────────────────────────────
+
+  /** Start the periodic member-count nickname refresh (watched-channel mode only). */
+  private startNicknameUpdater(): void {
+    if (!this.settings?.notifyChannelId) return;
+    const epoch = this.startEpoch;
+    const tick = () => {
+      if (epoch !== this.startEpoch) return;
+      this.refreshMemberCountNickname().catch((err) => {
+        console.error(`[Discord] Nickname refresh failed: ${err.message}`);
+      });
+    };
+    this.nicknameTimer = setInterval(tick, NICKNAME_REFRESH_INTERVAL_MS);
+    tick();
+  }
+
+  /** Rename the bot to "Base (N)", N = watched-channel members (music bots excluded). */
+  private async refreshMemberCountNickname(): Promise<void> {
+    const settings = this.settings;
+    if (!settings?.notifyChannelId) return;
+    const me = this.guild()?.members?.me;
+    if (!me) return;
+
+    if (this.baseNickname === null) this.baseNickname = stripCountSuffix(me.displayName);
+    const count = await this.countChannelMembers(settings.notifyChannelId);
+    const desired = formatCountNickname(this.baseNickname, count);
+    if (desired === this.lastAppliedNickname) return;
+
+    try {
+      await me.setNickname(desired);
+      this.lastAppliedNickname = desired;
+    } catch (err: any) {
+      if (!this.nicknameWarned) {
+        this.nicknameWarned = true;
+        const warning = `Cannot update bot nickname: ${err.message} (missing "Change Nickname" permission?)`;
+        this.warnings.push(warning);
+        console.warn(`[Discord] ${warning}`);
+      }
+    }
   }
 
   private async onTsEvent(eventName: string, data: Record<string, string>): Promise<void> {
