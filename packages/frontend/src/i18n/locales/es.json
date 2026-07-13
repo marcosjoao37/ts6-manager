@@ -312,7 +312,7 @@
       "watchChannel": "Vigilar un canal específico",
       "wholeServer": "Todo el servidor (conexión / desconexión)",
       "watchChannelPlaceholder": "ID del canal (o déjelo vacío para todo el servidor)",
-      "watchChannelHint": "Vacío = notificar al conectar/desconectar del servidor. Definido = notificar solo al entrar/salir de ese canal.",
+      "watchChannelHint": "Vacío = notificar al conectar/desconectar del servidor. Definido = notificaciones limitadas a ese canal y número de conectados mostrado en el apodo del bot.",
       "joinMessage": "Mensaje de entrada",
       "leaveMessage": "Mensaje de salida",
       "templateVariables": "Variables:",

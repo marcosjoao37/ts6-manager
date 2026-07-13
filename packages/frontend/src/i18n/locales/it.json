@@ -312,7 +312,7 @@
       "watchChannel": "Monitora un canale specifico",
       "wholeServer": "Intero server (connessione / disconnessione)",
       "watchChannelPlaceholder": "ID canale (o lascia vuoto per l'intero server)",
-      "watchChannelHint": "Vuoto = notifica alla connessione/disconnessione dal server. Impostato = notifica solo all'ingresso/uscita da quel canale.",
+      "watchChannelHint": "Vuoto = notifica alla connessione/disconnessione dal server. Impostato = notifiche limitate a quel canale e numero di connessi mostrato nel nickname del bot.",
       "joinMessage": "Messaggio di ingresso",
       "leaveMessage": "Messaggio di uscita",
       "templateVariables": "Variabili:",

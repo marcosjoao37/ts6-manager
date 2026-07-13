@@ -312,7 +312,7 @@
       "watchChannel": "Einen bestimmten Kanal überwachen",
       "wholeServer": "Ganzer Server (Verbinden / Trennen)",
       "watchChannelPlaceholder": "Kanal-ID (oder leer lassen für den ganzen Server)",
-      "watchChannelHint": "Leer = bei Server-Verbindung/-Trennung benachrichtigen. Gesetzt = nur bei Beitritt/Verlassen dieses Kanals benachrichtigen.",
+      "watchChannelHint": "Leer = bei Server-Verbindung/-Trennung benachrichtigen. Gesetzt = Benachrichtigungen nur für diesen Kanal und Mitgliederzahl im Nicknamen des Bots.",
       "joinMessage": "Beitrittsnachricht",
       "leaveMessage": "Verlassensnachricht",
       "templateVariables": "Variablen:",

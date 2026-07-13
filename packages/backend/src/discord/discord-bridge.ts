@@ -568,16 +568,21 @@ export class DiscordBridge {
 
   private async startTsEventBridge(): Promise<void> {
     const settings = this.settings;
-    if (!settings?.notifyConnections) return; // connect/disconnect notifications disabled
-    if (!settings.notificationsChannelId) return;
+    if (!settings) return;
+    // Presence events feed two independent features: connect/disconnect
+    // notifications and the member-count nickname. Subscribe when either
+    // needs them — Discord posts are gated separately in onTsEvent().
+    const wantsNotifications = !!(settings.notifyConnections && settings.notificationsChannelId);
+    const wantsNickname = !!settings.notifyChannelId;
+    if (!wantsNotifications && !wantsNickname) return;
     if (!settings.serverConfigId) {
-      this.warnings.push('Notifications enabled but no TS server configured');
+      this.warnings.push('TS presence features enabled but no TS server configured');
       return;
     }
 
     const server = await this.prisma.tsServerConfig.findUnique({ where: { id: settings.serverConfigId } });
     if (!server?.sshUsername || !server?.sshPassword) {
-      this.warnings.push('TS connect/disconnect notifications need SSH credentials on the server connection');
+      this.warnings.push('TS presence events (notifications, member-count nickname) need SSH credentials on the server connection');
       return;
     }
 
@@ -597,7 +602,7 @@ export class DiscordBridge {
       });
     });
     await this.eventBridge.connectServer(settings.serverConfigId, settings.virtualServerId);
-    console.log(`[Discord] TS presence bridge active: server=${settings.serverConfigId} sid=${settings.virtualServerId} watchedChannel=${settings.notifyChannelId ?? '(whole server)'} notifChannel=${settings.notificationsChannelId}`);
+    console.log(`[Discord] TS presence bridge active: server=${settings.serverConfigId} sid=${settings.virtualServerId} watchedChannel=${settings.notifyChannelId ?? '(whole server)'} notifChannel=${settings.notificationsChannelId ?? '(none)'} notifications=${wantsNotifications}`);
 
     // Seed the nickname/channel maps with clients already connected before the
     // bridge started (non-blocking: must never gate the event subscription).
@@ -747,6 +752,9 @@ export class DiscordBridge {
 
   private async onTsEvent(eventName: string, data: Record<string, string>): Promise<void> {
     const watchedChannel = this.settings?.notifyChannelId;
+    // The event subscription may be alive solely for the nickname counter;
+    // only post to Discord when connect/disconnect notifications are enabled.
+    const notify = !!(this.settings?.notifyConnections && this.settings?.notificationsChannelId);
 
     if (eventName === 'notifycliententerview') {
       // Real clients only (query clients are type 1)
@@ -760,8 +768,8 @@ export class DiscordBridge {
 
       if (watchedChannel) {
         // Connected directly into the watched channel → join
-        if (channelId === watchedChannel) await this.notifyChannel('join', nickname, channelId);
-      } else if (String(data.reasonid || '0') === '0') {
+        if (notify && channelId === watchedChannel) await this.notifyChannel('join', nickname, channelId);
+      } else if (notify && String(data.reasonid || '0') === '0') {
         // Server-connect mode (legacy): fresh connections only
         await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [clientConnectedEmbed(nickname)] });
       }
@@ -774,6 +782,7 @@ export class DiscordBridge {
       const toChannel = String(data.ctid || '');
       const fromChannel = this.clientChannels.get(clid) ?? String(data.cfid || '');
       this.clientChannels.set(clid, toChannel);
+      if (!notify) return; // map updated — nothing to announce
       const nickname = await this.resolveNickname(clid);
 
       if (toChannel === watchedChannel && fromChannel !== watchedChannel) {
@@ -794,8 +803,8 @@ export class DiscordBridge {
 
       if (watchedChannel) {
         // Disconnected while inside the watched channel → leave
-        if (lastChannel === watchedChannel) await this.notifyChannel('leave', nickname, watchedChannel);
-      } else {
+        if (notify && lastChannel === watchedChannel) await this.notifyChannel('leave', nickname, watchedChannel);
+      } else if (notify) {
         await this.postToChannel(this.settings?.notificationsChannelId, { embeds: [clientDisconnectedEmbed(nickname)] });
       }
     }

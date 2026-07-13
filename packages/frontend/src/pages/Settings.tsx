@@ -1013,6 +1013,27 @@ function DiscordTab() {
 
         <div className="space-y-2 pt-1">
           <Label className="text-xs font-medium">{t('settings.discord.notifications')}</Label>
+
+          {/* Watched channel drives notifications AND the member-count nickname — always visible */}
+          <div className="space-y-1.5">
+            <Label className="text-[11px]">{t('settings.discord.watchChannel')}</Label>
+            {tsChannels.length > 0 ? (
+              <Select value={form.notifyChannelId || 'server'} onValueChange={(v) => setForm((f) => ({ ...f, notifyChannelId: v === 'server' ? null : v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="server">{t('settings.discord.wholeServer')}</SelectItem>
+                  {tsChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input className="h-8 text-xs" placeholder={t('settings.discord.watchChannelPlaceholder')}
+                value={form.notifyChannelId || ''} onChange={(e) => setForm((f) => ({ ...f, notifyChannelId: e.target.value || null }))} />
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              {t('settings.discord.watchChannelHint')}
+            </p>
+          </div>
+
           <div className="flex items-center gap-2">
             <Switch checked={!!form.notifyConnections} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyConnections: v }))} />
             <Label className="text-xs font-normal">{t('settings.discord.tsPresence')}</Label>
@@ -1020,25 +1041,6 @@ function DiscordTab() {
 
           {form.notifyConnections && (
             <div className="ml-9 space-y-2 border-l border-border pl-3">
-              <div className="space-y-1.5">
-                <Label className="text-[11px]">{t('settings.discord.watchChannel')}</Label>
-                {tsChannels.length > 0 ? (
-                  <Select value={form.notifyChannelId || 'server'} onValueChange={(v) => setForm((f) => ({ ...f, notifyChannelId: v === 'server' ? null : v }))}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="server">{t('settings.discord.wholeServer')}</SelectItem>
-                      {tsChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input className="h-8 text-xs" placeholder={t('settings.discord.watchChannelPlaceholder')}
-                    value={form.notifyChannelId || ''} onChange={(e) => setForm((f) => ({ ...f, notifyChannelId: e.target.value || null }))} />
-                )}
-                <p className="text-[10px] text-muted-foreground">
-                  {t('settings.discord.watchChannelHint')}
-                </p>
-              </div>
-
               {form.notifyChannelId && (
                 <div className="grid grid-cols-1 gap-2">
                   <div className="flex items-center gap-2">
