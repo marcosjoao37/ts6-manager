@@ -312,7 +312,7 @@
       "watchChannel": "Surveiller un salon spécifique",
       "wholeServer": "Tout le serveur (connexion / déconnexion)",
       "watchChannelPlaceholder": "ID du salon (ou laissez vide pour tout le serveur)",
-      "watchChannelHint": "Vide = notifier à la connexion/déconnexion du serveur. Défini = notifications limitées à ce salon et compteur de connectés affiché dans le pseudo du bot.",
+      "watchChannelHint": "Vide = notifier à la connexion/déconnexion du serveur, compteur de connectés sur tout le serveur. Défini = notifications limitées à ce salon et compteur limité à ce salon. Le compteur s'affiche dans le pseudo du bot, bots musicaux exclus.",
       "joinMessage": "Message d'arrivée",
       "leaveMessage": "Message de départ",
       "templateVariables": "Variables :",

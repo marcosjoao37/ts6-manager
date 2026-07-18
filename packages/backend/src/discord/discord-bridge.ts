@@ -570,13 +570,13 @@ export class DiscordBridge {
     const settings = this.settings;
     if (!settings) return;
     // Presence events feed two independent features: connect/disconnect
-    // notifications and the member-count nickname. Subscribe when either
-    // needs them — Discord posts are gated separately in onTsEvent().
+    // notifications and the member-count nickname. The nickname counter is
+    // always on (watched channel or whole server), so the bridge runs
+    // whenever a TS server is configured — Discord posts are gated
+    // separately in onTsEvent().
     const wantsNotifications = !!(settings.notifyConnections && settings.notificationsChannelId);
-    const wantsNickname = !!settings.notifyChannelId;
-    if (!wantsNotifications && !wantsNickname) return;
     if (!settings.serverConfigId) {
-      this.warnings.push('TS presence features enabled but no TS server configured');
+      if (wantsNotifications) this.warnings.push('TS presence features enabled but no TS server configured');
       return;
     }
 
@@ -593,7 +593,9 @@ export class DiscordBridge {
     this.eventBridge.on('tsEvent', (_configId, _sid, eventName, data) => {
       if (eventName === 'notifycliententerview' || eventName === 'notifyclientmoved' || eventName === 'notifyclientleftview') {
         console.log(`[Discord] TS event ${eventName}: clid=${data.clid} ctid=${data.ctid ?? ''} cfid=${data.cfid ?? ''} type=${data.client_type ?? ''}`);
-        if (epoch === this.startEpoch) {
+        // In whole-server mode a move never changes the total — skip the refresh.
+        const affectsCount = eventName !== 'notifyclientmoved' || !!this.settings?.notifyChannelId;
+        if (epoch === this.startEpoch && affectsCount) {
           this.refreshMemberCountNickname().catch(() => { /* logged in the periodic path */ });
         }
       }
@@ -683,16 +685,9 @@ export class DiscordBridge {
 
   // ─── Member-count nickname ──────────────────────────────────
 
-  /** Start the periodic member-count nickname refresh (watched-channel mode only). */
+  /** Start the periodic member-count nickname refresh (watched channel, or
+   *  whole server when no channel is configured). */
   private startNicknameUpdater(): void {
-    if (!this.settings?.notifyChannelId) {
-      // Feature disabled (or not configured) — drop any "(N)" suffix left
-      // over from a previous config so the nickname doesn't lag stale.
-      this.clearStaleCountSuffix().catch((err) => {
-        console.error(`[Discord] Nickname cleanup failed: ${err.message}`);
-      });
-      return;
-    }
     const epoch = this.startEpoch;
     const tick = () => {
       if (epoch !== this.startEpoch) return;
@@ -704,36 +699,16 @@ export class DiscordBridge {
     tick();
   }
 
-  /** One-shot: strip a leftover "(N)" member-count suffix from the bot's
-   *  nickname (e.g. after the watched channel was unset). */
-  private async clearStaleCountSuffix(): Promise<void> {
-    const me = this.guild()?.members?.me; // guild() already guards a not-yet-ready client
-    if (!me) return;
-    const stripped = stripCountSuffix(me.displayName);
-    if (stripped === me.displayName) return;
-
-    try {
-      await me.setNickname(stripped);
-      this.lastAppliedNickname = stripped;
-    } catch (err: any) {
-      if (!this.nicknameWarned) {
-        this.nicknameWarned = true;
-        const warning = `Cannot update bot nickname: ${err.message} (missing "Change Nickname" permission?)`;
-        this.warnings.push(warning);
-        console.warn(`[Discord] ${warning}`);
-      }
-    }
-  }
-
-  /** Rename the bot to "Base (N)", N = watched-channel members (music bots excluded). */
+  /** Rename the bot to "Base (N)", N = members of the watched channel — or of
+   *  the whole server when no channel is configured (music bots excluded). */
   private async refreshMemberCountNickname(): Promise<void> {
     const settings = this.settings;
-    if (!settings?.notifyChannelId) return;
-    const me = this.guild()?.members?.me;
+    if (!settings) return;
+    const me = this.guild()?.members?.me; // guild() already guards a not-yet-ready client
     if (!me) return;
 
     if (this.baseNickname === null) this.baseNickname = stripCountSuffix(me.displayName);
-    const count = await this.countChannelMembers(settings.notifyChannelId);
+    const count = await this.countChannelMembers(settings.notifyChannelId ?? null);
     const desired = formatCountNickname(this.baseNickname, count);
     if (desired === this.lastAppliedNickname) return;
 
@@ -842,8 +817,9 @@ export class DiscordBridge {
     return { clids, nicknames };
   }
 
-  /** Number of real clients currently in the given TS channel (music bots excluded). */
-  private async countChannelMembers(channelId: string): Promise<number> {
+  /** Number of real clients currently in the given TS channel — or on the
+   *  whole server when channelId is null (music bots excluded). */
+  private async countChannelMembers(channelId: string | null): Promise<number> {
     const settings = this.settings;
     if (!settings?.serverConfigId) return 0;
     try {

@@ -11,11 +11,12 @@ export function isMusicBotClient(clid: string, nickname: string, bots: MusicBotI
   return bots.clids.has(clid) || bots.nicknames.has(nickname);
 }
 
-/** Number of real clients in the given channel, music bots excluded. */
-export function countChannelClients(list: unknown, channelId: string, bots: MusicBotIdentity): number {
+/** Number of real clients in the given channel — or on the whole server when
+ *  channelId is null — music bots excluded. */
+export function countChannelClients(list: unknown, channelId: string | null, bots: MusicBotIdentity): number {
   return (Array.isArray(list) ? list : []).filter(
     (c: any) =>
-      String(c.cid) === channelId &&
+      (channelId === null || String(c.cid) === channelId) &&
       String(c.client_type) === '0' &&
       !isMusicBotClient(String(c.clid), c.client_nickname || '', bots),
   ).length;

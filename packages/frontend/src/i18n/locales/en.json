@@ -312,7 +312,7 @@
       "watchChannel": "Watch a specific channel",
       "wholeServer": "Whole server (connect / disconnect)",
       "watchChannelPlaceholder": "Channel ID (or leave empty for whole-server)",
-      "watchChannelHint": "Empty = notify on server connect/disconnect. Set = notifications scoped to that channel and member count shown in the bot's nickname.",
+      "watchChannelHint": "Empty = notify on server connect/disconnect, member count covers the whole server. Set = notifications and member count scoped to that channel. The count shows in the bot's nickname, music bots excluded.",
       "joinMessage": "Join message",
       "leaveMessage": "Leave message",
       "templateVariables": "Variables:",

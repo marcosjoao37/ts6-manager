@@ -46,6 +46,19 @@ describe('countChannelClients', () => {
   it('retourne 0 sur une réponse non-tableau', () => {
     expect(countChannelClients({ error: 'x' }, '5', bots())).toBe(0);
   });
+
+  it('compte tout le serveur quand channelId est null, music bots exclus', () => {
+    // Alice + Bob (cid 5) + Ailleurs (cid 9); query client et music bot exclus
+    expect(countChannelClients(list, null, bots(['42']))).toBe(3);
+  });
+
+  it('exclut par nickname en mode serveur entier', () => {
+    expect(countChannelClients(list, null, bots([], ['MusicBot']))).toBe(3);
+  });
+
+  it('retourne 0 en mode serveur entier sur une réponse non-tableau', () => {
+    expect(countChannelClients({ error: 'x' }, null, bots())).toBe(0);
+  });
 });
 
 describe('stripCountSuffix', () => {
