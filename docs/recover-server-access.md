@@ -1,5 +1,7 @@
 # Recovering access to your TeamSpeak server (WebQuery / SSH)
 
+**English** · [Français](recover-server-access.fr.md)
+
 TS6 Manager talks to your TeamSpeak server over two channels, both configured
 under **Settings → Connections**:
 
