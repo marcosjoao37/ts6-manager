@@ -60,6 +60,11 @@ Full security review of the codebase. Twelve issues, three of them high severity
 - **BREAKING — `SIDECAR_TOKEN` is required when the sidecar runs as its own
   container** (`SIDECAR_URL` set). Generate one with `openssl rand -hex 32`.
   Not needed when the backend spawns the sidecar itself.
+- The frontend's published host port is now `FRONTEND_PORT` (default 3000), so a
+  deployment that does not use 3000 sets it in `.env` instead of editing the
+  tracked `docker-compose.yml` and hitting a conflict on every pull. Remember
+  `FRONTEND_URL` alongside it: it is the CORS allow-list value and must match
+  the origin the browser actually uses.
 - `ENCRYPTION_KEY` no longer falls back to `JWT_SECRET`. Existing values stay
   readable: `decrypt` retains its legacy-key path.
 
