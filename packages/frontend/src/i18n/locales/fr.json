@@ -312,7 +312,7 @@
       "watchChannel": "Surveiller un salon spécifique",
       "wholeServer": "Tout le serveur (connexion / déconnexion)",
       "watchChannelPlaceholder": "ID du salon (ou laissez vide pour tout le serveur)",
-      "watchChannelHint": "Vide = notifier à la connexion/déconnexion du serveur. Défini = notifier uniquement à l'entrée/sortie de ce salon.",
+      "watchChannelHint": "Vide = notifier à la connexion/déconnexion du serveur, compteur de connectés sur tout le serveur. Défini = notifications limitées à ce salon et compteur limité à ce salon. Le compteur s'affiche dans le pseudo du bot, bots musicaux exclus.",
       "joinMessage": "Message d'arrivée",
       "leaveMessage": "Message de départ",
       "templateVariables": "Variables :",
@@ -1262,6 +1262,7 @@
     "done": "Import terminé — {{done}} piste(s) ajoutée(s)",
     "skipped": "{{n}} déjà présente(s)",
     "truncated": "{{n}} au-delà de la limite",
-    "failed": "Échec de l'import de la playlist"
+    "failed": "Échec de l'import de la playlist",
+    "lost": "Suivi de l'import perdu — l'opération est peut-être terminée ou le serveur a redémarré"
   }
 }

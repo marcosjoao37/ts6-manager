@@ -740,9 +740,20 @@ function LibraryTab() {
 
   const ytInfo = useYouTubeInfo();
   const ytBatchDownload = useYouTubeDownloadBatch();
+  const qc = useQueryClient();
   const importPlaylist = useImportPlaylist();
   const [importJobId, setImportJobId] = useState<string | null>(null);
-  const { data: importJob } = useImportPlaylistStatus(configId ?? null, importJobId);
+  const { data: importJob, isError: importJobLost } = useImportPlaylistStatus(configId ?? null, importJobId);
+  // The status query has no onSuccess in v5 — bridge the "job just finished"
+  // transition to a library refresh here, once per job.
+  const invalidatedImportJobRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (importJobId && importJob?.status === 'done' && invalidatedImportJobRef.current !== importJobId) {
+      invalidatedImportJobRef.current = importJobId;
+      qc.invalidateQueries({ queryKey: ['songs', configId] });
+      qc.invalidateQueries({ queryKey: ['playlists'] });
+    }
+  }, [importJob?.status, importJobId, configId, qc]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -815,6 +826,7 @@ function LibraryTab() {
 
   const handleLoadUrl = () => {
     if (!ytUrl.trim() || !configId) return;
+    setImportJobId(null);
     ytInfo.mutate({ configId, url: ytUrl }, {
       onSuccess: (data: any) => {
         setUrlInfo(data);
@@ -899,7 +911,7 @@ function LibraryTab() {
               {t('musicBots.library.load')}
             </Button>
             {urlInfo && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setUrlInfo(null); setYtUrl(''); }}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setUrlInfo(null); setYtUrl(''); setImportJobId(null); }}>
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -937,7 +949,7 @@ function LibraryTab() {
                     <Button
                       size="sm"
                       onClick={handleImportPlaylist}
-                      disabled={importPlaylist.isPending || importJob?.status === 'running'}
+                      disabled={importPlaylist.isPending || (!importJobLost && importJob?.status === 'running')}
                     >
                       <Download className="h-3 w-3 mr-1" />
                       {t('playlistImport.button')}
@@ -945,7 +957,11 @@ function LibraryTab() {
                   </div>
                 )}
               </div>
-              {importJob && (
+              {importJobLost ? (
+                <div className="text-xs rounded-md border border-destructive/50 p-2 text-destructive">
+                  {t('playlistImport.lost')}
+                </div>
+              ) : importJob && (
                 <div className="text-xs space-y-1 rounded-md border border-border p-2">
                   <div>
                     {importJob.status === 'running'

@@ -76,7 +76,10 @@ export function useImportPlaylistStatus(configId: number | null, jobId: string |
     queryKey: ['playlist-import', configId, jobId],
     queryFn: () => musicLibraryApi.importPlaylistStatus(configId!, jobId!),
     enabled: !!configId && !!jobId,
-    // Poll while the job runs, then stop.
-    refetchInterval: (q) => (q.state.data?.status === 'running' ? 2000 : false),
+    // Poll while the job runs, then stop. Also stop on a query error (e.g. the
+    // job expired from the backend's in-memory map and the endpoint 404s) —
+    // v5 doesn't clear `data` when a refetch errors, so `data.status` alone
+    // would stay 'running' forever and poll indefinitely.
+    refetchInterval: (q) => (q.state.status !== 'error' && q.state.data?.status === 'running' ? 2000 : false),
   });
 }

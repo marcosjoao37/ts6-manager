@@ -312,7 +312,7 @@
       "watchChannel": "Vigilar un canal específico",
       "wholeServer": "Todo el servidor (conexión / desconexión)",
       "watchChannelPlaceholder": "ID del canal (o déjelo vacío para todo el servidor)",
-      "watchChannelHint": "Vacío = notificar al conectar/desconectar del servidor. Definido = notificar solo al entrar/salir de ese canal.",
+      "watchChannelHint": "Vacío = notificar al conectar/desconectar del servidor, número de conectados de todo el servidor. Definido = notificaciones y recuento limitados a ese canal. El recuento se muestra en el apodo del bot, bots de música excluidos.",
       "joinMessage": "Mensaje de entrada",
       "leaveMessage": "Mensaje de salida",
       "templateVariables": "Variables:",
@@ -1262,6 +1262,7 @@
     "done": "Importación terminada — {{done}} pista(s) añadida(s)",
     "skipped": "{{n}} ya presente(s)",
     "truncated": "{{n}} por encima del límite",
-    "failed": "Error al importar la lista"
+    "failed": "Error al importar la lista",
+    "lost": "Se perdió el seguimiento de la importación — puede que haya terminado o que el servidor se haya reiniciado"
   }
 }
