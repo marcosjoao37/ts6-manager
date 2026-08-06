@@ -423,6 +423,8 @@ export class FlowRunner {
       headers,
       data: body ? JSON.parse(body) : undefined,
       timeout: 10000,
+      // Load-bearing: validateUrl only vetted the initial host, so a 3xx
+      // Location could still redirect this request at an internal address.
       maxRedirects: 0,
     });
     if (data.storeAs) {
@@ -466,6 +468,8 @@ export class FlowRunner {
       headers,
       data: body ? JSON.parse(body) : undefined,
       timeout: 15000,
+      // Load-bearing: validateUrl only vetted the initial host, so a 3xx
+      // Location could still redirect this request at an internal address.
       maxRedirects: 0,
       transformResponse: [(data) => data], // Return raw response, don't auto-parse JSON
     });
