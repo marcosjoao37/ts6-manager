@@ -366,9 +366,32 @@ authRoutes.put('/language', authMiddleware, async (req: Request, res: Response, 
 
 // Start enrollment: generate a pending secret + QR. Allowed either with a
 // normal session or with an MFA challenge token (admin-forced first setup).
+/**
+ * User id from a Bearer access token, or null.
+ *
+ * These routes are on the public /api/auth mount, so authMiddleware has not run
+ * and req.user is always unset — which made self-service enrolment from the
+ * Account tab fail with 401 no matter what. Resolving the token here restores
+ * it without forcing authMiddleware onto the routes, which would break the
+ * admin-forced first setup (an mfaToken, with no session to present yet).
+ *
+ * Only `typ === 'access'` is accepted, so an MFA challenge token cannot be
+ * replayed here to enrol a *new* authenticator with the password alone.
+ */
+function accessTokenUserId(req: Request): number | null {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return null;
+  try {
+    const payload = jwt.verify(header.substring(7), config.jwtSecret, { algorithms: ['HS256'] }) as any;
+    return payload?.typ === 'access' && payload.id ? payload.id : null;
+  } catch {
+    return null;
+  }
+}
+
 async function resolveEnrollUser(req: Request): Promise<{ prisma: any; user: any }> {
   const prisma = req.app.locals.prisma;
-  let userId = req.user?.id;
+  let userId = req.user?.id ?? accessTokenUserId(req);
   if (!userId && req.body?.mfaToken) userId = verifyMfaChallenge(req.body.mfaToken);
   if (!userId) throw new AppError(401, 'Authentication required');
   const user = await prisma.user.findUnique({ where: { id: userId } });
