@@ -32,17 +32,17 @@ export function requirePasswordHash(passwordHash: string | null): string {
 // Short-lived token proving the password step passed, scoped to the MFA step.
 function verifyMfaChallenge(token: string): number {
   const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as any;
-  if (!payload?.mfa || !payload.id) throw new AppError(401, 'Invalid MFA session');
+  if (payload?.typ !== 'mfa' || !payload.mfa || !payload.id) throw new AppError(401, 'Invalid MFA session');
   return payload.id;
 }
 
 // Short-lived token proving auth fully passed, scoped to the forced password change.
 function signChangeToken(userId: number): string {
-  return jwt.sign({ pwchange: true, id: userId }, config.jwtSecret, { expiresIn: '10m' } as jwt.SignOptions);
+  return jwt.sign({ typ: 'pwchange', pwchange: true, id: userId }, config.jwtSecret, { expiresIn: '10m' } as jwt.SignOptions);
 }
 function verifyChangeToken(token: string): number {
   const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] }) as any;
-  if (!payload?.pwchange || !payload.id) throw new AppError(401, 'Invalid session');
+  if (payload?.typ !== 'pwchange' || !payload.pwchange || !payload.id) throw new AppError(401, 'Invalid session');
   return payload.id;
 }
 
@@ -265,7 +265,7 @@ authRoutes.post('/refresh', async (req: Request, res: Response, next) => {
     // Delete old token after creating new one (deleteMany: no throw if gone)
     await prisma.refreshToken.deleteMany({ where: { id: stored.id } });
 
-    const payload = { id: stored.user.id, username: stored.user.username, role: stored.user.role };
+    const payload = { typ: 'access', id: stored.user.id, username: stored.user.username, role: stored.user.role };
     const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtAccessExpiry } as jwt.SignOptions);
 
     res.json({ accessToken, refreshToken: newRefreshToken });

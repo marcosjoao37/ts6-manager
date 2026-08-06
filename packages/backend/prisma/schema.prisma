@@ -81,6 +81,10 @@ model TsServerConfig {
   sshPort      Int      @default(10022)
   sshUsername  String?
   sshPassword  String?
+  /// SHA-256 fingerprint of the server's SSH host key, pinned on first connect
+  /// (trust on first use). A later mismatch aborts the connection instead of
+  /// handing the ServerQuery password to whoever answered.
+  sshHostKeyFp String?
   enabled      Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
