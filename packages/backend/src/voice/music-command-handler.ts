@@ -2,7 +2,8 @@ import type { PrismaClient } from '../../generated/prisma/index.js';
 import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
-import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from './music-ops.js';
+import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify, saveMusicRequest } from './music-ops.js';
+import { isYouTubePlaylistUrl } from './playlist-import-plan.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
@@ -297,9 +298,11 @@ export class MusicCommandHandler {
       return;
     }
 
-    // Cheap pre-check: only pay a metadata round trip when the URL could be a
-    // playlist. Every other !play would otherwise get slower.
-    if (args.includes('list=') && this.playlistImporter) {
+    // Cheap pre-check: only pay a metadata round trip for a URL that *is* a
+    // playlist. Every other !play would otherwise get slower — and a video
+    // opened from a playlist (which carries `&list=` too) would be swallowed
+    // by a 50-track import instead of playing the linked track.
+    if (isYouTubePlaylistUrl(args) && this.playlistImporter) {
       const handled = await this.playPlaylist(bot, reply, args);
       if (handled) return;
     }
@@ -321,10 +324,16 @@ export class MusicCommandHandler {
   /**
    * Import a YouTube playlist, playing the first track as soon as it lands and
    * queueing the rest as they download. Returns false when the URL turns out
-   * not to be a playlist, so the caller falls back to the single-track path.
+   * not to be a playlist — or when the import never got off the ground — so
+   * the caller falls back to the single-track path.
    */
   private async playPlaylist(bot: VoiceBot, reply: ReplyFn, url: string): Promise<boolean> {
     const importer = this.playlistImporter!;
+    // Read before start(): the importer replays already-present tracks as soon
+    // as it can, so by the time we compose the reply the bot may already be
+    // playing *because of this command*.
+    const wasPlaying = bot.status === 'playing' || bot.status === 'paused';
+
     let result;
     try {
       result = await importer.start({
@@ -332,8 +341,10 @@ export class MusicCommandHandler {
         serverConfigId: bot.currentConfig.serverConfigId,
         musicBotId: bot.currentConfig.id,
         onTrack: async (song) => {
-          const item = {
-            id: `yt_${song.id}`,
+          const item: QueueItem = {
+            // Keyed on the video id like every other producer, so
+            // PlayQueue.remove(id) and !queue remove behave the same here.
+            id: `yt_${song.videoId}`,
             title: song.title,
             artist: song.artist ?? 'Unknown',
             duration: song.duration ?? 0,
@@ -342,6 +353,7 @@ export class MusicCommandHandler {
             sourceUrl: song.sourceUrl,
           };
           bot.queue.add(item);
+          saveMusicRequest(this.prisma, bot, item);
           if (bot.status !== 'playing' && bot.status !== 'paused') {
             bot.queue.playAt(bot.queue.length - 1);
             await bot.play(item);
@@ -349,8 +361,10 @@ export class MusicCommandHandler {
         },
       });
     } catch (err: any) {
-      reply(`Playlist import failed: ${err.message}`);
-      return true;
+      // Nothing has confirmed this is a playlist yet — a metadata hiccup here
+      // must not cost the user the single-video path that would have worked.
+      console.warn(`[MusicCmd] playlist import could not start (${err.message}); falling back to single track`);
+      return false;
     }
 
     if (result.kind === 'not-a-playlist') return false;
@@ -363,7 +377,16 @@ export class MusicCommandHandler {
     const parts = [`📥 Importing "${job.playlistName}" — ${job.total} track(s)`];
     if (job.skipped) parts.push(`${job.skipped} already in the playlist`);
     if (job.truncated) parts.push(`${job.truncated} beyond the import limit`);
-    reply(`${parts.join(', ')}. Playback starts with the first one.`);
+
+    // Already-present tracks are enqueued too, so a pure re-import still
+    // plays. Only promise playback when a track is actually on its way.
+    const willEnqueue = job.total > 0 || job.skipped > 0;
+    const tail = !willEnqueue
+      ? ' Nothing to play.'
+      : wasPlaying
+        ? ' Queued behind the current track.'
+        : ' Playback starts with the first one.';
+    reply(`${parts.join(', ')}.${tail}`);
 
     void this.reportWhenDone(job.jobId, reply);
     return true;
