@@ -103,5 +103,12 @@ Full security review of the codebase. Twelve issues, three of them high severity
 
 ### Added
 
+- **YouTube playlist import.** Pasting a playlist URL in the music library, or
+  sending it to `!play`, now downloads its tracks and creates a bot-side
+  playlist named after the YouTube playlist. `!play` starts on the first track
+  that lands and queues the rest as they download. Re-importing the same
+  playlist adds only what is new. Track failures never abort the run: the web UI
+  lists them all, the chat summary shows the first five. The track cap is
+  `max_playlist_import` (default 50), changeable under Settings.
 - `packages/sidecar/ts6-media-sidecar[.exe]` is gitignored, so the compiled Go
   binary cannot be committed.
