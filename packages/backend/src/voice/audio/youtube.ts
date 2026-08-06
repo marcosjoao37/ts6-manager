@@ -237,35 +237,65 @@ async function doDownload(url: string, outputDir: string): Promise<{ filePath: s
   return { filePath: path.join(outputDir, fileName), info };
 }
 
+export interface UrlInfo {
+  type: 'video' | 'playlist';
+  title: string;
+  /** YouTube playlist id; null for a single video. */
+  sourceId: string | null;
+  items: YouTubeSearchResult[];
+}
+
+function toSearchResult(e: any): YouTubeSearchResult {
+  return {
+    id: e.id,
+    title: e.title || 'Unknown',
+    artist: e.uploader || e.channel || 'Unknown',
+    duration: e.duration || 0,
+    thumbnail: e.thumbnails?.[0]?.url || e.thumbnail || '',
+  };
+}
+
 /**
- * Get info about a YouTube URL (single video or playlist).
- * Returns type ('video' or 'playlist') and array of items.
+ * Parse `yt-dlp --dump-single-json` output.
+ *
+ * A playlist is identified by the presence of `entries`, not by counting items:
+ * a playlist holding one video is still a playlist, and the previous
+ * `items.length > 1` heuristic silently imported it as a bare video.
  */
-export async function getYouTubeUrlInfo(url: string): Promise<{ type: 'video' | 'playlist'; items: YouTubeSearchResult[] }> {
+export function parseUrlInfo(raw: string): UrlInfo {
+  let data: any;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error('Failed to parse yt-dlp output');
+  }
+
+  if (Array.isArray(data?.entries)) {
+    return {
+      type: 'playlist',
+      title: data.title || 'Untitled playlist',
+      sourceId: data.id ?? null,
+      // --flat-playlist emits null for deleted or private videos.
+      items: data.entries.filter(Boolean).map(toSearchResult),
+    };
+  }
+
+  return {
+    type: 'video',
+    title: data?.title || 'Unknown',
+    sourceId: null,
+    items: [toSearchResult(data ?? {})],
+  };
+}
+
+/** Resolve a YouTube URL to its type, title and entries. */
+export async function getYouTubeUrlInfo(url: string): Promise<UrlInfo> {
   assertSafeUrl(url);
   const output = await runYtDlp(
-    [...getCookieArgs(), "--dump-json", "--flat-playlist", "--no-download", "--", url],
+    [...getCookieArgs(), '--dump-single-json', '--flat-playlist', '--no-download', '--', url],
     INFO_TIMEOUT_MS,
   );
-
-  try {
-    const lines = output.trim().split("\n").filter(Boolean);
-    const items: YouTubeSearchResult[] = lines.map((line) => {
-      const parsed = JSON.parse(line);
-      return {
-        id: parsed.id,
-        title: parsed.title || "Unknown",
-        artist: parsed.uploader || parsed.channel || "Unknown",
-        duration: parsed.duration || 0,
-        thumbnail: parsed.thumbnails?.[0]?.url || parsed.thumbnail || "",
-      };
-    });
-
-    const type = items.length > 1 ? 'playlist' : 'video';
-    return { type, items };
-  } catch {
-    throw new Error("Failed to parse yt-dlp output");
-  }
+  return parseUrlInfo(output);
 }
 
 /**
