@@ -279,7 +279,17 @@
       "toastCookiesSaved": "Cookies saved",
       "toastSaveFailed": "Failed to save cookies",
       "toastCookiesRemoved": "Cookie file removed",
-      "toastRemoveFailed": "Failed to remove cookies"
+      "toastRemoveFailed": "Failed to remove cookies",
+      "playlistLimit": {
+        "title": "Playlist import limit",
+        "description": "Maximum number of tracks fetched when importing a YouTube playlist, from the music library or from !play in TeamSpeak/Discord.",
+        "maxTracks": "Max tracks per import",
+        "hint": "Tracks already in the playlist do not count towards the limit. Anything beyond it is reported as skipped, never downloaded. 0 disables importing.",
+        "save": "Save",
+        "saving": "Saving...",
+        "toastSaved": "Import limit saved",
+        "toastSaveFailed": "Failed to save the import limit"
+      }
     },
     "discord": {
       "title": "Discord Integration",

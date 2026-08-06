@@ -279,7 +279,17 @@
       "toastCookiesSaved": "Cookie salvati",
       "toastSaveFailed": "Salvataggio dei cookie non riuscito",
       "toastCookiesRemoved": "File dei cookie rimosso",
-      "toastRemoveFailed": "Rimozione dei cookie non riuscita"
+      "toastRemoveFailed": "Rimozione dei cookie non riuscita",
+      "playlistLimit": {
+        "title": "Limite di importazione playlist",
+        "description": "Numero massimo di brani scaricati durante l'importazione di una playlist YouTube, dalla libreria musicale o con !play su TeamSpeak/Discord.",
+        "maxTracks": "Brani max per importazione",
+        "hint": "I brani già presenti nella playlist non rientrano nel limite. Ciò che lo supera viene segnalato come ignorato e mai scaricato. 0 disattiva l'importazione.",
+        "save": "Salva",
+        "saving": "Salvataggio...",
+        "toastSaved": "Limite di importazione salvato",
+        "toastSaveFailed": "Impossibile salvare il limite di importazione"
+      }
     },
     "discord": {
       "title": "Integrazione Discord",
