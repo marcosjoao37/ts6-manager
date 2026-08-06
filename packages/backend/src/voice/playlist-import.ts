@@ -63,48 +63,76 @@ export class PlaylistImporter {
   }
 
   async start(req: ImportRequest): Promise<StartResult> {
+    // Bound this.jobs regardless of whether any caller ever polls get(): every
+    // new import sweeps out finished jobs older than JOB_RETENTION_MS.
+    this.sweep();
+
     if (this.active.has(req.serverConfigId)) return { kind: 'busy' };
-
-    const check = await validateUrl(req.url, { allowedProtocols: ['http:', 'https:'] });
-    if (!check.valid) throw new Error(`URL blocked: ${check.error}`);
-
-    const info = await getYouTubeUrlInfo(req.url);
-    if (info.type !== 'playlist' || !info.sourceId) return { kind: 'not-a-playlist' };
-
-    const playlist = await this.findOrCreatePlaylist(
-      req.serverConfigId, info.sourceId, info.title, req.musicBotId ?? null,
-    );
-
-    const attached = await this.attachedUrls(playlist.id);
-    const cap = await this.cap();
-    const entries: PlanEntry[] = info.items.map((i) => ({
-      id: i.id, title: i.title, url: youtubeWatchUrl(i.id),
-    }));
-    const plan = planImport(entries, attached, cap);
-
-    const job: ImportJob = {
-      jobId: randomUUID(),
-      status: 'running',
-      playlistId: playlist.id,
-      playlistName: playlist.name,
-      total: plan.toImport.length,
-      done: 0,
-      skipped: plan.alreadyPresent.length,
-      truncated: plan.truncated,
-      failures: [],
-      error: null,
-    };
-    this.jobs.set(job.jobId, { job, finishedAt: null });
+    // Acquire the slot synchronously, before the first await. Every await
+    // below yields to the event loop, and a second start() for the same
+    // server config racing in during one of them must see the slot already
+    // taken — checking this.active again after an await would be too late.
     this.active.add(req.serverConfigId);
 
-    // Background: the caller already has the name and the count.
-    void this.run(job, plan.toImport, req).finally(() => {
-      this.active.delete(req.serverConfigId);
-      const entry = this.jobs.get(job.jobId);
-      if (entry) entry.finishedAt = Date.now();
-    });
+    // Released on every exit path except a successful hand-off to run(),
+    // which releases it itself once the background work finishes.
+    let handedOff = false;
+    try {
+      const check = await validateUrl(req.url, { allowedProtocols: ['http:', 'https:'] });
+      if (!check.valid) throw new Error(`URL blocked: ${check.error}`);
 
-    return { kind: 'started', job };
+      const info = await getYouTubeUrlInfo(req.url);
+      if (info.type !== 'playlist' || !info.sourceId) return { kind: 'not-a-playlist' };
+
+      const playlist = await this.findOrCreatePlaylist(
+        req.serverConfigId, info.sourceId, info.title, req.musicBotId ?? null,
+      );
+
+      const attached = await this.attachedUrls(playlist.id);
+      const cap = await this.cap();
+      const entries: PlanEntry[] = info.items.map((i) => ({
+        id: i.id, title: i.title, url: youtubeWatchUrl(i.id),
+      }));
+      const plan = planImport(entries, attached, cap);
+
+      const job: ImportJob = {
+        jobId: randomUUID(),
+        status: 'running',
+        playlistId: playlist.id,
+        playlistName: playlist.name,
+        total: plan.toImport.length,
+        done: 0,
+        skipped: plan.alreadyPresent.length,
+        truncated: plan.truncated,
+        failures: [],
+        error: null,
+      };
+      this.jobs.set(job.jobId, { job, finishedAt: null });
+
+      // Background: the caller already has the name and the count. Handing
+      // off keeps the slot held until run() (and its own error handling)
+      // finishes, so the finally below must not release it too.
+      handedOff = true;
+      void this.run(job, plan.toImport, req)
+        .catch((err: any) => {
+          // run()'s per-entry try/catch already shields every track, so this
+          // only fires if a future edit adds unguarded work to run(). Without
+          // it the job would freeze at 'running' forever with no trace for a
+          // poller — surface it instead.
+          job.status = 'error';
+          job.error = err?.message ? String(err.message).slice(0, 500) : 'Unknown error';
+          console.error(`[PlaylistImport] job ${job.jobId} failed: ${err?.message}`, err);
+        })
+        .finally(() => {
+          this.active.delete(req.serverConfigId);
+          const entry = this.jobs.get(job.jobId);
+          if (entry) entry.finishedAt = Date.now();
+        });
+
+      return { kind: 'started', job };
+    } finally {
+      if (!handedOff) this.active.delete(req.serverConfigId);
+    }
   }
 
   private async run(job: ImportJob, toImport: PlanEntry[], req: ImportRequest): Promise<void> {
