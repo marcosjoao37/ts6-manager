@@ -69,6 +69,32 @@ Full security review of the codebase. Twelve issues, three of them high severity
   sit on the public `/api/auth` mount, so `authMiddleware` never ran and
   `req.user` was always undefined, leaving MFA effectively impossible to turn on
   from the Account tab.
+- **Refresh stampede logged users out of healthy sessions.** When the access
+  token expired, every concurrent request 401'd at once and each fired its own
+  `POST /auth/refresh`. Refresh tokens are single-use and rotate, so the first
+  call won and the rest 401'd straight into `logout()` — ending a session that
+  had just been renewed. Refreshes are now single-flight per tab and serialized
+  across tabs with a Web Lock, re-reading persisted tokens under the lock so a
+  rotation another tab performed is adopted rather than repeated. Reported in
+  coom/ts6-manager#1.
+- Only a 401/403 from `/auth/refresh` ends a session. Previously any failure did,
+  so a 429 from the limiter that `/auth/refresh` shares with `/auth/login`, or a
+  502 during a rolling deploy, signed users out over a token the server never
+  looked at. The refresh request also has an explicit timeout — it bypasses the
+  `api` instance to avoid interceptor recursion, which bypassed its timeout too,
+  and axios defaults to none.
+- A stale 401 from a request that predates a completed refresh now retries with
+  the current token instead of spending another rotation.
+- Role changes reach the navigation without a re-login, and a half-session
+  holding tokens with `user: null` repairs itself. The persisted user was written
+  only by `setAuth`, i.e. only on a real login, so a promoted user kept the
+  viewer sidebar while every API call already returned 200. The identity is now
+  re-read on layout mount, sharing the `['me']` query key Settings already uses.
+  Reported in coom/ts6-manager#3.
+- WebQuery boolean fields are compared numerically. The WebQuery returns every
+  field as a string and `"0"` is truthy, so the clients table badged every
+  connected client as away, permanently, and every message rendered as read.
+  Reported in coom/ts6-manager#2.
 
 ### Added
 
