@@ -20,6 +20,35 @@ export function youtubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
+/** Hosts whose `list=` parameter actually denotes a YouTube playlist. */
+const YOUTUBE_PLAYLIST_HOSTS = new Set([
+  'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com',
+]);
+
+/**
+ * True only for a URL that *is* a playlist, e.g. `/playlist?list=PL…`.
+ *
+ * YouTube appends `&list=` to the address bar of every video opened from a
+ * playlist, and `&list=RD…` to everything reached by autoplay/Mix. Those URLs
+ * carry a `v=` too and must stay single-video plays — `!play` on the link a
+ * user copied has to play *that* video, and chat offers no way to say "just
+ * this one". So a `list=` only counts when there is no `v=` beside it.
+ *
+ * Parsed rather than substring-matched so a `?list=` on an unrelated host, or
+ * a malformed URL, never triggers a 50-track import. `youtu.be` is excluded on
+ * purpose: it carries the video id in the path, so it has no `v=` to check.
+ */
+export function isYouTubePlaylistUrl(raw: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (!YOUTUBE_PLAYLIST_HOSTS.has(url.hostname.toLowerCase())) return false;
+  return url.searchParams.has('list') && !url.searchParams.has('v');
+}
+
 /**
  * Split a playlist's entries into what to fetch and what is already there.
  *
