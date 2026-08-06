@@ -152,6 +152,7 @@ async function main() {
   // Wire Music Command Handler for text-based music bot control (!radio, !play, etc.)
   // Listens directly on each VoiceBot's TS3 connection (no SSH needed)
   const musicCommandHandler = new MusicCommandHandler(prisma, voiceBotManager, connectionPool);
+  musicCommandHandler.setPlaylistImporter(playlistImporter);
   voiceBotManager.setMusicCommandHandler(musicCommandHandler);
 
   // Discord bridge: slash commands, TS notifications, stats (non-blocking)

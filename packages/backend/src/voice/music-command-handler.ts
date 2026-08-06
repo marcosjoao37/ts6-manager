@@ -70,11 +70,17 @@ export class MusicCommandHandler {
   // nowPlaying listeners, kept so they can be detached in unregisterBot.
   private nowPlayingListeners = new Map<number, { bot: VoiceBot; listener: (item: QueueItem) => void }>();
 
+  private playlistImporter: import('./playlist-import.js').PlaylistImporter | null = null;
+
   constructor(
     private prisma: PrismaClient,
     private voiceBotManager: VoiceBotManager,
     private connectionPool: ConnectionPool,
   ) {}
+
+  setPlaylistImporter(importer: import('./playlist-import.js').PlaylistImporter): void {
+    this.playlistImporter = importer;
+  }
 
   /**
    * Register text message listener on a VoiceBot instance.
@@ -291,6 +297,13 @@ export class MusicCommandHandler {
       return;
     }
 
+    // Cheap pre-check: only pay a metadata round trip when the URL could be a
+    // playlist. Every other !play would otherwise get slower.
+    if (args.includes('list=') && this.playlistImporter) {
+      const handled = await this.playPlaylist(bot, reply, args);
+      if (handled) return;
+    }
+
     reply('Loading...');
 
     try {
@@ -302,6 +315,82 @@ export class MusicCommandHandler {
       }
     } catch (err: any) {
       reply(`Failed to play: ${err.message}`);
+    }
+  }
+
+  /**
+   * Import a YouTube playlist, playing the first track as soon as it lands and
+   * queueing the rest as they download. Returns false when the URL turns out
+   * not to be a playlist, so the caller falls back to the single-track path.
+   */
+  private async playPlaylist(bot: VoiceBot, reply: ReplyFn, url: string): Promise<boolean> {
+    const importer = this.playlistImporter!;
+    let result;
+    try {
+      result = await importer.start({
+        url,
+        serverConfigId: bot.currentConfig.serverConfigId,
+        musicBotId: bot.currentConfig.id,
+        onTrack: async (song) => {
+          const item = {
+            id: `yt_${song.id}`,
+            title: song.title,
+            artist: song.artist ?? 'Unknown',
+            duration: song.duration ?? 0,
+            filePath: song.filePath,
+            source: 'youtube' as const,
+            sourceUrl: song.sourceUrl,
+          };
+          bot.queue.add(item);
+          if (bot.status !== 'playing' && bot.status !== 'paused') {
+            bot.queue.playAt(bot.queue.length - 1);
+            await bot.play(item);
+          }
+        },
+      });
+    } catch (err: any) {
+      reply(`Playlist import failed: ${err.message}`);
+      return true;
+    }
+
+    if (result.kind === 'not-a-playlist') return false;
+    if (result.kind === 'busy') {
+      reply('⏳ An import is already running for this server. Try again when it finishes.');
+      return true;
+    }
+
+    const { job } = result;
+    const parts = [`📥 Importing "${job.playlistName}" — ${job.total} track(s)`];
+    if (job.skipped) parts.push(`${job.skipped} already in the playlist`);
+    if (job.truncated) parts.push(`${job.truncated} beyond the import limit`);
+    reply(`${parts.join(', ')}. Playback starts with the first one.`);
+
+    void this.reportWhenDone(job.jobId, reply);
+    return true;
+  }
+
+  /** Poll the job and post a single summary when it finishes. */
+  private async reportWhenDone(jobId: string, reply: ReplyFn): Promise<void> {
+    const importer = this.playlistImporter!;
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const job = importer.get(jobId);
+      if (!job) return;
+      if (job.status === 'running') continue;
+
+      const lines = [`✅ Import finished: ${job.done} track(s) added.`];
+      if (job.failures.length) {
+        // Full detail belongs in the web UI; a TeamSpeak channel gets the first
+        // few, or a long playlist turns into a wall of text.
+        const shown = job.failures.slice(0, 5);
+        lines.push(`⚠️ ${job.failures.length} failed:`);
+        for (const f of shown) lines.push(`• ${f.title} — ${f.reason}`);
+        if (job.failures.length > shown.length) {
+          lines.push(`• and ${job.failures.length - shown.length} more (see the web UI)`);
+        }
+      }
+      reply(lines.join('\n'));
+      return;
     }
   }
 
