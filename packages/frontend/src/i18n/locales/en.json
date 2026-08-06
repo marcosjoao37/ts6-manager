@@ -312,7 +312,7 @@
       "watchChannel": "Watch a specific channel",
       "wholeServer": "Whole server (connect / disconnect)",
       "watchChannelPlaceholder": "Channel ID (or leave empty for whole-server)",
-      "watchChannelHint": "Empty = notify on server connect/disconnect, member count covers the whole server. Set = notifications and member count scoped to that channel. The count shows in the bot's nickname, music bots excluded.",
+      "watchChannelHint": "Empty = notify on server connect/disconnect. Set = notify only on join/leave of that channel.",
       "joinMessage": "Join message",
       "leaveMessage": "Leave message",
       "templateVariables": "Variables:",
@@ -1254,5 +1254,14 @@
       "moveDown": "Move down",
       "removeTooltip": "Remove from queue"
     }
+  },
+  "playlistImport": {
+    "button": "Import playlist",
+    "started": "Importing \"{{name}}\" — {{n}} track(s)",
+    "progress": "Importing… {{done}} of {{total}}",
+    "done": "Import finished — {{done}} track(s) added",
+    "skipped": "{{n}} already present",
+    "truncated": "{{n}} beyond the limit",
+    "failed": "Playlist import failed"
   }
 }

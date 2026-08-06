@@ -1,0 +1,50 @@
+{
+  "namespace": "playlistImport",
+  "keys": {
+    "en": {
+      "button": "Import playlist",
+      "started": "Importing \"{{name}}\" — {{n}} track(s)",
+      "progress": "Importing… {{done}} of {{total}}",
+      "done": "Import finished — {{done}} track(s) added",
+      "skipped": "{{n}} already present",
+      "truncated": "{{n}} beyond the limit",
+      "failed": "Playlist import failed"
+    },
+    "fr": {
+      "button": "Importer la playlist",
+      "started": "Import de « {{name}} » — {{n}} piste(s)",
+      "progress": "Import en cours… {{done}} sur {{total}}",
+      "done": "Import terminé — {{done}} piste(s) ajoutée(s)",
+      "skipped": "{{n}} déjà présente(s)",
+      "truncated": "{{n}} au-delà de la limite",
+      "failed": "Échec de l'import de la playlist"
+    },
+    "de": {
+      "button": "Playlist importieren",
+      "started": "Importiere „{{name}}“ — {{n}} Titel",
+      "progress": "Import läuft… {{done}} von {{total}}",
+      "done": "Import abgeschlossen — {{done}} Titel hinzugefügt",
+      "skipped": "{{n}} bereits vorhanden",
+      "truncated": "{{n}} über dem Limit",
+      "failed": "Playlist-Import fehlgeschlagen"
+    },
+    "es": {
+      "button": "Importar lista",
+      "started": "Importando «{{name}}» — {{n}} pista(s)",
+      "progress": "Importando… {{done}} de {{total}}",
+      "done": "Importación terminada — {{done}} pista(s) añadida(s)",
+      "skipped": "{{n}} ya presente(s)",
+      "truncated": "{{n}} por encima del límite",
+      "failed": "Error al importar la lista"
+    },
+    "it": {
+      "button": "Importa playlist",
+      "started": "Importazione di «{{name}}» — {{n}} brano/i",
+      "progress": "Importazione… {{done}} di {{total}}",
+      "done": "Importazione completata — {{done}} brano/i aggiunto/i",
+      "skipped": "{{n}} già presente/i",
+      "truncated": "{{n}} oltre il limite",
+      "failed": "Importazione della playlist non riuscita"
+    }
+  }
+}

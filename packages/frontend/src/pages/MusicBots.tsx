@@ -11,7 +11,7 @@ import {
   useSetShuffle, useSetRepeat,
   usePlayFromQueue, useMoveQueueItem,
 } from '@/hooks/use-music-bots';
-import { useSongs, useUploadSong, useDeleteSong, useYouTubeSearch, useYouTubeDownload, useYouTubeInfo, useYouTubeDownloadBatch } from '@/hooks/use-music-library';
+import { useSongs, useUploadSong, useDeleteSong, useYouTubeSearch, useYouTubeDownload, useYouTubeInfo, useYouTubeDownloadBatch, useImportPlaylist, useImportPlaylistStatus } from '@/hooks/use-music-library';
 import { useRadioStations, useRadioPresets, useCreateRadioStation, useDeleteRadioStation, usePlayRadio } from '@/hooks/use-radio-stations';
 import { usePlaylists, usePlaylist, useCreatePlaylist, useDeletePlaylist, useAddSongToPlaylist, useRemoveSongFromPlaylist } from '@/hooks/use-playlists';
 import { useServers } from '@/hooks/use-servers';
@@ -740,6 +740,9 @@ function LibraryTab() {
 
   const ytInfo = useYouTubeInfo();
   const ytBatchDownload = useYouTubeDownloadBatch();
+  const importPlaylist = useImportPlaylist();
+  const [importJobId, setImportJobId] = useState<string | null>(null);
+  const { data: importJob } = useImportPlaylistStatus(configId ?? null, importJobId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -788,6 +791,17 @@ function LibraryTab() {
     ytDownload.mutate({ configId, url }, {
       onSuccess: () => toast.success(t('musicBots.toast.downloadStarted')),
       onError: () => toast.error(t('musicBots.toast.downloadFailed')),
+    });
+  };
+
+  const handleImportPlaylist = () => {
+    if (!configId || !ytUrl.trim()) return;
+    importPlaylist.mutate({ configId, url: ytUrl.trim() }, {
+      onSuccess: (data: any) => {
+        setImportJobId(data.jobId);
+        toast.success(t('playlistImport.started', { name: data.playlistName, n: data.total }));
+      },
+      onError: (e: any) => toast.error(e?.response?.data?.error || t('playlistImport.failed')),
     });
   };
 
@@ -920,9 +934,35 @@ function LibraryTab() {
                         <><Download className="h-3 w-3 mr-1" /> {t('musicBots.library.downloadSelected', { n: selectedUrlIds.size })}</>
                       )}
                     </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleImportPlaylist}
+                      disabled={importPlaylist.isPending || importJob?.status === 'running'}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      {t('playlistImport.button')}
+                    </Button>
                   </div>
                 )}
               </div>
+              {importJob && (
+                <div className="text-xs space-y-1 rounded-md border border-border p-2">
+                  <div>
+                    {importJob.status === 'running'
+                      ? t('playlistImport.progress', { done: importJob.done, total: importJob.total })
+                      : t('playlistImport.done', { done: importJob.done })}
+                    {importJob.skipped > 0 && ` · ${t('playlistImport.skipped', { n: importJob.skipped })}`}
+                    {importJob.truncated > 0 && ` · ${t('playlistImport.truncated', { n: importJob.truncated })}`}
+                  </div>
+                  {importJob.failures?.length > 0 && (
+                    <ul className="text-destructive space-y-0.5">
+                      {importJob.failures.map((f: any) => (
+                        <li key={f.videoId}>• {f.title} — {f.reason}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               <ScrollArea className="max-h-60">
                 {urlInfo.items.map((item) => (
                   <div

@@ -312,7 +312,7 @@
       "watchChannel": "Monitora un canale specifico",
       "wholeServer": "Intero server (connessione / disconnessione)",
       "watchChannelPlaceholder": "ID canale (o lascia vuoto per l'intero server)",
-      "watchChannelHint": "Vuoto = notifica alla connessione/disconnessione dal server, numero di connessi sull'intero server. Impostato = notifiche e conteggio limitati a quel canale. Il conteggio appare nel nickname del bot, bot musicali esclusi.",
+      "watchChannelHint": "Vuoto = notifica alla connessione/disconnessione dal server. Impostato = notifica solo all'ingresso/uscita da quel canale.",
       "joinMessage": "Messaggio di ingresso",
       "leaveMessage": "Messaggio di uscita",
       "templateVariables": "Variabili:",
@@ -1254,5 +1254,14 @@
       "moveDown": "Sposta giù",
       "removeTooltip": "Rimuovi dalla coda"
     }
+  },
+  "playlistImport": {
+    "button": "Importa playlist",
+    "started": "Importazione di «{{name}}» — {{n}} brano/i",
+    "progress": "Importazione… {{done}} di {{total}}",
+    "done": "Importazione completata — {{done}} brano/i aggiunto/i",
+    "skipped": "{{n}} già presente/i",
+    "truncated": "{{n}} oltre il limite",
+    "failed": "Importazione della playlist non riuscita"
   }
 }
