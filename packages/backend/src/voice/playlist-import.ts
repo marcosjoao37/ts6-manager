@@ -1,8 +1,9 @@
 import { randomUUID } from 'crypto';
+import fs from 'fs';
 import type { PrismaClient } from '../../generated/prisma/index.js';
 import { getYouTubeUrlInfo, downloadYouTube } from './audio/youtube.js';
 import { validateUrl } from '../utils/url-validator.js';
-import { planImport, youtubeWatchUrl, type PlanEntry } from './playlist-import-plan.js';
+import { planImport, youtubeWatchUrl, type ImportPlan, type PlanEntry } from './playlist-import-plan.js';
 import { parseImportCap, MAX_PLAYLIST_IMPORT_KEY } from '../utils/app-settings.js';
 import { MUSIC_DIR } from './music-ops.js';
 
@@ -27,6 +28,8 @@ export interface ImportJob {
 
 export interface ImportedSong {
   id: number;
+  /** YouTube video id. Queue item ids are built from it, not from the DB row. */
+  videoId: string;
   title: string;
   artist: string | null;
   duration: number | null;
@@ -113,7 +116,7 @@ export class PlaylistImporter {
       // off keeps the slot held until run() (and its own error handling)
       // finishes, so the finally below must not release it too.
       handedOff = true;
-      void this.run(job, plan.toImport, req)
+      void this.run(job, plan, req)
         .catch((err: any) => {
           // run()'s per-entry try/catch already shields every track, so this
           // only fires if a future edit adds unguarded work to run(). Without
@@ -135,8 +138,12 @@ export class PlaylistImporter {
     }
   }
 
-  private async run(job: ImportJob, toImport: PlanEntry[], req: ImportRequest): Promise<void> {
-    for (const entry of toImport) {
+  private async run(job: ImportJob, plan: ImportPlan, req: ImportRequest): Promise<void> {
+    // Tracks already in the playlist are emitted first, in playlist order, so
+    // a re-import still plays. They cost no download, so this is instant.
+    let emitted = await this.emitAlreadyPresent(plan.alreadyPresent, req);
+
+    for (const entry of plan.toImport) {
       let song: ImportedSong;
       try {
         song = await this.importOne(entry, req.serverConfigId, job.playlistId!);
@@ -160,7 +167,7 @@ export class PlaylistImporter {
       // that would misreport a track that imported fine.
       if (req.onTrack) {
         try {
-          await req.onTrack(song, job.done - 1);
+          await req.onTrack(song, emitted++);
         } catch (err: any) {
           console.warn(`[PlaylistImport] onTrack callback failed for ${entry.id}: ${err?.message}`);
         }
@@ -169,8 +176,56 @@ export class PlaylistImporter {
     job.status = 'done';
   }
 
+  /**
+   * Hand the already-attached tracks to onTrack before the download loop, and
+   * return the next emission index.
+   *
+   * Idempotency is a *library* contract: a second import of the same playlist
+   * must not duplicate rows. It is not a *playback* contract. `!play` on a
+   * playlist imported yesterday plans zero downloads, so without this the bot
+   * would announce the import and then sit in silence — and a partial
+   * re-import would play only the handful of new tracks.
+   *
+   * job.done is deliberately left alone: it counts what THIS job imported, and
+   * job.skipped already reports this group. Callers with no onTrack (the web
+   * route) do no work here at all.
+   */
+  private async emitAlreadyPresent(entries: PlanEntry[], req: ImportRequest): Promise<number> {
+    const onTrack = req.onTrack;
+    if (!onTrack || entries.length === 0) return 0;
+
+    let emitted = 0;
+    for (const entry of entries) {
+      // Same isolation as the download loop: neither the lookup nor the
+      // playback callback may abort the import that follows.
+      try {
+        const song = await this.prisma.song.findFirst({
+          where: { sourceUrl: entry.url, serverConfigId: req.serverConfigId },
+        });
+        // Attached without a resolvable library row (hand-edited DB): nothing
+        // to play, and nothing to report — the import itself is unaffected.
+        if (!song) continue;
+        await onTrack({
+          id: song.id,
+          videoId: entry.id,
+          title: song.title,
+          artist: song.artist,
+          duration: song.duration,
+          filePath: song.filePath,
+          sourceUrl: entry.url,
+        }, emitted++);
+      } catch (err: any) {
+        console.warn(`[PlaylistImport] replay of already-present ${entry.id} failed: ${err?.message}`);
+      }
+    }
+    return emitted;
+  }
+
   private async importOne(entry: PlanEntry, serverConfigId: number, playlistId: number): Promise<ImportedSong> {
     const { filePath, info } = await downloadYouTube(entry.url, MUSIC_DIR);
+    // Both other download paths record the size; without it the library shows
+    // imported tracks with a blank size.
+    const fileSize = fs.statSync(filePath).size;
 
     // Reuse the library row when this URL is already known for this server, so
     // a track shared by two playlists is stored once. Not an upsert keyed on a
@@ -187,6 +242,7 @@ export class PlaylistImporter {
         filePath,
         source: 'youtube',
         sourceUrl: entry.url,
+        fileSize,
         serverConfigId,
       },
     }));
@@ -203,6 +259,7 @@ export class PlaylistImporter {
 
     return {
       id: song.id,
+      videoId: entry.id,
       title: song.title,
       artist: song.artist,
       duration: song.duration,
