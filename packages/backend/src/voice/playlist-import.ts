@@ -137,10 +137,10 @@ export class PlaylistImporter {
 
   private async run(job: ImportJob, toImport: PlanEntry[], req: ImportRequest): Promise<void> {
     for (const entry of toImport) {
+      let song: ImportedSong;
       try {
-        const song = await this.importOne(entry, req.serverConfigId, job.playlistId!);
+        song = await this.importOne(entry, req.serverConfigId, job.playlistId!);
         job.done++;
-        if (req.onTrack) await req.onTrack(song, job.done - 1);
       } catch (err: any) {
         // Deleted, private and geo-blocked videos are routine in real
         // playlists; one of them must never abort the rest.
@@ -150,6 +150,20 @@ export class PlaylistImporter {
           reason: err?.message ? String(err.message).slice(0, 200) : 'Unknown error',
         });
         console.warn(`[PlaylistImport] ${entry.id} failed: ${err?.message}`);
+        continue;
+      }
+
+      // The track above already succeeded: its Song/PlaylistSong rows are
+      // persisted, so job.done must stand regardless of what onTrack does.
+      // Its own try/catch keeps a playback-layer failure (e.g. the bot
+      // disconnected mid-import) from being recorded as an import failure —
+      // that would misreport a track that imported fine.
+      if (req.onTrack) {
+        try {
+          await req.onTrack(song, job.done - 1);
+        } catch (err: any) {
+          console.warn(`[PlaylistImport] onTrack callback failed for ${entry.id}: ${err?.message}`);
+        }
       }
     }
     job.status = 'done';

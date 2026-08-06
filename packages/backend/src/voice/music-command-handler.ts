@@ -378,6 +378,11 @@ export class MusicCommandHandler {
       if (!job) return;
       if (job.status === 'running') continue;
 
+      if (job.status === 'error') {
+        reply(`❌ Import failed: ${job.error ?? 'Unknown error'}`);
+        return;
+      }
+
       const lines = [`✅ Import finished: ${job.done} track(s) added.`];
       if (job.failures.length) {
         // Full detail belongs in the web UI; a TeamSpeak channel gets the first
