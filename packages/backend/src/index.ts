@@ -14,6 +14,7 @@ import { applyTrustProxy, loadTrustProxy } from './routes/settings.routes.js';
 import { loadSamlRuntime } from './auth/saml/saml-config.js';
 import { config } from './config.js';
 import { setYtCookieFile } from './voice/audio/youtube.js';
+import { PlaylistImporter } from './voice/playlist-import.js';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
@@ -141,6 +142,9 @@ async function main() {
   const voiceBotManager = new VoiceBotManager(prisma, wss);
   app.locals.voiceBotManager = voiceBotManager;
   await voiceBotManager.start();
+
+  const playlistImporter = new PlaylistImporter(prisma);
+  app.locals.playlistImporter = playlistImporter;
 
   // Wire VoiceBotManager into BotEngine for voice action nodes in flows
   botEngine.setVoiceBotManager(voiceBotManager);
