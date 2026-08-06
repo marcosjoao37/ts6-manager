@@ -841,7 +841,7 @@ function LibraryTab() {
   const handleBatchDownload = () => {
     if (!configId || !urlInfo) return;
     const ids = Array.from(selectedUrlIds);
-    const urls = ids.map((id) => `https://youtube.com/watch?v=${id}`);
+    const urls = ids.map((id) => `https://www.youtube.com/watch?v=${id}`);
     setBatchProgress(t('musicBots.library.downloadingProgress', { done: 0, total: urls.length }));
     ytBatchDownload.mutate({ configId, urls }, {
       onSuccess: (data: any) => {
@@ -1007,7 +1007,7 @@ function LibraryTab() {
                     </div>
                     {urlInfo.type === 'video' && (
                       <Button variant="default" size="sm" className="h-7 text-xs shrink-0"
-                        onClick={(e) => { e.stopPropagation(); handleYtDownload(`https://youtube.com/watch?v=${item.id}`); }}
+                        onClick={(e) => { e.stopPropagation(); handleYtDownload(`https://www.youtube.com/watch?v=${item.id}`); }}
                         disabled={ytDownload.isPending}
                       >
                         <Download className="h-3 w-3 mr-1" /> {t('musicBots.library.download')}
@@ -1062,7 +1062,7 @@ function LibraryTab() {
                     <p className="text-[10px] text-muted-foreground">{r.artist} - {formatTime(r.duration)}</p>
                   </div>
                   <Button variant="outline" size="sm" className="h-7 text-xs shrink-0"
-                    onClick={() => handleYtDownload(`https://youtube.com/watch?v=${r.id}`)}
+                    onClick={() => handleYtDownload(`https://www.youtube.com/watch?v=${r.id}`)}
                     disabled={ytDownload.isPending}
                   >
                     <Download className="h-3 w-3 mr-1" /> {t('musicBots.library.download')}
