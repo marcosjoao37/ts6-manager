@@ -127,8 +127,8 @@ const en: BotMessages = {
   radioGenreFallback: 'Radio',
 
   resumed: 'Resumed.',
-  playUsage: 'Usage: !play <youtube-url | youtube-playlist | Spotify link>',
-  invalidUrlUsage: 'Please provide a valid URL. Usage: !play <youtube-url | youtube-playlist | Spotify link>',
+  playUsage: 'Usage: !play <youtube-url | youtube-playlist | Spotify link> [count]',
+  invalidUrlUsage: 'Please provide a valid URL. Usage: !play <youtube-url | youtube-playlist | Spotify link> [count]',
   loading: 'Loading...',
   queued: (artist, title, position) => `Queued: ${artist} - ${title} (position #${position})`,
   nowPlaying: (artist, title) => `Now playing: ${artist} - ${title}`,
@@ -208,7 +208,7 @@ const en: BotMessages = {
 
   helpLines: [
     'Available music commands:',
-    '  !play <url>          Play a YouTube video/playlist or a Spotify link',
+    '  !play <url> [count]  Play a YouTube video/playlist or a Spotify link (default 50 playlist tracks)',
     '  !spotify <link>      Play a Spotify track/album/playlist',
     '  !radio [id]          List radio stations or play one',
     '  !queue [..]          Show/manage the queue (show|play <n>|remove <n>|clear|<url>)',
@@ -256,8 +256,8 @@ const ptBR: BotMessages = {
   radioGenreFallback: 'Rádio',
 
   resumed: 'Retomado.',
-  playUsage: 'Uso: !play <url-do-youtube | playlist-do-youtube | link-do-spotify>',
-  invalidUrlUsage: 'Forneça uma URL válida. Uso: !play <url-do-youtube | playlist-do-youtube | link-do-spotify>',
+  playUsage: 'Uso: !play <url-do-youtube | playlist-do-youtube | link-do-spotify> [quantidade]',
+  invalidUrlUsage: 'Forneça uma URL válida. Uso: !play <url-do-youtube | playlist-do-youtube | link-do-spotify> [quantidade]',
   loading: 'Carregando...',
   queued: (artist, title, position) => `Na fila: ${artist} - ${title} (posição #${position})`,
   nowPlaying: (artist, title) => `Tocando agora: ${artist} - ${title}`,
@@ -337,7 +337,7 @@ const ptBR: BotMessages = {
 
   helpLines: [
     'Comandos de música disponíveis:',
-    '  !play <url>          Tocar um vídeo/playlist do YouTube ou um link do Spotify',
+    '  !play <url> [qtde]   Tocar um vídeo/playlist do YouTube ou um link do Spotify (padrão 50 faixas da playlist)',
     '  !spotify <link>      Tocar uma faixa/álbum/playlist do Spotify',
     '  !radio [id]          Listar estações de rádio ou tocar uma',
     '  !queue [..]          Ver/gerenciar a fila (show|play <n>|remove <n>|clear|<url>)',

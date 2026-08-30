@@ -101,4 +101,22 @@ describe('downloadAndEnqueue', () => {
     expect(queued).toBe(false);
     expect(bot.play).toHaveBeenCalledWith(expect.objectContaining({ id: 'yt_vid1' }));
   });
+
+  it('limits playlist tracks to the requested count', async () => {
+    const bot = fakeBot('connected');
+    const { playlist } = await downloadAndEnqueue(
+      prisma, bot, 'https://www.youtube.com/watch?v=abc123&list=PL123', { playlistLimit: 1 },
+    );
+    expect(playlist?.added).toBe(1);
+    expect(playlist?.total).toBe(1);
+    expect(bot.queue.length).toBe(1);
+  });
+
+  it('defaults playlist tracks to the 50-track limit', async () => {
+    const bot = fakeBot('connected');
+    const { playlist } = await downloadAndEnqueue(
+      prisma, bot, 'https://www.youtube.com/watch?v=abc123&list=PL123',
+    );
+    expect(playlist?.added).toBe(2); // mock returns 2 tracks, under the default
+  });
 });

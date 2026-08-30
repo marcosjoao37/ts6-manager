@@ -35,6 +35,17 @@ function formatTime(totalSeconds: number): string {
   return `${m}:${sec}`;
 }
 
+/** Parses `!play <url> [count]` into the URL and the optional track limit. */
+function parseCommandUrlAndCount(args: string): { url: string; count?: number } {
+  const tokens = tokenizeArgs(args);
+  const url = tokens[0] ?? '';
+  const count = tokens.length > 1 ? parseInt(tokens[1], 10) : undefined;
+  return {
+    url,
+    count: typeof count === 'number' && Number.isFinite(count) && count > 0 ? count : undefined,
+  };
+}
+
 /** Sends a reply back to wherever the command came from (private or channel). */
 type ReplyFn = (msg: string) => void;
 
@@ -279,13 +290,15 @@ export class MusicCommandHandler {
       return;
     }
 
+    const { url, count } = parseCommandUrlAndCount(args);
+
     // Spotify links are metadata-only: delegate to the Spotify→YouTube path
-    if (isSpotifyUrl(args)) {
-      await this.handleSpotify(bot, reply, args);
+    if (isSpotifyUrl(url)) {
+      await this.handleSpotify(bot, reply, url, count);
       return;
     }
 
-    if (!args.startsWith('http://') && !args.startsWith('https://')) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
       reply(this.messages.invalidUrlUsage);
       return;
     }
@@ -293,7 +306,7 @@ export class MusicCommandHandler {
     reply(this.messages.loading);
 
     try {
-      const result = await downloadAndEnqueue(this.prisma, bot, args);
+      const result = await downloadAndEnqueue(this.prisma, bot, url, { playlistLimit: count });
       if (result.playlist) {
         reply(result.queued
           ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
@@ -308,7 +321,7 @@ export class MusicCommandHandler {
     }
   }
 
-  private async handleSpotify(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
+  private async handleSpotify(bot: VoiceBot, reply: ReplyFn, args: string, limit?: number): Promise<void> {
     if (!args) {
       reply(this.messages.spotifyUsage);
       return;
@@ -323,7 +336,7 @@ export class MusicCommandHandler {
     reply(this.messages.resolvingSpotify);
 
     try {
-      const result = await enqueueSpotify(this.prisma, bot, config, args);
+      const result = await enqueueSpotify(this.prisma, bot, config, args, limit);
       if (result.type === 'album') {
         reply(this.messages.spotifyAlbum(result.name, result.added, result.total));
       } else if (result.type === 'playlist') {

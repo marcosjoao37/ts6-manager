@@ -353,7 +353,7 @@ When a music bot is connected to a channel, users in that channel can control it
 |---------|-------------|
 | `!radio` | List available radio stations |
 | `!radio <id>` | Play a radio station |
-| `!play <url>` | Play a YouTube / YouTube Music video or playlist URL |
+| `!play <url> [count]` | Play a YouTube / YouTube Music video or playlist URL (default playlist limit: 50 tracks) |
 | `!play` | Resume paused playback |
 | `!spotify <url>` | Play from a Spotify track/album/playlist link |
 | `!queue <url>` / `!add <url>` | Add a track to the queue |

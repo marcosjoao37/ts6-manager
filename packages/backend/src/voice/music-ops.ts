@@ -15,6 +15,16 @@ export const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
 
 const SPOTIFY_REQUEST_TIMEOUT_MS = 10000;
 
+/** Default number of tracks pulled from each playlist when no count is given. */
+export const DEFAULT_PLAYLIST_LIMIT = 50;
+
+function normalizePlaylistLimit(value?: number): number {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  return DEFAULT_PLAYLIST_LIMIT;
+}
+
 /** Load Spotify credentials from the DB, or null if disabled / not set. */
 export async function loadSpotifyConfig(prisma: PrismaClient): Promise<(SpotifyConfig & { maxAlbumTracks: number }) | null> {
   const s = await prisma.spotifySettings.findFirst();
@@ -52,11 +62,15 @@ export async function enqueueSpotify(
   bot: VoiceBot,
   config: SpotifyConfig & { maxAlbumTracks: number },
   url: string,
+  playlistLimit?: number,
 ): Promise<SpotifyEnqueueResult> {
   const resolved = await resolveSpotifyInput(url, config);
-  // Albums are capped by the admin setting; playlists are queued in full,
-  // mirroring the behaviour of YouTube playlist URLs.
-  const tracks = resolved.type === 'album' ? resolved.tracks.slice(0, config.maxAlbumTracks) : resolved.tracks;
+  let tracks = resolved.tracks;
+  if (resolved.type === 'album') {
+    tracks = tracks.slice(0, config.maxAlbumTracks);
+  } else if (resolved.type === 'playlist') {
+    tracks = tracks.slice(0, normalizePlaylistLimit(playlistLimit));
+  }
 
   const failed: string[] = [];
   let added = 0;
@@ -147,11 +161,16 @@ function makeYouTubeQueueItem(info: YouTubeInfo, filePath: string, url: string):
  * every track is downloaded/enqueued. `forceStart` makes the first track
  * start immediately even if the bot is already playing.
  */
+export type DownloadEnqueueOptions = {
+  forceStart?: boolean;
+  playlistLimit?: number;
+};
+
 export async function downloadAndEnqueue(
   prisma: PrismaClient,
   bot: VoiceBot,
   url: string,
-  options: { forceStart?: boolean } = {},
+  options: DownloadEnqueueOptions = {},
 ): Promise<PlayResult> {
   if (isYouTubePlaylistUrl(url)) {
     return enqueueYouTubePlaylist(prisma, bot, url, options);
@@ -175,9 +194,9 @@ async function enqueueYouTubePlaylist(
   prisma: PrismaClient,
   bot: VoiceBot,
   url: string,
-  options: { forceStart?: boolean },
+  options: DownloadEnqueueOptions,
 ): Promise<PlayResult> {
-  const videos = await getYouTubePlaylistVideos(url);
+  const videos = (await getYouTubePlaylistVideos(url)).slice(0, normalizePlaylistLimit(options.playlistLimit));
   if (videos.length === 0) {
     throw new Error('Could not read YouTube playlist');
   }
