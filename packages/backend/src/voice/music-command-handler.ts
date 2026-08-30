@@ -2,7 +2,7 @@ import type { PrismaClient } from '../../generated/prisma/index.js';
 import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
-import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } from './music-ops.js';
+import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify, cancelDownloadsForBot } from './music-ops.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
@@ -54,6 +54,7 @@ const MUSIC_COMMANDS = new Set([
   'vol', 'volume', 'np', 'nowplaying', 'queue', 'add',
   'stream', 'stopstream', 'viewers',
   'move', 'moveall', 'channels', 'notif',
+  'stopdl', 'stopdownload', 'cancel', 'playlist',
   'help', 'aide', 'info',
 ]);
 
@@ -195,6 +196,14 @@ export class MusicCommandHandler {
         case 'add':
           await this.handleQueue(bot, reply, args);
           break;
+        case 'playlist':
+          this.showQueue(bot, reply);
+          break;
+        case 'stopdl':
+        case 'stopdownload':
+        case 'cancel':
+          await this.handleStopDownload(botId, reply);
+          break;
         case 'stream':
           await this.handleStream(bot, reply, args);
           break;
@@ -310,7 +319,14 @@ export class MusicCommandHandler {
     reply(this.messages.loading);
 
     try {
-      const result = await downloadAndEnqueue(this.prisma, bot, url, { playlistLimit: count });
+      const result = await downloadAndEnqueue(this.prisma, bot, url, {
+        playlistLimit: count,
+        onProgress: (message) => reply(message),
+      });
+      if (result.cancelled) {
+        reply(this.messages.downloadCancelled);
+        return;
+      }
       if (result.playlist) {
         reply(result.queued
           ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
@@ -337,10 +353,12 @@ export class MusicCommandHandler {
       return;
     }
 
-    reply(this.messages.resolvingSpotify);
-
     try {
-      const result = await enqueueSpotify(this.prisma, bot, config, args, limit);
+      const result = await enqueueSpotify(this.prisma, bot, config, args, limit, undefined, (message) => reply(message));
+      if (result.cancelled) {
+        reply(this.messages.downloadCancelled);
+        return;
+      }
       if (result.type === 'album') {
         reply(this.messages.spotifyAlbum(result.name, result.added, result.total));
       } else if (result.type === 'playlist') {
@@ -433,7 +451,13 @@ export class MusicCommandHandler {
     reply(this.messages.loading);
 
     try {
-      const result = await downloadAndEnqueue(this.prisma, bot, args);
+      const result = await downloadAndEnqueue(this.prisma, bot, args, {
+        onProgress: (message) => reply(message),
+      });
+      if (result.cancelled) {
+        reply(this.messages.downloadCancelled);
+        return;
+      }
       if (result.playlist) {
         reply(result.queued
           ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
@@ -446,6 +470,11 @@ export class MusicCommandHandler {
     } catch (err: any) {
       reply(this.messages.failedToQueue(err.message));
     }
+  }
+
+  private async handleStopDownload(botId: number, reply: ReplyFn): Promise<void> {
+    const cancelled = cancelDownloadsForBot(botId);
+    reply(cancelled ? this.messages.downloadCancelled : this.messages.noActiveDownload);
   }
 
   private handleStop(bot: VoiceBot, reply: ReplyFn): void {

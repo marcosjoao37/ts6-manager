@@ -45,6 +45,8 @@ export interface BotMessages {
   queueCleared: string;
   queueUsage: string;
   failedToQueue: (message: string) => string;
+  downloadCancelled: string;
+  noActiveDownload: string;
 
   // Playback
   playbackStopped: string;
@@ -157,6 +159,8 @@ const en: BotMessages = {
   queueCleared: 'Queue cleared.',
   queueUsage: 'Usage: !queue [show|play <n>|remove <n>|clear|<url>]',
   failedToQueue: (m) => `Failed to queue: ${m}`,
+  downloadCancelled: 'Download cancelled.',
+  noActiveDownload: 'No active download to cancel.',
 
   playbackStopped: 'Playback stopped.',
   paused: 'Paused.',
@@ -212,6 +216,8 @@ const en: BotMessages = {
     '  !spotify <link>      Play a Spotify track/album/playlist',
     '  !radio [id]          List radio stations or play one',
     '  !queue [..]          Show/manage the queue (show|play <n>|remove <n>|clear|<url>)',
+    '  !playlist            Show the current playlist/queue',
+    '  !stopdl              Cancel the current playlist download',
     '  !add <url>           Add a track to the queue',
     '  !skip / !next        Next track',
     '  !prev                Previous track',
@@ -286,6 +292,8 @@ const ptBR: BotMessages = {
   queueCleared: 'Fila limpa.',
   queueUsage: 'Uso: !queue [show|play <n>|remove <n>|clear|<url>]',
   failedToQueue: (m) => `Falha ao adicionar à fila: ${m}`,
+  downloadCancelled: 'Download cancelado.',
+  noActiveDownload: 'Nenhum download ativo para cancelar.',
 
   playbackStopped: 'Reprodução parada.',
   paused: 'Pausado.',
@@ -341,6 +349,8 @@ const ptBR: BotMessages = {
     '  !spotify <link>      Tocar uma faixa/álbum/playlist do Spotify',
     '  !radio [id]          Listar estações de rádio ou tocar uma',
     '  !queue [..]          Ver/gerenciar a fila (show|play <n>|remove <n>|clear|<url>)',
+    '  !playlist            Mostrar a playlist/fila atual',
+    '  !stopdl              Cancelar o download da playlist atual',
     '  !add <url>           Adicionar uma faixa à fila',
     '  !skip / !next        Próxima faixa',
     '  !prev                Faixa anterior',

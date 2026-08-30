@@ -79,7 +79,11 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
  * cycles from the realtime playback pipeline; latency-sensitive callers
  * (e.g. stream URL resolution) pass lowPriority: false.
  */
-export function runYtDlp(args: string[], timeoutMs: number, opts: { lowPriority?: boolean } = {}): Promise<string> {
+export function runYtDlp(
+  args: string[],
+  timeoutMs: number,
+  opts: { lowPriority?: boolean; signal?: AbortSignal } = {},
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const useNice = (opts.lowPriority ?? true) && process.platform !== "win32";
     const proc = useNice
@@ -89,31 +93,57 @@ export function runYtDlp(args: string[], timeoutMs: number, opts: { lowPriority?
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let cancelled = false;
+    let settled = false;
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      if (opts.signal) opts.signal.removeEventListener("abort", onAbort);
+    };
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+
+    const onAbort = () => {
+      cancelled = true;
+      proc.kill("SIGKILL");
+    };
 
     const timer = setTimeout(() => {
       timedOut = true;
       proc.kill("SIGKILL");
     }, timeoutMs);
 
+    if (opts.signal) {
+      opts.signal.addEventListener("abort", onAbort, { once: true });
+    }
+
     proc.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
     proc.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
 
     proc.on("error", (err) => {
-      clearTimeout(timer);
-      reject(new Error(`yt-dlp not found: ${err.message}`));
+      finish(() => reject(new Error(`yt-dlp not found: ${err.message}`)));
     });
 
     proc.on("close", (code) => {
-      clearTimeout(timer);
-      if (timedOut) {
-        console.error(`[yt-dlp] Timed out after ${timeoutMs / 1000}s: yt-dlp ${args.join(" ")}`);
-        return reject(new Error(`yt-dlp timed out after ${timeoutMs / 1000}s`));
-      }
-      if (code !== 0) {
-        console.error(`[yt-dlp] Failed (code ${code}): yt-dlp ${args.join(" ")}\n${stderr.slice(-2000)}`);
-        return reject(new Error(`yt-dlp failed (code ${code}): ${lastErrorLine(stderr)}`));
-      }
-      resolve(stdout);
+      finish(() => {
+        if (cancelled) {
+          console.log(`[yt-dlp] Cancelled: yt-dlp ${args.join(" ")}`);
+          return reject(new Error("yt-dlp cancelled"));
+        }
+        if (timedOut) {
+          console.error(`[yt-dlp] Timed out after ${timeoutMs / 1000}s: yt-dlp ${args.join(" ")}`);
+          return reject(new Error(`yt-dlp timed out after ${timeoutMs / 1000}s`));
+        }
+        if (code !== 0) {
+          console.error(`[yt-dlp] Failed (code ${code}): yt-dlp ${args.join(" ")}\n${stderr.slice(-2000)}`);
+          return reject(new Error(`yt-dlp failed (code ${code}): ${lastErrorLine(stderr)}`));
+        }
+        resolve(stdout);
+      });
     });
   });
 }
@@ -180,20 +210,25 @@ const inFlight = new Map<string, Promise<{ filePath: string; info: YouTubeInfo }
 /**
  * Download audio from a YouTube URL using yt-dlp
  */
-export function downloadYouTube(url: string, outputDir: string): Promise<{ filePath: string; info: YouTubeInfo }> {
+export function downloadYouTube(
+  url: string,
+  outputDir: string,
+  signal?: AbortSignal,
+): Promise<{ filePath: string; info: YouTubeInfo }> {
   const existing = inFlight.get(url);
   if (existing) return existing;
 
-  const task = doDownload(url, outputDir).finally(() => inFlight.delete(url));
+  const task = doDownload(url, outputDir, signal).finally(() => inFlight.delete(url));
   inFlight.set(url, task);
   return task;
 }
 
-async function doDownload(url: string, outputDir: string): Promise<{ filePath: string; info: YouTubeInfo }> {
+async function doDownload(url: string, outputDir: string, signal?: AbortSignal): Promise<{ filePath: string; info: YouTubeInfo }> {
   // First get info
   const infoJson = await runYtDlp(
     [...getCookieArgs(), "--dump-json", "--no-playlist", url],
     INFO_TIMEOUT_MS,
+    { signal },
   );
 
   let parsed: any;
@@ -238,6 +273,7 @@ async function doDownload(url: string, outputDir: string): Promise<{ filePath: s
       url,
     ],
     DOWNLOAD_TIMEOUT_MS,
+    { signal },
   );
 
   // yt-dlp may use different extensions, find the actual file
@@ -277,10 +313,11 @@ function parseYouTubeDumpJson(output: string): YouTubeSearchResult[] {
 /**
  * Get the flat video list for a YouTube playlist URL (or a single video URL).
  */
-export async function getYouTubePlaylistVideos(url: string): Promise<YouTubeSearchResult[]> {
+export async function getYouTubePlaylistVideos(url: string, signal?: AbortSignal): Promise<YouTubeSearchResult[]> {
   const output = await runYtDlp(
     [...getCookieArgs(), "--dump-json", "--flat-playlist", "--no-download", url],
     INFO_TIMEOUT_MS,
+    { signal },
   );
   return parseYouTubeDumpJson(output);
 }
