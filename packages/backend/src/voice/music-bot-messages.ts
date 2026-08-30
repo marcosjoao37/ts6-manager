@@ -47,6 +47,13 @@ export interface BotMessages {
   failedToQueue: (message: string) => string;
   downloadCancelled: string;
   noActiveDownload: string;
+  savedPlaylistsHeader: (count: number) => string;
+  savedPlaylistLine: (id: number, name: string, songCount: number) => string;
+  savedPlaylistSaved: (name: string, songCount: number) => string;
+  savedPlaylistNotFound: string;
+  savedPlaylistUsage: string;
+  savedPlaylistLoaded: (name: string, songCount: number) => string;
+  savedNoPlaylists: string;
 
   // Playback
   playbackStopped: string;
@@ -161,6 +168,13 @@ const en: BotMessages = {
   failedToQueue: (m) => `Failed to queue: ${m}`,
   downloadCancelled: 'Download cancelled.',
   noActiveDownload: 'No active download to cancel.',
+  savedPlaylistsHeader: (count) => `Saved playlists (${count}):`,
+  savedPlaylistLine: (id, name, songCount) => `  [${id}] ${name} (${songCount} tracks)`,
+  savedPlaylistSaved: (name, songCount) => `Saved playlist: ${name} (${songCount} tracks)`,
+  savedPlaylistNotFound: 'Saved playlist not found.',
+  savedPlaylistUsage: 'Usage: !savedplay <id>',
+  savedPlaylistLoaded: (name, songCount) => `Loaded saved playlist: ${name} (${songCount} tracks)`,
+  savedNoPlaylists: 'No saved playlists yet.',
 
   playbackStopped: 'Playback stopped.',
   paused: 'Paused.',
@@ -217,6 +231,8 @@ const en: BotMessages = {
     '  !radio [id]          List radio stations or play one',
     '  !queue [..]          Show/manage the queue (show|play <n>|remove <n>|clear|<url>)',
     '  !playlist            Show the current playlist/queue',
+    '  !saved               List saved playlists/albums',
+    '  !savedplay <id>      Play a saved playlist/album',
     '  !stopdl              Cancel the current playlist download',
     '  !add <url>           Add a track to the queue',
     '  !skip / !next        Next track',
@@ -294,6 +310,13 @@ const ptBR: BotMessages = {
   failedToQueue: (m) => `Falha ao adicionar à fila: ${m}`,
   downloadCancelled: 'Download cancelado.',
   noActiveDownload: 'Nenhum download ativo para cancelar.',
+  savedPlaylistsHeader: (count) => `Playlists salvas (${count}):`,
+  savedPlaylistLine: (id, name, songCount) => `  [${id}] ${name} (${songCount} faixas)`,
+  savedPlaylistSaved: (name, songCount) => `Playlist salva: ${name} (${songCount} faixas)`,
+  savedPlaylistNotFound: 'Playlist salva não encontrada.',
+  savedPlaylistUsage: 'Uso: !savedplay <id>',
+  savedPlaylistLoaded: (name, songCount) => `Playlist salva carregada: ${name} (${songCount} faixas)`,
+  savedNoPlaylists: 'Nenhuma playlist salva ainda.',
 
   playbackStopped: 'Reprodução parada.',
   paused: 'Pausado.',
@@ -350,6 +373,8 @@ const ptBR: BotMessages = {
     '  !radio [id]          Listar estações de rádio ou tocar uma',
     '  !queue [..]          Ver/gerenciar a fila (show|play <n>|remove <n>|clear|<url>)',
     '  !playlist            Mostrar a playlist/fila atual',
+    '  !saved               Listar playlists/álbuns salvos',
+    '  !savedplay <id>      Tocar uma playlist/álbum salvo',
     '  !stopdl              Cancelar o download da playlist atual',
     '  !add <url>           Adicionar uma faixa à fila',
     '  !skip / !next        Próxima faixa',

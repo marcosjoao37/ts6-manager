@@ -3,6 +3,7 @@ import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
 import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify, cancelDownloadsForBot } from './music-ops.js';
+import { saveQueueItemsAsPlaylist, listSavedPlaylists, loadSavedPlaylist } from './saved-playlists.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
@@ -56,6 +57,7 @@ const MUSIC_COMMANDS = new Set([
   'stream', 'stopstream', 'viewers',
   'move', 'moveall', 'channels', 'notif',
   'stopdl', 'stopdownload', 'cancel', 'playlist',
+  'saved', 'savedplay',
   'help', 'aide', 'info',
 ]);
 
@@ -137,6 +139,7 @@ export class MusicCommandHandler {
 
     const args = parts.slice(1).join(' ').trim();
     const userClid = parseInt(data.invokerid || '0');
+    const userName = String(data.invokername || data.invokeruid || userClid || 'unknown');
     if (!userClid) return;
 
     // Ignore messages from ourselves (the bot)
@@ -172,10 +175,10 @@ export class MusicCommandHandler {
           await this.handleRadio(botId, bot, reply, args);
           break;
         case 'play':
-          await this.handlePlay(bot, reply, args);
+          await this.handlePlay(bot, reply, args, userName);
           break;
         case 'spotify':
-          await this.handleSpotify(bot, reply, args);
+          await this.handleSpotify(bot, reply, args, undefined, userName);
           break;
         case 'stop':
           this.handleStop(bot, reply);
@@ -200,10 +203,16 @@ export class MusicCommandHandler {
           break;
         case 'queue':
         case 'add':
-          await this.handleQueue(bot, reply, args);
+          await this.handleQueue(bot, reply, args, userName);
           break;
         case 'playlist':
           this.showQueue(bot, reply);
+          break;
+        case 'saved':
+          await this.handleSavedPlaylists(bot, reply);
+          break;
+        case 'savedplay':
+          await this.handleSavedPlay(bot, reply, args);
           break;
         case 'stopdl':
         case 'stopdownload':
@@ -298,7 +307,7 @@ export class MusicCommandHandler {
     reply(this.messages.nowPlayingRadio(station.name));
   }
 
-  private async handlePlay(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
+  private async handlePlay(bot: VoiceBot, reply: ReplyFn, args: string, userName?: string): Promise<void> {
     if (!args) {
       if (bot.status === 'paused') {
         bot.resume();
@@ -313,7 +322,7 @@ export class MusicCommandHandler {
 
     // Spotify links are metadata-only: delegate to the Spotify→YouTube path
     if (isSpotifyUrl(url)) {
-      await this.handleSpotify(bot, reply, url, count);
+      await this.handleSpotify(bot, reply, url, count, userName);
       return;
     }
 
@@ -324,6 +333,7 @@ export class MusicCommandHandler {
 
     reply(this.messages.loading);
 
+    const queueStart = bot.queue.length;
     try {
       const result = await downloadAndEnqueue(this.prisma, bot, url, {
         playlistLimit: count,
@@ -337,6 +347,19 @@ export class MusicCommandHandler {
         reply(result.queued
           ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
           : this.messages.playlistNowPlaying(result.playlist.added, result.playlist.total, result.playlist.failed.length));
+
+        const newItems = bot.queue.getAll().slice(queueStart);
+        const serverConfigId = bot.currentConfig.serverConfigId;
+        if (serverConfigId && userName && newItems.length > 0) {
+          try {
+            const saved = await saveQueueItemsAsPlaylist(
+              this.prisma, bot.id, serverConfigId, userName, null, newItems,
+            );
+            if (saved) reply(this.messages.savedPlaylistSaved(saved.name, saved.songCount));
+          } catch (err: any) {
+            console.error(`[MusicCmd] Failed to save playlist: ${err.message}`);
+          }
+        }
       } else if (result.queued) {
         reply(this.messages.queued(result.item.artist ?? '', result.item.title, bot.queue.length));
       } else {
@@ -347,7 +370,7 @@ export class MusicCommandHandler {
     }
   }
 
-  private async handleSpotify(bot: VoiceBot, reply: ReplyFn, args: string, limit?: number): Promise<void> {
+  private async handleSpotify(bot: VoiceBot, reply: ReplyFn, args: string, limit?: number, userName?: string): Promise<void> {
     if (!args) {
       reply(this.messages.spotifyUsage);
       return;
@@ -359,6 +382,7 @@ export class MusicCommandHandler {
       return;
     }
 
+    const queueStart = bot.queue.length;
     try {
       const result = await enqueueSpotify(this.prisma, bot, config, args, limit, undefined, (message) => reply(message));
       if (result.cancelled) {
@@ -373,6 +397,21 @@ export class MusicCommandHandler {
         reply(result.firstStarted ? this.messages.spotifyNowPlaying(result.name) : this.messages.spotifyQueued(result.name));
       } else {
         reply(this.messages.spotifyFailure(result.failed[0]));
+      }
+
+      if (result.type === 'album' || result.type === 'playlist') {
+        const newItems = bot.queue.getAll().slice(queueStart);
+        const serverConfigId = bot.currentConfig.serverConfigId;
+        if (serverConfigId && userName && newItems.length > 0) {
+          try {
+            const saved = await saveQueueItemsAsPlaylist(
+              this.prisma, bot.id, serverConfigId, userName, result.name, newItems,
+            );
+            if (saved) reply(this.messages.savedPlaylistSaved(saved.name, saved.songCount));
+          } catch (err: any) {
+            console.error(`[MusicCmd] Failed to save Spotify playlist: ${err.message}`);
+          }
+        }
       }
     } catch (err: any) {
       reply(this.messages.spotifyFailed(err.message));
@@ -397,7 +436,7 @@ export class MusicCommandHandler {
     reply(this.messages.queueHeader(items.length) + '\n' + lines.join('\n'));
   }
 
-  private async handleQueue(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
+  private async handleQueue(bot: VoiceBot, reply: ReplyFn, args: string, userName?: string): Promise<void> {
     // No args or "show" — display current queue
     if (!args || args.toLowerCase() === 'show') {
       this.showQueue(bot, reply);
@@ -444,7 +483,7 @@ export class MusicCommandHandler {
 
     // Spotify links are metadata-only: resolve through the Spotify path
     if (isSpotifyUrl(args)) {
-      await this.handleSpotify(bot, reply, args);
+      await this.handleSpotify(bot, reply, args, undefined, userName);
       return;
     }
 
@@ -456,6 +495,7 @@ export class MusicCommandHandler {
 
     reply(this.messages.loading);
 
+    const queueStart = bot.queue.length;
     try {
       const result = await downloadAndEnqueue(this.prisma, bot, args, {
         onProgress: (message) => reply(message),
@@ -468,6 +508,19 @@ export class MusicCommandHandler {
         reply(result.queued
           ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
           : this.messages.playlistNowPlaying(result.playlist.added, result.playlist.total, result.playlist.failed.length));
+
+        const newItems = bot.queue.getAll().slice(queueStart);
+        const serverConfigId = bot.currentConfig.serverConfigId;
+        if (serverConfigId && userName && newItems.length > 0) {
+          try {
+            const saved = await saveQueueItemsAsPlaylist(
+              this.prisma, bot.id, serverConfigId, userName, null, newItems,
+            );
+            if (saved) reply(this.messages.savedPlaylistSaved(saved.name, saved.songCount));
+          } catch (err: any) {
+            console.error(`[MusicCmd] Failed to save playlist: ${err.message}`);
+          }
+        }
       } else if (result.queued) {
         reply(this.messages.queued(result.item.artist ?? '', result.item.title, bot.queue.length));
       } else {
@@ -481,6 +534,46 @@ export class MusicCommandHandler {
   private async handleStopDownload(botId: number, reply: ReplyFn): Promise<void> {
     const cancelled = cancelDownloadsForBot(botId);
     reply(cancelled ? this.messages.downloadCancelled : this.messages.noActiveDownload);
+  }
+
+  private async handleSavedPlaylists(bot: VoiceBot, reply: ReplyFn): Promise<void> {
+    const playlists = await listSavedPlaylists(this.prisma, bot.id);
+    if (playlists.length === 0) {
+      reply(this.messages.savedNoPlaylists);
+      return;
+    }
+    const lines = playlists.map((p) => this.messages.savedPlaylistLine(p.id, p.name, p.songCount));
+    reply(this.messages.savedPlaylistsHeader(playlists.length) + '\n' + lines.join('\n'));
+  }
+
+  private async handleSavedPlay(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
+    const id = parseInt(args, 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      reply(this.messages.savedPlaylistUsage);
+      return;
+    }
+
+    const [playlist, items] = await Promise.all([
+      this.prisma.playlist.findUnique({ where: { id }, select: { name: true } }),
+      loadSavedPlaylist(this.prisma, id),
+    ]);
+
+    if (!playlist || items.length === 0) {
+      reply(this.messages.savedPlaylistNotFound);
+      return;
+    }
+
+    const firstIndex = bot.queue.length;
+    bot.queue.addMany(items);
+
+    if (bot.status === 'playing' || bot.status === 'paused') {
+      reply(this.messages.savedPlaylistLoaded(playlist.name, items.length));
+      return;
+    }
+
+    const first = bot.queue.playAt(firstIndex);
+    if (first) await bot.play(first);
+    reply(this.messages.savedPlaylistLoaded(playlist.name, items.length));
   }
 
   private handleStop(bot: VoiceBot, reply: ReplyFn): void {

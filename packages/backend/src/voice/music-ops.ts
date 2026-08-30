@@ -281,6 +281,7 @@ async function enqueueYouTubePlaylist(
     let firstItem: QueueItem | null = null;
     let added = 0;
     let cancelled = false;
+    let firstStarted = false;
 
     for (let i = 0; i < videos.length; i++) {
       if (controller.signal.aborted) {
@@ -299,6 +300,14 @@ async function enqueueYouTubePlaylist(
         if (!firstItem) firstItem = item;
         added++;
         notify(options.onProgress, `Downloaded ${i + 1}/${videos.length}: ${video.title || video.id}`);
+
+        // Start the first track as soon as it is downloaded while the rest
+        // continue to be fetched and queued.
+        if (!firstStarted && bot.status !== 'playing' && bot.status !== 'paused') {
+          bot.queue.playAt(firstIndex);
+          await bot.play(item);
+          firstStarted = true;
+        }
       } catch (err: any) {
         failed.push(`${video.title || video.id}: ${err.message}`);
       }
@@ -324,8 +333,10 @@ async function enqueueYouTubePlaylist(
     const shouldStart = options.forceStart || (bot.status !== 'playing' && bot.status !== 'paused');
     if (!shouldStart) return { item: firstItem, queued: true, playlist, cancelled };
 
-    bot.queue.playAt(firstIndex);
-    await bot.play(firstItem);
+    if (!firstStarted) {
+      bot.queue.playAt(firstIndex);
+      await bot.play(firstItem);
+    }
     return { item: firstItem, queued: false, playlist, cancelled };
   } finally {
     clearDownloadController(bot.id, controller);
