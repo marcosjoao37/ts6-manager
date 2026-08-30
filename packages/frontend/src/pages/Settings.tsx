@@ -1389,8 +1389,8 @@ function MusicCommandsTab() {
   const { data: groupsData } = useServerGroups();
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low' }>({
-    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal',
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low'; downloadRateLimitKbps: string }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal', downloadRateLimitKbps: '',
   });
 
   const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
@@ -1403,6 +1403,7 @@ function MusicCommandsTab() {
       botLanguage: settings.botLanguage ?? 'en',
       moveBotToRequesterChannel: settings.moveBotToRequesterChannel ?? false,
       audioQuality: settings.audioQuality ?? 'normal',
+      downloadRateLimitKbps: settings.downloadRateLimitKbps ? String(settings.downloadRateLimitKbps) : '',
     });
   }
 
@@ -1414,6 +1415,7 @@ function MusicCommandsTab() {
       botLanguage: form.botLanguage,
       moveBotToRequesterChannel: form.moveBotToRequesterChannel,
       audioQuality: form.audioQuality,
+      downloadRateLimitKbps: form.downloadRateLimitKbps === '' ? null : parseInt(form.downloadRateLimitKbps),
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['music-command-settings'] });
@@ -1488,6 +1490,13 @@ function MusicCommandsTab() {
               <SelectItem value="low">{t('settings.musicCommands.audioQualityLow')}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.musicCommands.downloadRateLimit')}</Label>
+          <Input className="h-8 text-xs w-40" type="number" min={0} placeholder="0" value={form.downloadRateLimitKbps}
+            onChange={(e) => setForm((f) => ({ ...f, downloadRateLimitKbps: e.target.value }))} />
+          <p className="text-[10px] text-muted-foreground">{t('settings.musicCommands.downloadRateLimitHint')}</p>
         </div>
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>

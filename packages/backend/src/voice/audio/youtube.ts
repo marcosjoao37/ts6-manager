@@ -38,6 +38,20 @@ export function getCookieArgs(): string[] {
   return args;
 }
 
+let ytDlpRateLimitKbps: number | null = null;
+
+export function setYtDlpRateLimit(kbps: number | null): void {
+  if (kbps !== null && (typeof kbps !== 'number' || !Number.isFinite(kbps) || kbps <= 0)) {
+    kbps = null;
+  }
+  ytDlpRateLimitKbps = kbps;
+  console.log(`[yt-dlp] Download rate limit: ${kbps ? `${kbps} kbps` : 'unlimited'}`);
+}
+
+function getYtDlpRateLimitArgs(): string[] {
+  return ytDlpRateLimitKbps ? ['--limit-rate', `${ytDlpRateLimitKbps}K`] : [];
+}
+
 const YOUTUBE_HOST_RE = /(^|\.)(youtube\.com|youtu\.be|music\.youtube\.com)$/i;
 
 /** True for YouTube URLs (watch, share, and playlist forms). */
@@ -264,6 +278,7 @@ async function doDownload(url: string, outputDir: string, signal?: AbortSignal):
   await runYtDlp(
     [
       ...getCookieArgs(),
+      ...getYtDlpRateLimitArgs(),
       "-x",                       // extract audio
       "--audio-format", "opus",   // opus format (native for TS3)
       "--audio-quality", "0",     // best quality

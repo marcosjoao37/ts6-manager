@@ -10,6 +10,7 @@ export interface MusicCommandSettings {
   botLanguage: MusicBotLanguage;
   moveBotToRequesterChannel: boolean;
   audioQuality: MusicAudioQuality;
+  downloadRateLimitKbps: number | null;
 }
 
 export const musicCommandSettingsApi = {

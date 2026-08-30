@@ -375,6 +375,8 @@
       "audioQuality": "Qualité audio du bot",
       "audioQualityNormal": "Normale (128 kbps, 200 ms buffer)",
       "audioQualityLow": "Basse (64 kbps, 400 ms buffer)",
+      "downloadRateLimit": "Limite de téléchargement (kbps)",
+      "downloadRateLimitHint": "0 ou vide = illimité. Exemple : 2048 = ~2 Mbps.",
       "save": "Enregistrer",
       "saving": "Enregistrement...",
       "toastSaved": "Réglages enregistrés",

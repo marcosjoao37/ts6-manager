@@ -11,7 +11,7 @@ import { ConnectionJournal } from './connection-journal.js';
 import { applyTrustProxy, loadTrustProxy } from './routes/settings.routes.js';
 import { loadSamlRuntime } from './auth/saml/saml-config.js';
 import { config } from './config.js';
-import { setYtCookieFile } from './voice/audio/youtube.js';
+import { setYtCookieFile, setYtDlpRateLimit } from './voice/audio/youtube.js';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
@@ -65,6 +65,8 @@ async function main() {
   }
 
   const prisma = new PrismaClient();
+  const musicCmdSettings = await prisma.musicCommandSettings.findFirst();
+  setYtDlpRateLimit(musicCmdSettings?.downloadRateLimitKbps ?? null);
   const app = createApp();
   const server = createServer(app);
 
