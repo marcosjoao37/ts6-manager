@@ -1,7 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { pickDownloadedFile } from './youtube.js';
+import { pickDownloadedFile, isYouTubePlaylistUrl, isYouTubeUrl } from './youtube.js';
 
 const ID = 'dQw4w9WgXcQ';
+
+describe('isYouTubePlaylistUrl', () => {
+  it('detects watch URLs carrying a list parameter', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/watch?v=abc123&list=PL123')).toBe(true);
+  });
+
+  it('detects playlist URLs', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/playlist?list=PL123')).toBe(true);
+    expect(isYouTubePlaylistUrl('https://music.youtube.com/playlist?list=PL123')).toBe(true);
+  });
+
+  it('detects YouTube Music watch URLs carrying a list parameter', () => {
+    expect(isYouTubePlaylistUrl('https://music.youtube.com/watch?v=abc123&list=PL123')).toBe(true);
+  });
+
+  it('detects youtu.be share URLs carrying a list parameter', () => {
+    expect(isYouTubePlaylistUrl('https://youtu.be/abc123?list=PL123')).toBe(true);
+  });
+
+  it('ignores plain single-video URLs', () => {
+    expect(isYouTubePlaylistUrl('https://www.youtube.com/watch?v=abc123')).toBe(false);
+    expect(isYouTubePlaylistUrl('https://youtu.be/abc123')).toBe(false);
+    expect(isYouTubePlaylistUrl('https://music.youtube.com/watch?v=abc123')).toBe(false);
+  });
+
+  it('ignores non-YouTube hosts even with a list parameter', () => {
+    expect(isYouTubePlaylistUrl('https://example.com/watch?v=abc123&list=PL123')).toBe(false);
+  });
+});
+
+describe('isYouTubeUrl', () => {
+  it('recognises YouTube hosts', () => {
+    expect(isYouTubeUrl('https://www.youtube.com/watch?v=abc123')).toBe(true);
+    expect(isYouTubeUrl('https://youtu.be/abc123')).toBe(true);
+    expect(isYouTubeUrl('https://music.youtube.com/playlist?list=PL123')).toBe(true);
+    expect(isYouTubeUrl('https://music.youtube.com/watch?v=abc123')).toBe(true);
+  });
+
+  it('rejects other hosts', () => {
+    expect(isYouTubeUrl('https://example.com/watch?v=abc123')).toBe(false);
+    expect(isYouTubeUrl('not-a-url')).toBe(false);
+  });
+});
 
 describe('pickDownloadedFile', () => {
   it('picks the expected opus file', () => {

@@ -38,6 +38,34 @@ export function getCookieArgs(): string[] {
   return args;
 }
 
+const YOUTUBE_HOST_RE = /(^|\.)(youtube\.com|youtu\.be|music\.youtube\.com)$/i;
+
+/** True for YouTube URLs (watch, share, and playlist forms). */
+export function isYouTubeUrl(url: string): boolean {
+  try {
+    return YOUTUBE_HOST_RE.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True when a YouTube URL targets a playlist rather than a single video.
+ * Covers `watch?v=...&list=...`, `playlist?list=...`, and youtu.be shares
+ * that carry a `list` parameter.
+ */
+export function isYouTubePlaylistUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (!YOUTUBE_HOST_RE.test(parsed.hostname)) return false;
+    if (parsed.searchParams.has('list')) return true;
+    const pathname = parsed.pathname.toLowerCase();
+    return pathname === '/playlist' || pathname.startsWith('/playlist/');
+  } catch {
+    return false;
+  }
+}
+
 // The first run may also fetch remote challenge-solver components, so the
 // info timeout is generous.
 const INFO_TIMEOUT_MS = 60_000;
@@ -223,34 +251,54 @@ async function doDownload(url: string, outputDir: string): Promise<{ filePath: s
   return { filePath: path.join(outputDir, fileName), info };
 }
 
+/** Parse yt-dlp --dump-json output (one JSON object per line). */
+function parseYouTubeDumpJson(output: string): YouTubeSearchResult[] {
+  const items: YouTubeSearchResult[] = [];
+  for (const line of output.trim().split("\n")) {
+    if (!line) continue;
+    try {
+      const parsed = JSON.parse(line);
+      const id = parsed.id || parsed.url?.match(/[?&]v=([^&#]+)/)?.[1] || null;
+      if (!id) continue;
+      items.push({
+        id,
+        title: parsed.title || "Unknown",
+        artist: parsed.uploader || parsed.channel || "Unknown",
+        duration: parsed.duration || 0,
+        thumbnail: parsed.thumbnails?.[0]?.url || parsed.thumbnail || "",
+      });
+    } catch {
+      // Ignore malformed lines and keep the entries that did parse.
+    }
+  }
+  return items;
+}
+
+/**
+ * Get the flat video list for a YouTube playlist URL (or a single video URL).
+ */
+export async function getYouTubePlaylistVideos(url: string): Promise<YouTubeSearchResult[]> {
+  const output = await runYtDlp(
+    [...getCookieArgs(), "--dump-json", "--flat-playlist", "--no-download", url],
+    INFO_TIMEOUT_MS,
+  );
+  return parseYouTubeDumpJson(output);
+}
+
 /**
  * Get info about a YouTube URL (single video or playlist).
  * Returns type ('video' or 'playlist') and array of items.
  */
 export async function getYouTubeUrlInfo(url: string): Promise<{ type: 'video' | 'playlist'; items: YouTubeSearchResult[] }> {
-  const output = await runYtDlp(
-    [...getCookieArgs(), "--dump-json", "--flat-playlist", "--no-download", url],
-    INFO_TIMEOUT_MS,
-  );
-
-  try {
-    const lines = output.trim().split("\n").filter(Boolean);
-    const items: YouTubeSearchResult[] = lines.map((line) => {
-      const parsed = JSON.parse(line);
-      return {
-        id: parsed.id,
-        title: parsed.title || "Unknown",
-        artist: parsed.uploader || parsed.channel || "Unknown",
-        duration: parsed.duration || 0,
-        thumbnail: parsed.thumbnails?.[0]?.url || parsed.thumbnail || "",
-      };
-    });
-
-    const type = items.length > 1 ? 'playlist' : 'video';
-    return { type, items };
-  } catch {
+  const items = await getYouTubePlaylistVideos(url);
+  if (items.length === 0) {
     throw new Error("Failed to parse yt-dlp output");
   }
+
+  // A URL carrying a list parameter is a playlist even when it resolves to
+  // a single entry (e.g. watch?v=...&list=...).
+  const type = isYouTubePlaylistUrl(url) || items.length > 1 ? 'playlist' : 'video';
+  return { type, items };
 }
 
 /**
@@ -261,24 +309,5 @@ export async function searchYouTube(query: string, maxResults: number = 10): Pro
     [...getCookieArgs(), `ytsearch${maxResults}:${query}`, "--dump-json", "--flat-playlist", "--no-download"],
     INFO_TIMEOUT_MS,
   );
-
-  try {
-    // yt-dlp outputs one JSON object per line
-    return output
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const parsed = JSON.parse(line);
-        return {
-          id: parsed.id,
-          title: parsed.title || "Unknown",
-          artist: parsed.uploader || parsed.channel || "Unknown",
-          duration: parsed.duration || 0,
-          thumbnail: parsed.thumbnails?.[0]?.url || "",
-        };
-      });
-  } catch {
-    return [];
-  }
+  return parseYouTubeDumpJson(output);
 }

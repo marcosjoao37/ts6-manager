@@ -2,12 +2,10 @@ import { Router, Request, Response } from 'express';
 import { requireRole } from '../middleware/rbac.js';
 import { AppError } from '../middleware/error-handler.js';
 import type { VoiceBotManager } from '../voice/voice-bot-manager.js';
-import { downloadYouTube } from '../voice/audio/youtube.js';
+import { downloadAndEnqueue } from '../voice/music-ops.js';
 import { playerWidgetToken } from './widget-public.routes.js';
 
 export const musicBotRoutes: Router = Router();
-
-const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
 
 // All routes require admin role
 musicBotRoutes.use(requireRole('admin'));
@@ -226,50 +224,10 @@ musicBotRoutes.post('/:id/play-url', async (req: Request, res: Response, next) =
       throw new AppError(400, 'Bot is not connected');
     }
 
-    const { filePath, info } = await downloadYouTube(url, MUSIC_DIR);
+    const prisma = req.app.locals.prisma;
+    const result = await downloadAndEnqueue(prisma, bot, url, { forceStart: true });
 
-    const queueItem = {
-      id: `yt_${info.id}`,
-      title: info.title,
-      artist: info.artist,
-      duration: info.duration,
-      filePath,
-      source: 'youtube' as const,
-      sourceUrl: url,
-    };
-
-    bot.queue.add(queueItem);
-    bot.queue.playAt(bot.queue.length - 1);
-    await bot.play(queueItem);
-
-    // Save to MusicRequest History
-    try {
-      const prisma = req.app.locals.prisma;
-      if (queueItem.sourceUrl && bot.currentConfig.serverConfigId) {
-        await prisma.musicRequest.upsert({
-          where: {
-            serverConfigId_url: {
-              serverConfigId: bot.currentConfig.serverConfigId,
-              url: queueItem.sourceUrl,
-            },
-          },
-          update: {
-            requestedAt: new Date(),
-            title: queueItem.title || 'Unknown Title',
-          },
-          create: {
-            serverConfigId: bot.currentConfig.serverConfigId,
-            url: queueItem.sourceUrl,
-            title: queueItem.title || 'Unknown Title',
-            requestedAt: new Date(),
-          },
-        });
-      }
-    } catch (saveErr) {
-      console.error('[music-bots.routes] Failed to save music request history:', saveErr);
-    }
-
-    res.json({ success: true, queueItem });
+    res.json({ success: true, queueItem: result.item, playlist: result.playlist });
   } catch (err: any) {
     if (err instanceof AppError) return next(err);
     next(new AppError(500, `Failed to play URL: ${err.message}`));
