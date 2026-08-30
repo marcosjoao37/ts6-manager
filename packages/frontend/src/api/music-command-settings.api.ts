@@ -1,6 +1,7 @@
 import api from './client';
 
 export type MusicBotLanguage = 'en' | 'pt-BR';
+export type MusicAudioQuality = 'normal' | 'low';
 
 export interface MusicCommandSettings {
   musicCommandSgid: number | null;
@@ -8,6 +9,7 @@ export interface MusicCommandSettings {
   notifyNowPlaying: boolean;
   botLanguage: MusicBotLanguage;
   moveBotToRequesterChannel: boolean;
+  audioQuality: MusicAudioQuality;
 }
 
 export const musicCommandSettingsApi = {

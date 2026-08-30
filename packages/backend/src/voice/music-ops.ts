@@ -58,11 +58,15 @@ function notify(onProgress: ((msg: string) => void) | undefined, message: string
 /** Load Spotify credentials from the DB, or null if disabled / not set. */
 export async function loadSpotifyConfig(prisma: PrismaClient): Promise<(SpotifyConfig & { maxAlbumTracks: number }) | null> {
   const s = await prisma.spotifySettings.findFirst();
-  if (!s?.enabled || !s.clientId || !s.clientSecret) return null;
+  if (!s?.enabled || !s.clientId || !s.clientSecret) {
+    console.log('[MusicOps] Spotify not configured: missing enabled/clientId/clientSecret');
+    return null;
+  }
   let clientSecret: string;
   try {
     clientSecret = decrypt(s.clientSecret);
-  } catch {
+  } catch (err: any) {
+    console.error(`[MusicOps] Failed to decrypt Spotify client secret: ${err.message}`);
     return null;
   }
   return {

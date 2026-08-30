@@ -29,6 +29,7 @@ musicCommandSettingsRoutes.get('/', async (req: Request, res: Response, next) =>
       notifyNowPlaying: s.notifyNowPlaying,
       botLanguage: s.botLanguage ?? 'en',
       moveBotToRequesterChannel: s.moveBotToRequesterChannel ?? false,
+      audioQuality: s.audioQuality ?? 'normal',
     });
   } catch (err) { next(err); }
 });
@@ -38,7 +39,7 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
   try {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreate(prisma);
-    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel } = req.body;
+    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel, audioQuality } = req.body;
 
     const data: any = {};
     if (musicCommandSgid !== undefined) data.musicCommandSgid = normSgid(musicCommandSgid);
@@ -48,6 +49,10 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
     if (botLanguage !== undefined) {
       if (!['en', 'pt-BR'].includes(botLanguage)) throw new AppError(400, 'Invalid botLanguage');
       data.botLanguage = botLanguage;
+    }
+    if (audioQuality !== undefined) {
+      if (!['normal', 'low'].includes(audioQuality)) throw new AppError(400, 'Invalid audioQuality');
+      data.audioQuality = audioQuality;
     }
 
     await prisma.musicCommandSettings.update({ where: { id: current.id }, data });

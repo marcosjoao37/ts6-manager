@@ -7,6 +7,7 @@ import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
 import { botMessages, isBotLanguage, type BotLanguage, type BotMessages } from './music-bot-messages.js';
+import { isMusicAudioQuality, type MusicAudioQuality } from './audio-presets.js';
 
 const CMD_PREFIX = '!';
 
@@ -62,6 +63,7 @@ interface MusicCommandSettingsRow extends MusicCommandAccessSettings {
   notifyNowPlaying: boolean;
   botLanguage: BotLanguage;
   moveBotToRequesterChannel: boolean;
+  audioQuality: MusicAudioQuality;
 }
 
 /**
@@ -156,6 +158,10 @@ export class MusicCommandHandler {
 
     // Access control: music vs admin tier, gated by configured server groups.
     if (!(await this.checkAccess(botId, command, userClid, reply))) return;
+
+    // Apply runtime audio quality/buffer settings before any playback command.
+    const settings = await this.getSettings();
+    bot.setAudioQuality(settings.audioQuality);
 
     // Optionally move the bot to the channel of the user that issued the command.
     await this.maybeMoveBotToRequesterChannel(botId, bot, command, args, userClid);
@@ -651,6 +657,7 @@ export class MusicCommandHandler {
       notifyNowPlaying: row?.notifyNowPlaying ?? false,
       botLanguage: isBotLanguage(rawLanguage) ? rawLanguage : 'en',
       moveBotToRequesterChannel: row?.moveBotToRequesterChannel ?? false,
+      audioQuality: isMusicAudioQuality(row?.audioQuality) ? row.audioQuality : 'normal',
     };
     this.settingsCache = { at: Date.now(), value };
     return value;

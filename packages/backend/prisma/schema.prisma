@@ -315,6 +315,7 @@ model MusicCommandSettings {
   notifyNowPlaying         Boolean  @default(false) // post "now playing" in the bot's TS channel
   botLanguage              String   @default("en") // language used by music bot chat replies ('en' | 'pt-BR')
   moveBotToRequesterChannel Boolean @default(false) // move bot to the command invoker's channel before playback
+  audioQuality             String   @default("normal") // music bot audio preset ('normal' | 'low')
   updatedAt                DateTime @updatedAt
 }
 

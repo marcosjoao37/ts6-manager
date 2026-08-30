@@ -50,8 +50,16 @@ export class AudioPipeline {
   private encodeFn: (pcm: Buffer) => Buffer;
   private opusPeak = 0;
   private lastOpusPeakLog = 0;
+  private bitrate: number;
 
-  constructor() {
+  constructor(bitrate: number = BITRATE) {
+    this.bitrate = bitrate;
+    this.encodeFn = this.createEncoder();
+  }
+
+  setBitrate(bitrate: number): void {
+    if (this.bitrate === bitrate) return;
+    this.bitrate = bitrate;
     this.encodeFn = this.createEncoder();
   }
 
@@ -59,7 +67,7 @@ export class AudioPipeline {
     if (NativeOpusEncoder) {
       try {
         const encoder = new NativeOpusEncoder(SAMPLE_RATE, CHANNELS);
-        encoder.setBitrate(BITRATE);
+        encoder.setBitrate(this.bitrate);
         // Hard CBR (reduces spikes); constraint harmless under CBR
         encoder.applyEncoderCTL(OPUS_SET_VBR, 0);
         encoder.applyEncoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
@@ -77,7 +85,7 @@ export class AudioPipeline {
     }
 
     const encoder = new OpusScript(SAMPLE_RATE, CHANNELS, OpusScript.Application.AUDIO);
-    encoder.setBitrate(BITRATE);
+    encoder.setBitrate(this.bitrate);
     encoder.encoderCTL(OPUS_SET_VBR, 0);
     encoder.encoderCTL(OPUS_SET_VBR_CONSTRAINT, 1);
     encoder.encoderCTL(OPUS_SET_SIGNAL, OPUS_SIGNAL_MUSIC);

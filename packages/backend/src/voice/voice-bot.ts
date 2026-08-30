@@ -8,6 +8,7 @@ import { SidecarClient } from './streaming/sidecar-client.js';
 import { SidecarProcess, type SidecarConfig } from './streaming/sidecar-process.js';
 import { STREAM_PRESETS, DEFAULT_PRESET, type VideoViewerInfo, type VideoStreamStatus } from './streaming/types.js';
 import { getCookieArgs, runYtDlp } from './audio/youtube.js';
+import { MUSIC_AUDIO_PRESETS, type MusicAudioQuality } from './audio-presets.js';
 
 /** Resolve a YouTube/yt-dlp-compatible URL to a direct stream URL */
 async function resolveVideoUrl(url: string, maxHeight: number = 720): Promise<string> {
@@ -64,6 +65,8 @@ export interface VoiceBotConfig {
 export class VoiceBot extends EventEmitter {
   private client: Ts3Client;
   private pipeline: AudioPipeline;
+  private audioQuality: MusicAudioQuality = 'normal';
+  private playbackBufferMs: number = MUSIC_AUDIO_PRESETS.normal.bufferMs;
   readonly queue: PlayQueue;
   private config: VoiceBotConfig;
   private _status: VoiceBotStatus = 'stopped';
@@ -128,7 +131,7 @@ export class VoiceBot extends EventEmitter {
     this.config = config;
     this._originalNickname = config.nickname;
     this.client = new Ts3Client();
-    this.pipeline = new AudioPipeline();
+    this.pipeline = new AudioPipeline(MUSIC_AUDIO_PRESETS[this.audioQuality].bitrate);
     this.queue = new PlayQueue();
 
     this.client.on('error', (err) => {
@@ -212,6 +215,16 @@ export class VoiceBot extends EventEmitter {
 
   get currentChannelId(): number {
     return this.client.getChannelId();
+  }
+
+  /** Change the music audio preset (bitrate + prebuffer) at runtime. */
+  setAudioQuality(quality: MusicAudioQuality): void {
+    if (quality === this.audioQuality) return;
+    this.audioQuality = quality;
+    const preset = MUSIC_AUDIO_PRESETS[quality];
+    this.pipeline.setBitrate(preset.bitrate);
+    this.playbackBufferMs = preset.bufferMs;
+    console.log(`[VoiceBot ${this.config.id}] Audio quality: ${quality} (${preset.bitrate / 1000} kbps, ${preset.bufferMs}ms buffer)`);
   }
 
   /** Move this bot to another TS channel via its native TS3 connection. */
@@ -498,7 +511,7 @@ export class VoiceBot extends EventEmitter {
         this.emit('statusChange', this._status);
       });
 
-      let nextDue = performance.now() + 200; // initial buffer delay
+      let nextDue = performance.now() + this.playbackBufferMs; // initial buffer delay
 
       const tick = () => {
         if (epoch !== this.loopEpoch) return;
@@ -750,7 +763,7 @@ export class VoiceBot extends EventEmitter {
 
     // "Audio clock": next frame is due at this timestamp (small prebuffer
     // so the decode ffmpeg gets a head start)
-    let nextDue = performance.now() + 200;
+    let nextDue = performance.now() + this.playbackBufferMs;
 
     const tick = () => {
       if (epoch !== this.loopEpoch) return;

@@ -1389,8 +1389,8 @@ function MusicCommandsTab() {
   const { data: groupsData } = useServerGroups();
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean }>({
-    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false,
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low' }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal',
   });
 
   const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
@@ -1402,6 +1402,7 @@ function MusicCommandsTab() {
       notifyNowPlaying: settings.notifyNowPlaying,
       botLanguage: settings.botLanguage ?? 'en',
       moveBotToRequesterChannel: settings.moveBotToRequesterChannel ?? false,
+      audioQuality: settings.audioQuality ?? 'normal',
     });
   }
 
@@ -1412,6 +1413,7 @@ function MusicCommandsTab() {
       notifyNowPlaying: form.notifyNowPlaying,
       botLanguage: form.botLanguage,
       moveBotToRequesterChannel: form.moveBotToRequesterChannel,
+      audioQuality: form.audioQuality,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['music-command-settings'] });
@@ -1473,6 +1475,17 @@ function MusicCommandsTab() {
             <SelectContent>
               <SelectItem value="en">{t('settings.musicCommands.botLanguageEn')}</SelectItem>
               <SelectItem value="pt-BR">{t('settings.musicCommands.botLanguagePtBR')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.musicCommands.audioQuality')}</Label>
+          <Select value={form.audioQuality} onValueChange={(v) => setForm((f) => ({ ...f, audioQuality: v as 'normal' | 'low' }))}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="normal">{t('settings.musicCommands.audioQualityNormal')}</SelectItem>
+              <SelectItem value="low">{t('settings.musicCommands.audioQualityLow')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
