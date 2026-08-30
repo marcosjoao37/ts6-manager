@@ -28,6 +28,7 @@ musicCommandSettingsRoutes.get('/', async (req: Request, res: Response, next) =>
       adminCommandSgid: s.adminCommandSgid,
       notifyNowPlaying: s.notifyNowPlaying,
       botLanguage: s.botLanguage ?? 'en',
+      moveBotToRequesterChannel: s.moveBotToRequesterChannel ?? false,
     });
   } catch (err) { next(err); }
 });
@@ -37,12 +38,13 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
   try {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreate(prisma);
-    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage } = req.body;
+    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel } = req.body;
 
     const data: any = {};
     if (musicCommandSgid !== undefined) data.musicCommandSgid = normSgid(musicCommandSgid);
     if (adminCommandSgid !== undefined) data.adminCommandSgid = normSgid(adminCommandSgid);
     if (notifyNowPlaying !== undefined) data.notifyNowPlaying = !!notifyNowPlaying;
+    if (moveBotToRequesterChannel !== undefined) data.moveBotToRequesterChannel = !!moveBotToRequesterChannel;
     if (botLanguage !== undefined) {
       if (!['en', 'pt-BR'].includes(botLanguage)) throw new AppError(400, 'Invalid botLanguage');
       data.botLanguage = botLanguage;

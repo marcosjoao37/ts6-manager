@@ -368,6 +368,7 @@
       "adminGroup": "Group for admin commands (!move, !moveall, !notif)",
       "openToAll": "None (open to all)",
       "notifyNowPlaying": "Announce the current track in the TS channel",
+      "moveBotToRequesterChannel": "Move bot to the requester channel before playback",
       "botLanguage": "Bot reply language",
       "botLanguageEn": "English",
       "botLanguagePtBR": "Português (Brasil)",

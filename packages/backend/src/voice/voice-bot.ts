@@ -210,6 +210,15 @@ export class VoiceBot extends EventEmitter {
     return this.client.getClientId();
   }
 
+  get currentChannelId(): number {
+    return this.client.getChannelId();
+  }
+
+  /** Move this bot to another TS channel via its native TS3 connection. */
+  moveToChannel(cid: number, password?: string): void {
+    this.client.moveToChannel(cid, password ?? '');
+  }
+
   sendTextMessage(targetClid: number, msg: string): void {
     const cmd = buildCommand('sendtextmessage', {
       targetmode: 1,

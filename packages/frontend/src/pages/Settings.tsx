@@ -1389,8 +1389,8 @@ function MusicCommandsTab() {
   const { data: groupsData } = useServerGroups();
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR' }>({
-    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en',
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false,
   });
 
   const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
@@ -1401,6 +1401,7 @@ function MusicCommandsTab() {
       adminCommandSgid: settings.adminCommandSgid ? String(settings.adminCommandSgid) : NO_GROUP,
       notifyNowPlaying: settings.notifyNowPlaying,
       botLanguage: settings.botLanguage ?? 'en',
+      moveBotToRequesterChannel: settings.moveBotToRequesterChannel ?? false,
     });
   }
 
@@ -1410,6 +1411,7 @@ function MusicCommandsTab() {
       adminCommandSgid: form.adminCommandSgid === NO_GROUP ? null : parseInt(form.adminCommandSgid),
       notifyNowPlaying: form.notifyNowPlaying,
       botLanguage: form.botLanguage,
+      moveBotToRequesterChannel: form.moveBotToRequesterChannel,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['music-command-settings'] });
@@ -1457,6 +1459,11 @@ function MusicCommandsTab() {
         <div className="flex items-center gap-2">
           <Switch checked={form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
           <Label className="text-xs">{t('settings.musicCommands.notifyNowPlaying')}</Label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch checked={form.moveBotToRequesterChannel} onCheckedChange={(v) => setForm((f) => ({ ...f, moveBotToRequesterChannel: v }))} />
+          <Label className="text-xs">{t('settings.musicCommands.moveBotToRequesterChannel')}</Label>
         </div>
 
         <div className="space-y-1.5">

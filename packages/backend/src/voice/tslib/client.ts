@@ -136,6 +136,16 @@ export class Ts3Client extends EventEmitter {
     return this.currentChannelId;
   }
 
+  /** Move this client to a channel using the TS3 clientmove command. */
+  moveToChannel(cid: number, password = ""): void {
+    this.currentChannelId = cid;
+    this.sendCommand(buildCommand("clientmove", {
+      cid,
+      clid: this.clientId,
+      cpw: password || "",
+    }));
+  }
+
   async connect(opts: Ts3ClientOptions): Promise<void> {
     this.opts = opts;
     this.state = "init";

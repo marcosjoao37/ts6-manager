@@ -368,6 +368,7 @@
       "adminGroup": "Gruppo per i comandi admin (!move, !moveall, !notif)",
       "openToAll": "Nessuno (aperto a tutti)",
       "notifyNowPlaying": "Annuncia il brano corrente nel canale TS",
+      "moveBotToRequesterChannel": "Sposta il bot nel canale del richiedente prima della riproduzione",
       "botLanguage": "Lingua delle risposte del bot",
       "botLanguageEn": "Inglese",
       "botLanguagePtBR": "Portoghese (Brasile)",

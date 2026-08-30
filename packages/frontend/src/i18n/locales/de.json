@@ -368,6 +368,7 @@
       "adminGroup": "Gruppe für Admin-Befehle (!move, !moveall, !notif)",
       "openToAll": "Keine (für alle offen)",
       "notifyNowPlaying": "Aktuellen Titel im TS-Kanal ankündigen",
+      "moveBotToRequesterChannel": "Bot vor der Wiedergabe in den Kanal des Anfragers verschieben",
       "botLanguage": "Antwortsprache des Bots",
       "botLanguageEn": "Englisch",
       "botLanguagePtBR": "Portugiesisch (Brasilien)",

@@ -7,6 +7,7 @@ export interface MusicCommandSettings {
   adminCommandSgid: number | null;
   notifyNowPlaying: boolean;
   botLanguage: MusicBotLanguage;
+  moveBotToRequesterChannel: boolean;
 }
 
 export const musicCommandSettingsApi = {

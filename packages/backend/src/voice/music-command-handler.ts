@@ -60,6 +60,7 @@ const MUSIC_COMMANDS = new Set([
 interface MusicCommandSettingsRow extends MusicCommandAccessSettings {
   notifyNowPlaying: boolean;
   botLanguage: BotLanguage;
+  moveBotToRequesterChannel: boolean;
 }
 
 /**
@@ -154,6 +155,9 @@ export class MusicCommandHandler {
 
     // Access control: music vs admin tier, gated by configured server groups.
     if (!(await this.checkAccess(botId, command, userClid, reply))) return;
+
+    // Optionally move the bot to the channel of the user that issued the command.
+    await this.maybeMoveBotToRequesterChannel(botId, bot, command, args, userClid);
 
     try {
       switch (command) {
@@ -617,6 +621,7 @@ export class MusicCommandHandler {
       adminCommandSgid: row?.adminCommandSgid ?? null,
       notifyNowPlaying: row?.notifyNowPlaying ?? false,
       botLanguage: isBotLanguage(rawLanguage) ? rawLanguage : 'en',
+      moveBotToRequesterChannel: row?.moveBotToRequesterChannel ?? false,
     };
     this.settingsCache = { at: Date.now(), value };
     return value;
@@ -624,6 +629,50 @@ export class MusicCommandHandler {
 
   private invalidateSettings(): void {
     this.settingsCache = null;
+  }
+
+  /**
+   * True when `command` may start playback and therefore benefits from moving
+   * the bot to the channel of the user that issued it.
+   */
+  private shouldMoveBotForCommand(command: string, args: string): boolean {
+    if (command === 'play') return true;
+    if (command === 'radio' || command === 'spotify' || command === 'stream') return !!args;
+    if (command === 'queue' || command === 'add') {
+      const a = args.toLowerCase();
+      if (!a || a === 'show' || a.startsWith('remove ') || a === 'clear') return false;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * If enabled in settings, move the bot to the command invoker's current
+   * channel before playback. Failures are logged but do not block the command.
+   */
+  private async maybeMoveBotToRequesterChannel(
+    botId: number,
+    bot: VoiceBot,
+    command: string,
+    args: string,
+    userClid: number,
+  ): Promise<void> {
+    const settings = await this.getSettings();
+    if (!settings.moveBotToRequesterChannel) return;
+    if (!this.shouldMoveBotForCommand(command, args)) return;
+
+    try {
+      const { client, sid } = await this.getServer(botId);
+      const info = await client.execute(sid, 'clientinfo', { clid: String(userClid) });
+      const entry = Array.isArray(info) ? info[0] : info;
+      const cid = parseInt(entry?.cid) || 0;
+      if (!cid || cid === bot.currentChannelId) return;
+
+      bot.moveToChannel(cid);
+      console.log(`[MusicCmd] Bot ${botId}: moved to requester channel ${cid}`);
+    } catch (err: any) {
+      console.error(`[MusicCmd] Failed to move bot ${botId} to requester channel: ${err.message}`);
+    }
   }
 
   /** Post a "now playing" line in the bot's current TS channel when enabled. */
