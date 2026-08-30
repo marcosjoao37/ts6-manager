@@ -34,7 +34,7 @@ export async function loadSpotifyConfig(prisma: PrismaClient): Promise<(SpotifyC
 }
 
 export interface SpotifyEnqueueResult {
-  type: 'track' | 'album';
+  type: 'track' | 'album' | 'playlist';
   name: string;
   added: number;
   total: number;
@@ -43,8 +43,8 @@ export interface SpotifyEnqueueResult {
 }
 
 /**
- * Resolve a Spotify track/album link to metadata, match each track on
- * YouTube, and enqueue. The first track plays if the bot is idle; the rest
+ * Resolve a Spotify track/album/playlist link to metadata, match each track
+ * on YouTube, and enqueue. The first track plays if the bot is idle; the rest
  * queue. Per-track failures are collected, not fatal.
  */
 export async function enqueueSpotify(
@@ -54,7 +54,9 @@ export async function enqueueSpotify(
   url: string,
 ): Promise<SpotifyEnqueueResult> {
   const resolved = await resolveSpotifyInput(url, config);
-  const tracks = resolved.tracks.slice(0, config.maxAlbumTracks);
+  // Albums are capped by the admin setting; playlists are queued in full,
+  // mirroring the behaviour of YouTube playlist URLs.
+  const tracks = resolved.type === 'album' ? resolved.tracks.slice(0, config.maxAlbumTracks) : resolved.tracks;
 
   const failed: string[] = [];
   let added = 0;

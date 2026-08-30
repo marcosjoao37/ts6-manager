@@ -108,7 +108,7 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 ### Music Bots
 - Multiple bots per server, each with independent queue and playback
 - Radio station streaming with ICY metadata and live title updates
-- YouTube playback via yt-dlp (search, download, queue)
+- YouTube and YouTube Music playback via yt-dlp (search, download, queue, playlists)
 - Spotify link support (track/album/playlist metadata resolved to YouTube)
 - Music library management (upload, organize, playlists)
 - Volume control, pause, skip, previous, shuffle, repeat
@@ -176,7 +176,7 @@ Get started quickly with pre-built flow templates. Covers common use cases like 
 - User management with MFA enforcement and forced password change
 - Discord, Spotify, and YouTube integration settings
 - SSO / SAML identity-provider configuration: IdP SSO URL & signing certificate, attribute and role mapping, auto-provisioning toggle and default role (the SP metadata and ACS URLs to configure on the IdP side are shown in the tab)
-- Music command settings: restrict commands by TeamSpeak server group and toggle the now-playing notification
+- Music command settings: restrict commands by TeamSpeak server group, toggle the now-playing notification, and choose the bot reply language (English or Brazilian Portuguese)
 - yt-dlp cookie file management for accessing age-restricted or member-only YouTube content (upload a file or paste directly in the UI)
 - Connection journal and IP ban management
 - Admin-only settings panel
@@ -353,7 +353,7 @@ When a music bot is connected to a channel, users in that channel can control it
 |---------|-------------|
 | `!radio` | List available radio stations |
 | `!radio <id>` | Play a radio station |
-| `!play <url>` | Play from YouTube URL |
+| `!play <url>` | Play a YouTube / YouTube Music video or playlist URL |
 | `!play` | Resume paused playback |
 | `!spotify <url>` | Play from a Spotify track/album/playlist link |
 | `!queue <url>` / `!add <url>` | Add a track to the queue |

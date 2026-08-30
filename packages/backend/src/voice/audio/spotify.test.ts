@@ -2,16 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { isSpotifyUrl, scoreCandidate, normalizeText, type SpotifyTrackInfo } from './spotify.js';
 
 describe('isSpotifyUrl', () => {
-  it('matches track and album URLs, including intl and URIs', () => {
+  it('matches track, album and playlist URLs, including intl and URIs', () => {
     expect(isSpotifyUrl('https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT')).toBe(true);
     expect(isSpotifyUrl('https://open.spotify.com/album/1DFixLWuPkv3KT3TnV35m3')).toBe(true);
+    expect(isSpotifyUrl('https://open.spotify.com/playlist/37i9dQZF1DX')).toBe(true);
     expect(isSpotifyUrl('https://open.spotify.com/intl-fr/track/4cOdK2wGLETKBW3PvgPWqT')).toBe(true);
     expect(isSpotifyUrl('spotify:track:4cOdK2wGLETKBW3PvgPWqT')).toBe(true);
+    expect(isSpotifyUrl('spotify:playlist:37i9dQZF1DX')).toBe(true);
   });
 
-  it('rejects non-spotify and unsupported entities', () => {
+  it('rejects non-spotify URLs', () => {
     expect(isSpotifyUrl('https://www.youtube.com/watch?v=abc')).toBe(false);
-    expect(isSpotifyUrl('https://open.spotify.com/playlist/37i9dQZF1DX')).toBe(false);
     expect(isSpotifyUrl('rick astley never gonna')).toBe(false);
   });
 });

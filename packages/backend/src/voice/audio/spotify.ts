@@ -2,7 +2,7 @@ import { searchYouTube, type YouTubeSearchResult } from './youtube.js';
 
 /**
  * Spotify does not allow audio downloads. This module uses the Spotify Web
- * API only to resolve track/album METADATA, then finds the best matching
+ * API only to resolve track/album/playlist METADATA, then finds the best matching
  * YouTube video; playback always goes through the existing yt-dlp pipeline.
  */
 
@@ -23,7 +23,7 @@ export interface SpotifyTrackInfo {
 }
 
 export interface SpotifyResolvedInput {
-  type: 'track' | 'album';
+  type: 'track' | 'album' | 'playlist';
   name: string;
   tracks: SpotifyTrackInfo[];
 }
@@ -48,23 +48,34 @@ type SpotifyAlbumObject = {
   tracks?: { items?: SpotifyTrackObject[]; next?: string | null };
 };
 
+type SpotifyPlaylistObject = {
+  id: string;
+  name: string;
+  description?: string;
+  external_urls?: { spotify?: string };
+  tracks?: {
+    items?: { track?: SpotifyTrackObject | null }[];
+    next?: string | null;
+  };
+};
+
 // Access token cached per clientId (client-credentials flow).
 const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
 export function isSpotifyUrl(input: string): boolean {
-  return /(?:open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(?:track|album)\/|spotify:(?:track|album):)/i.test(input);
+  return /(?:open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(?:track|album|playlist)\/|spotify:(?:track|album|playlist):)/i.test(input);
 }
 
-function parseSpotifyInput(input: string): { type: 'track' | 'album'; id: string } | null {
+function parseSpotifyInput(input: string): { type: 'track' | 'album' | 'playlist'; id: string } | null {
   const s = String(input || '').trim().split(/\s+/)[0];
 
   const urlMatch = s.match(
-    /^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(track|album)\/([A-Za-z0-9]+)(?:\?.*)?$/i,
+    /^https?:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(track|album|playlist)\/([A-Za-z0-9]+)(?:\?.*)?$/i,
   );
-  if (urlMatch) return { type: urlMatch[1].toLowerCase() as 'track' | 'album', id: urlMatch[2] };
+  if (urlMatch) return { type: urlMatch[1].toLowerCase() as 'track' | 'album' | 'playlist', id: urlMatch[2] };
 
-  const uriMatch = s.match(/^spotify:(track|album):([A-Za-z0-9]+)$/i);
-  if (uriMatch) return { type: uriMatch[1].toLowerCase() as 'track' | 'album', id: uriMatch[2] };
+  const uriMatch = s.match(/^spotify:(track|album|playlist):([A-Za-z0-9]+)$/i);
+  if (uriMatch) return { type: uriMatch[1].toLowerCase() as 'track' | 'album' | 'playlist', id: uriMatch[2] };
 
   return null;
 }
@@ -136,7 +147,7 @@ function toTrackInfo(track: SpotifyTrackObject, albumName = '', fallbackArtist =
 
 export async function resolveSpotifyInput(input: string, config: SpotifyConfig): Promise<SpotifyResolvedInput> {
   const parsed = parseSpotifyInput(input);
-  if (!parsed) throw new Error('Lien Spotify invalide (track ou album uniquement)');
+  if (!parsed) throw new Error('Invalid Spotify link (track, album or playlist only)');
 
   if (parsed.type === 'track') {
     const track = await spotifyGet<SpotifyTrackObject>(`/tracks/${encodeURIComponent(parsed.id)}`, config);
@@ -144,21 +155,41 @@ export async function resolveSpotifyInput(input: string, config: SpotifyConfig):
     return { type: 'track', name: `${info.artist} - ${info.title}`, tracks: [info] };
   }
 
-  const album = await spotifyGet<SpotifyAlbumObject>(`/albums/${encodeURIComponent(parsed.id)}`, config);
-  const albumName = album.name || '';
-  const albumArtist = artistNames(album.artists);
+  if (parsed.type === 'album') {
+    const album = await spotifyGet<SpotifyAlbumObject>(`/albums/${encodeURIComponent(parsed.id)}`, config);
+    const albumName = album.name || '';
+    const albumArtist = artistNames(album.artists);
+    const tracks: SpotifyTrackInfo[] = [];
+
+    for (const item of album.tracks?.items || []) tracks.push(toTrackInfo(item, albumName, albumArtist));
+
+    let next = album.tracks?.next || null;
+    while (next) {
+      const page = await spotifyGet<{ items?: SpotifyTrackObject[]; next?: string | null }>(next, config);
+      for (const item of page.items || []) tracks.push(toTrackInfo(item, albumName, albumArtist));
+      next = page.next || null;
+    }
+
+    return { type: 'album', name: `${albumArtist} - ${albumName}`, tracks };
+  }
+
+  const playlist = await spotifyGet<SpotifyPlaylistObject>(`/playlists/${encodeURIComponent(parsed.id)}`, config);
   const tracks: SpotifyTrackInfo[] = [];
 
-  for (const item of album.tracks?.items || []) tracks.push(toTrackInfo(item, albumName, albumArtist));
+  for (const item of playlist.tracks?.items || []) {
+    if (item.track) tracks.push(toTrackInfo(item.track));
+  }
 
-  let next = album.tracks?.next || null;
+  let next = playlist.tracks?.next || null;
   while (next) {
-    const page = await spotifyGet<{ items?: SpotifyTrackObject[]; next?: string | null }>(next, config);
-    for (const item of page.items || []) tracks.push(toTrackInfo(item, albumName, albumArtist));
+    const page = await spotifyGet<{ items?: { track?: SpotifyTrackObject | null }[]; next?: string | null }>(next, config);
+    for (const item of page.items || []) {
+      if (item.track) tracks.push(toTrackInfo(item.track));
+    }
     next = page.next || null;
   }
 
-  return { type: 'album', name: `${albumArtist} - ${albumName}`, tracks };
+  return { type: 'playlist', name: playlist.name || 'Spotify playlist', tracks };
 }
 
 export function normalizeText(value: string): string {

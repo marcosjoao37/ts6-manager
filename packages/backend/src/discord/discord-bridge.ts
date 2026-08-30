@@ -341,6 +341,8 @@ export class DiscordBridge {
           const result = await enqueueSpotify(this.prisma, bot, config, query);
           if (result.type === 'album') {
             await i.editReply(`💿 Album **${result.name}** : ${result.added}/${result.total} piste(s) ajoutée(s).`);
+          } else if (result.type === 'playlist') {
+            await i.editReply(`📃 Playlist **${result.name}** : ${result.added}/${result.total} piste(s) ajoutée(s).`);
           } else if (result.added > 0) {
             await i.editReply(result.firstStarted ? `🎵 Lecture : **${result.name}**` : `➕ En file : **${result.name}**`);
           } else {
@@ -350,11 +352,18 @@ export class DiscordBridge {
         }
 
         const url = await resolvePlayQuery(query);
-        const { item, queued } = await downloadAndEnqueue(this.prisma, bot, url);
-        const artist = item.artist && item.artist !== 'Unknown' ? `${item.artist} — ` : '';
-        await i.editReply(queued
-          ? `➕ En file (#${bot.queue.length}) : ${artist}**${item.title}**`
-          : `🎵 Lecture : ${artist}**${item.title}**`);
+        const result = await downloadAndEnqueue(this.prisma, bot, url);
+        if (result.playlist) {
+          const suffix = result.playlist.failed.length ? ` — ${result.playlist.failed.length} échec(s)` : '';
+          await i.editReply(result.queued
+            ? `➕ Playlist YouTube en file (#${bot.queue.length}) : ${result.playlist.added}/${result.playlist.total} piste(s)${suffix}`
+            : `🎵 Playlist YouTube : ${result.playlist.added}/${result.playlist.total} piste(s)${suffix}`);
+          break;
+        }
+        const artist = result.item.artist && result.item.artist !== 'Unknown' ? `${result.item.artist} — ` : '';
+        await i.editReply(result.queued
+          ? `➕ En file (#${bot.queue.length}) : ${artist}**${result.item.title}**`
+          : `🎵 Lecture : ${artist}**${result.item.title}**`);
         break;
       }
       case 'stop': {
