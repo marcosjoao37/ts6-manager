@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireRole } from '../middleware/rbac.js';
+import { AppError } from '../middleware/error-handler.js';
 
 export const musicCommandSettingsRoutes: Router = Router();
 
@@ -26,6 +27,7 @@ musicCommandSettingsRoutes.get('/', async (req: Request, res: Response, next) =>
       musicCommandSgid: s.musicCommandSgid,
       adminCommandSgid: s.adminCommandSgid,
       notifyNowPlaying: s.notifyNowPlaying,
+      botLanguage: s.botLanguage ?? 'en',
     });
   } catch (err) { next(err); }
 });
@@ -35,12 +37,16 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
   try {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreate(prisma);
-    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying } = req.body;
+    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage } = req.body;
 
     const data: any = {};
     if (musicCommandSgid !== undefined) data.musicCommandSgid = normSgid(musicCommandSgid);
     if (adminCommandSgid !== undefined) data.adminCommandSgid = normSgid(adminCommandSgid);
     if (notifyNowPlaying !== undefined) data.notifyNowPlaying = !!notifyNowPlaying;
+    if (botLanguage !== undefined) {
+      if (!['en', 'pt-BR'].includes(botLanguage)) throw new AppError(400, 'Invalid botLanguage');
+      data.botLanguage = botLanguage;
+    }
 
     await prisma.musicCommandSettings.update({ where: { id: current.id }, data });
     res.json({ success: true });

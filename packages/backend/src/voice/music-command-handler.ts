@@ -6,6 +6,7 @@ import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify } f
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
+import { botMessages, isBotLanguage, type BotLanguage, type BotMessages } from './music-bot-messages.js';
 
 const CMD_PREFIX = '!';
 
@@ -47,6 +48,7 @@ const MUSIC_COMMANDS = new Set([
 
 interface MusicCommandSettingsRow extends MusicCommandAccessSettings {
   notifyNowPlaying: boolean;
+  botLanguage: BotLanguage;
 }
 
 /**
@@ -67,6 +69,9 @@ export class MusicCommandHandler {
   private static readonly SETTINGS_TTL_MS = 5000;
   // nowPlaying listeners, kept so they can be detached in unregisterBot.
   private nowPlayingListeners = new Map<number, { bot: VoiceBot; listener: (item: QueueItem) => void }>();
+  // Messages for the currently configured bot response language. Updated on
+  // every command after the (cached) settings row is loaded.
+  private messages: BotMessages = botMessages.en;
 
   constructor(
     private prisma: PrismaClient,
@@ -206,7 +211,7 @@ export class MusicCommandHandler {
       }
     } catch (err: any) {
       console.error(`[MusicCmd] Error handling !${command}: ${err.message}`);
-      reply(`Error: ${err.message}`);
+      reply(this.messages.error(err.message));
     }
   }
 
@@ -216,7 +221,7 @@ export class MusicCommandHandler {
     // Get serverConfigId for this bot from DB
     const dbBot = await this.prisma.musicBot.findUnique({ where: { id: botId }, select: { serverConfigId: true } });
     if (!dbBot) {
-      reply('Bot config not found.');
+      reply(this.messages.botConfigNotFound);
       return;
     }
 
@@ -226,51 +231,51 @@ export class MusicCommandHandler {
     });
 
     if (stations.length === 0) {
-      reply('No radio stations configured.');
+      reply(this.messages.noRadioStations);
       return;
     }
 
     // No argument — list stations
     if (!args) {
       const lines = stations.map((s: any) => `[${s.id}] ${s.name}${s.genre ? ` (${s.genre})` : ''}`);
-      reply('Radio Stations:\n' + lines.join('\n'));
+      reply(this.messages.radioListHeader + '\n' + lines.join('\n'));
       return;
     }
 
     // Argument — play station by ID
     const stationId = parseInt(args);
     if (isNaN(stationId)) {
-      reply('Usage: !radio <id> — Use !radio to list stations.');
+      reply(this.messages.radioUsage);
       return;
     }
 
     const station = stations.find((s: any) => s.id === stationId);
     if (!station) {
-      reply(`Station #${stationId} not found. Use !radio to list stations.`);
+      reply(this.messages.stationNotFound(stationId));
       return;
     }
 
     const queueItem: QueueItem = {
       id: `radio_${station.id}`,
       title: station.name,
-      artist: station.genre ?? 'Radio',
+      artist: station.genre ?? this.messages.radioGenreFallback,
       filePath: '',
       source: 'radio',
       streamUrl: station.url,
     };
 
     await bot.playStream(queueItem);
-    reply(`Now playing: ${station.name}`);
+    reply(this.messages.nowPlayingRadio(station.name));
   }
 
   private async handlePlay(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     if (!args) {
       if (bot.status === 'paused') {
         bot.resume();
-        reply('Resumed.');
+        reply(this.messages.resumed);
         return;
       }
-      reply('Usage: !play <youtube-url | lien Spotify>');
+      reply(this.messages.playUsage);
       return;
     }
 
@@ -281,56 +286,62 @@ export class MusicCommandHandler {
     }
 
     if (!args.startsWith('http://') && !args.startsWith('https://')) {
-      reply('Please provide a valid URL. Usage: !play <youtube-url | lien Spotify>');
+      reply(this.messages.invalidUrlUsage);
       return;
     }
 
-    reply('Loading...');
+    reply(this.messages.loading);
 
     try {
-      const { item, queued } = await downloadAndEnqueue(this.prisma, bot, args);
-      if (queued) {
-        reply(`Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
+      const result = await downloadAndEnqueue(this.prisma, bot, args);
+      if (result.playlist) {
+        reply(result.queued
+          ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
+          : this.messages.playlistNowPlaying(result.playlist.added, result.playlist.total, result.playlist.failed.length));
+      } else if (result.queued) {
+        reply(this.messages.queued(result.item.artist ?? '', result.item.title, bot.queue.length));
       } else {
-        reply(`Now playing: ${item.artist} - ${item.title}`);
+        reply(this.messages.nowPlaying(result.item.artist ?? '', result.item.title));
       }
     } catch (err: any) {
-      reply(`Failed to play: ${err.message}`);
+      reply(this.messages.failedToPlay(err.message));
     }
   }
 
   private async handleSpotify(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     if (!args) {
-      reply('Usage: !spotify <lien-track-ou-album-spotify>');
+      reply(this.messages.spotifyUsage);
       return;
     }
 
     const config = await loadSpotifyConfig(this.prisma);
     if (!config) {
-      reply('Spotify non configuré (Settings → Spotify).');
+      reply(this.messages.spotifyNotConfigured);
       return;
     }
 
-    reply('Résolution du lien Spotify...');
+    reply(this.messages.resolvingSpotify);
 
     try {
       const result = await enqueueSpotify(this.prisma, bot, config, args);
       if (result.type === 'album') {
-        reply(`Album "${result.name}" : ${result.added}/${result.total} piste(s) ajoutée(s).`);
+        reply(this.messages.spotifyAlbum(result.name, result.added, result.total));
+      } else if (result.type === 'playlist') {
+        reply(this.messages.spotifyPlaylist(result.name, result.added, result.total));
       } else if (result.added > 0) {
-        reply(result.firstStarted ? `Now playing: ${result.name}` : `Queued: ${result.name}`);
+        reply(result.firstStarted ? this.messages.spotifyNowPlaying(result.name) : this.messages.spotifyQueued(result.name));
       } else {
-        reply(`Échec : ${result.failed[0] || 'aucune piste ajoutée'}`);
+        reply(this.messages.spotifyFailure(result.failed[0]));
       }
     } catch (err: any) {
-      reply(`Échec Spotify : ${err.message}`);
+      reply(this.messages.spotifyFailed(err.message));
     }
   }
 
   private showQueue(bot: VoiceBot, reply: ReplyFn): void {
     const items = bot.queue.getAll();
     if (items.length === 0) {
-      reply('Queue is empty.');
+      reply(this.messages.queueEmpty);
       return;
     }
 
@@ -341,8 +352,8 @@ export class MusicCommandHandler {
       const dur = item.duration ? ` [${Math.floor(item.duration / 60)}:${String(Math.floor(item.duration % 60)).padStart(2, '0')}]` : '';
       return `${marker}${i + 1}. ${artist}${item.title}${dur}`;
     });
-    if (items.length > 15) lines.push(`  ... and ${items.length - 15} more`);
-    reply(`Queue (${items.length} tracks):\n${lines.join('\n')}`);
+    if (items.length > 15) lines.push(this.messages.queueMore(items.length - 15));
+    reply(this.messages.queueHeader(items.length) + '\n' + lines.join('\n'));
   }
 
   private async handleQueue(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
@@ -357,12 +368,12 @@ export class MusicCommandHandler {
       const idx = parseInt(args.substring(7).trim()) - 1; // 1-based to 0-based
       const items = bot.queue.getAll();
       if (isNaN(idx) || idx < 0 || idx >= items.length) {
-        reply(`Invalid index. Queue has ${items.length} tracks.`);
+        reply(this.messages.invalidQueueIndex(items.length));
         return;
       }
       const removed = items[idx];
       bot.queue.remove(removed.id);
-      reply(`Removed #${idx + 1}: ${removed.title}`);
+      reply(this.messages.removedTrack(idx + 1, removed.title));
       return;
     }
 
@@ -371,7 +382,7 @@ export class MusicCommandHandler {
       const idx = parseInt(args.substring(5).trim()) - 1; // 1-based to 0-based
       const item = bot.queue.playAt(idx);
       if (!item) {
-        reply(`Invalid index. Queue has ${bot.queue.length} tracks.`);
+        reply(this.messages.invalidQueueIndex(bot.queue.length));
         return;
       }
       if (item.streamUrl) {
@@ -379,51 +390,61 @@ export class MusicCommandHandler {
       } else {
         await bot.play(item);
       }
-      reply(`Playing #${idx + 1}: ${item.title}`);
+      reply(this.messages.playingIndex(idx + 1, item.title));
       return;
     }
 
     // !queue clear
     if (args.toLowerCase() === 'clear') {
       bot.queue.clear();
-      reply('Queue cleared.');
+      reply(this.messages.queueCleared);
+      return;
+    }
+
+    // Spotify links are metadata-only: resolve through the Spotify path
+    if (isSpotifyUrl(args)) {
+      await this.handleSpotify(bot, reply, args);
       return;
     }
 
     // URL provided — add to queue without interrupting
     if (!args.startsWith('http://') && !args.startsWith('https://')) {
-      reply('Usage: !queue [show|play <n>|remove <n>|clear|<url>]');
+      reply(this.messages.queueUsage);
       return;
     }
 
-    reply('Loading...');
+    reply(this.messages.loading);
 
     try {
-      const { item, queued } = await downloadAndEnqueue(this.prisma, bot, args);
-      if (queued) {
-        reply(`Queued: ${item.artist} - ${item.title} (position #${bot.queue.length})`);
+      const result = await downloadAndEnqueue(this.prisma, bot, args);
+      if (result.playlist) {
+        reply(result.queued
+          ? this.messages.playlistQueued(result.playlist.added, result.playlist.total, result.playlist.failed.length)
+          : this.messages.playlistNowPlaying(result.playlist.added, result.playlist.total, result.playlist.failed.length));
+      } else if (result.queued) {
+        reply(this.messages.queued(result.item.artist ?? '', result.item.title, bot.queue.length));
       } else {
-        reply(`Now playing: ${item.artist} - ${item.title}`);
+        reply(this.messages.nowPlaying(result.item.artist ?? '', result.item.title));
       }
     } catch (err: any) {
-      reply(`Failed to queue: ${err.message}`);
+      reply(this.messages.failedToQueue(err.message));
     }
   }
 
   private handleStop(bot: VoiceBot, reply: ReplyFn): void {
     bot.stopAudio();
-    reply('Playback stopped.');
+    reply(this.messages.playbackStopped);
   }
 
   private handlePause(bot: VoiceBot, reply: ReplyFn): void {
     if (bot.status === 'paused') {
       bot.resume();
-      reply('Resumed.');
+      reply(this.messages.resumed);
     } else if (bot.status === 'playing') {
       bot.pause();
-      reply('Paused.');
+      reply(this.messages.paused);
     } else {
-      reply('Nothing is playing.');
+      reply(this.messages.nothingPlaying);
     }
   }
 
@@ -435,10 +456,10 @@ export class MusicCommandHandler {
       } else {
         await bot.play(next);
       }
-      reply(`Skipped to: ${next.title}`);
+      reply(this.messages.skippedTo(next.title));
     } else {
       bot.stopAudio();
-      reply('Queue empty — playback stopped.');
+      reply(this.messages.queueEmptyStopped);
     }
   }
 
@@ -450,38 +471,38 @@ export class MusicCommandHandler {
       } else {
         await bot.play(prev);
       }
-      reply(`Previous: ${prev.title}`);
+      reply(this.messages.previousTrack(prev.title));
     } else {
-      reply('No previous track.');
+      reply(this.messages.noPreviousTrack);
     }
   }
 
   private handleVolume(bot: VoiceBot, reply: ReplyFn, args: string): void {
     if (!args) {
       const vol = bot.currentConfig.volume;
-      reply(`Volume: ${vol}%`);
+      reply(this.messages.volume(vol));
       return;
     }
 
     const vol = parseInt(args);
     if (isNaN(vol) || vol < 0 || vol > 100) {
-      reply('Usage: !vol <0-100>');
+      reply(this.messages.volumeUsage);
       return;
     }
 
     bot.setVolume(vol);
-    reply(`Volume set to ${vol}%.`);
+    reply(this.messages.volumeSet(vol));
   }
 
   private handleNowPlaying(bot: VoiceBot, reply: ReplyFn): void {
     const np = bot.nowPlaying;
     if (!np) {
-      reply('Nothing is playing.');
+      reply(this.messages.nothingPlaying);
       return;
     }
 
     const artist = np.artist ? `${np.artist} - ` : '';
-    const lines = [`Now playing: ${artist}${np.title}`];
+    const lines = [this.messages.nowPlayingHeader(artist, np.title)];
 
     const progress = this.formatProgress(bot);
     if (progress) lines.push(progress);
@@ -503,7 +524,7 @@ export class MusicCommandHandler {
 
     // Live stream / unknown duration — just the elapsed time.
     if (!p.duration || p.duration <= 0) {
-      return `⏱ ${formatTime(pos)} (en direct)`;
+      return this.messages.liveProgress(formatTime(pos));
     }
 
     const dur = Math.floor(p.duration);
@@ -517,26 +538,25 @@ export class MusicCommandHandler {
   private handleInfo(bot: VoiceBot, reply: ReplyFn): void {
     const np = bot.nowPlaying;
     if (!np) {
-      reply('Aucune musique en cours de lecture.');
+      reply(this.messages.infoNoMusic);
       return;
     }
 
-    const lines: string[] = ['♪ Musique en cours :'];
-    lines.push(`  Titre  : ${np.title}`);
-    if (np.artist) lines.push(`  Artiste: ${np.artist}`);
+    const lines: string[] = [this.messages.infoHeader];
+    lines.push(this.messages.infoTitle(np.title));
+    if (np.artist) lines.push(this.messages.infoArtist(np.artist));
 
     if (np.duration) {
       const min = Math.floor(np.duration / 60);
       const sec = String(Math.floor(np.duration % 60)).padStart(2, '0');
-      lines.push(`  Durée  : ${min}:${sec}`);
+      lines.push(this.messages.infoDuration(`${min}:${sec}`));
     }
 
     const progress = this.formatProgress(bot);
-    if (progress) lines.push(`  Progression : ${progress}`);
+    if (progress) lines.push(this.messages.infoProgress(progress));
 
-    // Lien direct vers la source (YouTube/Spotify via sourceUrl, radio via streamUrl)
     const link = np.sourceUrl || np.streamUrl;
-    if (link) lines.push(`  Lien   : [URL]${link}[/URL]`);
+    if (link) lines.push(this.messages.infoLink(link));
 
     reply(lines.join('\n'));
   }
@@ -553,7 +573,7 @@ export class MusicCommandHandler {
       where: { id: botId },
       select: { serverConfigId: true, voicePort: true },
     });
-    if (!dbBot) throw new Error('Configuration du bot introuvable.');
+    if (!dbBot) throw new Error(this.messages.botConfigNotFound);
 
     const client = await this.connectionPool.getOrLoad(dbBot.serverConfigId);
 
@@ -578,10 +598,12 @@ export class MusicCommandHandler {
       return this.settingsCache.value;
     }
     const row = await this.prisma.musicCommandSettings.findFirst();
+    const rawLanguage = row?.botLanguage ?? 'en';
     const value: MusicCommandSettingsRow = {
       musicCommandSgid: row?.musicCommandSgid ?? null,
       adminCommandSgid: row?.adminCommandSgid ?? null,
       notifyNowPlaying: row?.notifyNowPlaying ?? false,
+      botLanguage: isBotLanguage(rawLanguage) ? rawLanguage : 'en',
     };
     this.settingsCache = { at: Date.now(), value };
     return value;
@@ -595,8 +617,9 @@ export class MusicCommandHandler {
   private async onNowPlaying(bot: VoiceBot, item: QueueItem): Promise<void> {
     const settings = await this.getSettings();
     if (!settings.notifyNowPlaying) return;
+    const messages = botMessages[settings.botLanguage];
     const artist = item.artist ? `${item.artist} - ` : '';
-    bot.sendChannelMessage(`♪ Now playing : ${artist}${item.title}`);
+    bot.sendChannelMessage(messages.nowPlayingNotification(artist, item.title));
   }
 
   /** Resolve a server group's display name (best-effort, for messages). */
@@ -617,6 +640,7 @@ export class MusicCommandHandler {
    */
   private async checkAccess(botId: number, command: string, userClid: number, reply: ReplyFn): Promise<boolean> {
     const settings = await this.getSettings();
+    this.messages = botMessages[settings.botLanguage];
     const required = requiredSgid(command, settings);
     if (required == null) return true;
 
@@ -628,7 +652,7 @@ export class MusicCommandHandler {
       entry = Array.isArray(info) ? info[0] : info;
     } catch {
       // Could not resolve the invoker (e.g. just disconnected): fail closed.
-      reply('⛔ Impossible de vérifier vos permissions, commande refusée.');
+      reply(this.messages.accessCheckFailed);
       return false;
     }
 
@@ -636,7 +660,7 @@ export class MusicCommandHandler {
     if (groups.includes(required)) return true;
 
     const name = await this.groupName(client, sid, required);
-    reply(`⛔ Commande réservée au groupe « ${name} ».`);
+    reply(this.messages.accessRestrictedToGroup(name));
     return false;
   }
 
@@ -670,7 +694,7 @@ export class MusicCommandHandler {
     if (/^\d+$/.test(query)) {
       const cid = Number(query);
       const byId = channels.find((c) => Number(c.cid) === cid);
-      if (!byId) throw new Error(`Aucun salon avec l'ID ${cid}. Utilisez !channels pour la liste.`);
+      if (!byId) throw new Error(this.messages.channelNotFoundById(cid));
       return byId;
     }
 
@@ -680,24 +704,24 @@ export class MusicCommandHandler {
     const exact = named.filter((c) => String(c.channel_name).toLowerCase() === lower);
     if (exact.length === 1) return exact[0];
     if (exact.length > 1) {
-      throw new Error(`Plusieurs salons nommés « ${query} ». Précisez avec l'ID (voir !channels).`);
+      throw new Error(this.messages.multipleChannelsNamed(query));
     }
 
     const partial = named.filter((c) => String(c.channel_name).toLowerCase().includes(lower));
     if (partial.length === 1) return partial[0];
     if (partial.length > 1) {
       const ids = partial.slice(0, 6).map((c) => `[${c.cid}] ${c.channel_name}`).join(', ');
-      throw new Error(`Plusieurs salons correspondent à « ${query} » : ${ids}. Précisez avec l'ID.`);
+      throw new Error(this.messages.multipleChannelsMatching(query, ids));
     }
 
-    throw new Error(`Salon introuvable : « ${query} ». Utilisez !channels pour la liste.`);
+    throw new Error(this.messages.channelNotFound(query));
   }
 
   private async handleChannels(botId: number, reply: ReplyFn): Promise<void> {
     const { client, sid } = await this.getServer(botId);
     const channels = await this.fetchChannels(client, sid);
     if (channels.length === 0) {
-      reply('Aucun salon.');
+      reply(this.messages.noChannels);
       return;
     }
 
@@ -727,10 +751,10 @@ export class MusicCommandHandler {
     };
     walk(0, 0);
 
-    if (norm.length > MAX) lines.push(`  ... et ${norm.length - MAX} de plus`);
+    if (norm.length > MAX) lines.push(this.messages.channelsMore(norm.length - MAX));
 
     // Send in chunks to stay under the ~1KB per-message limit on long lists.
-    const header = `Salons (${norm.length}) :`;
+    const header = this.messages.channelsHeader(norm.length);
     let buf = header;
     for (const line of lines) {
       if (buf.length + 1 + line.length > 900) {
@@ -746,7 +770,7 @@ export class MusicCommandHandler {
   private async handleMove(botId: number, reply: ReplyFn, args: string): Promise<void> {
     const tokens = tokenizeArgs(args);
     if (tokens.length < 2) {
-      reply('Usage : !move <pseudo> <salon|id>  — guillemets pour les noms avec espaces, ex. !move "John Doe" "Salon 1"');
+      reply(this.messages.moveUsage);
       return;
     }
 
@@ -763,13 +787,13 @@ export class MusicCommandHandler {
     const target = this.resolveClient(clients, userQuery);
 
     await client.execute(sid, 'clientmove', { clid: target.clid, cid: channel.cid });
-    reply(`Déplacé : ${target.client_nickname} → ${channel.channel_name}`);
+    reply(this.messages.moved(target.client_nickname, channel.channel_name));
   }
 
   private async handleMoveAll(botId: number, bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     const channelRef = tokenizeArgs(args).join(' ').trim();
     if (!channelRef) {
-      reply('Usage : !moveall <salon|id>  — déplace tous les utilisateurs vers ce salon.');
+      reply(this.messages.moveAllUsage);
       return;
     }
 
@@ -791,7 +815,7 @@ export class MusicCommandHandler {
     );
 
     if (toMove.length === 0) {
-      reply(`Personne à déplacer vers ${channel.channel_name}.`);
+      reply(this.messages.noOneToMove(channel.channel_name));
       return;
     }
 
@@ -807,9 +831,7 @@ export class MusicCommandHandler {
       }
     }
 
-    let msg = `${moved} utilisateur(s) déplacé(s) vers ${channel.channel_name}.`;
-    if (failed.length) msg += ` Échec pour : ${failed.join(', ')}.`;
-    reply(msg);
+    reply(this.messages.moveAllResult(channel.channel_name, moved, failed.length ? failed.join(', ') : undefined));
   }
 
   private async handleNotif(reply: ReplyFn): Promise<void> {
@@ -821,9 +843,7 @@ export class MusicCommandHandler {
       await this.prisma.musicCommandSettings.create({ data: { notifyNowPlaying: next } });
     }
     this.invalidateSettings();
-    reply(next
-      ? '🔔 Notifications du titre en cours : activées (tous les bots).'
-      : '🔕 Notifications du titre en cours : désactivées.');
+    reply(next ? this.messages.notifEnabled : this.messages.notifDisabled);
   }
 
   /**
@@ -838,50 +858,28 @@ export class MusicCommandHandler {
     const exact = real.filter((c) => String(c.client_nickname).toLowerCase() === lower);
     if (exact.length === 1) return exact[0];
     if (exact.length > 1) {
-      throw new Error(`Plusieurs clients nommés « ${ref} ». Soyez plus précis.`);
+      throw new Error(this.messages.multipleClientsNamed(ref));
     }
 
     const partial = real.filter((c) => String(c.client_nickname).toLowerCase().includes(lower));
     if (partial.length === 1) return partial[0];
     if (partial.length > 1) {
       const names = partial.slice(0, 6).map((c) => c.client_nickname).join(', ');
-      throw new Error(`Plusieurs clients correspondent à « ${ref} » : ${names}. Soyez plus précis.`);
+      throw new Error(this.messages.multipleClientsMatching(ref, names));
     }
 
-    throw new Error(`Utilisateur introuvable : « ${ref} ».`);
+    throw new Error(this.messages.userNotFound(ref));
   }
 
   private handleHelp(reply: ReplyFn): void {
-    reply([
-      'Commandes musicales disponibles :',
-      '  !play <url>          Lire une vidéo YouTube ou un lien Spotify',
-      '  !spotify <lien>      Lire une piste/album Spotify',
-      '  !radio [id]          Lister les radios ou en lancer une',
-      '  !queue [..]          Voir/gérer la file (show|play <n>|remove <n>|clear|<url>)',
-      '  !add <url>           Ajouter une piste à la file',
-      '  !skip / !next        Piste suivante',
-      '  !prev                Piste précédente',
-      '  !pause               Mettre en pause / reprendre',
-      '  !stop                Arrêter la lecture',
-      '  !vol <0-100>         Régler ou afficher le volume',
-      '  !np / !nowplaying    Titre en cours de lecture',
-      '  !info                Détails du titre en cours (artiste, titre, lien direct)',
-      '  !stream <url> [qual] Diffuser une vidéo (presets : 480p, 720p, 1080p)',
-      '  !stopstream          Arrêter la diffusion vidéo',
-      '  !viewers             Lister les spectateurs du stream vidéo',
-      '  !channels            Lister les salons et leur ID',
-      '  !move <user> <salon> Déplacer un utilisateur (nom ou ID ; "guillemets" si espaces)',
-      '  !moveall <salon>     Déplacer tous les utilisateurs vers un salon',
-      '  !notif               Activer/désactiver la notif du titre en cours (canal TS)',
-      '  !help / !aide        Afficher cette aide',
-    ].join('\n'));
+    reply(this.messages.helpLines.join('\n'));
   }
 
   // ─── Video Streaming Commands ─────────────────────────────
 
   private async handleStream(bot: VoiceBot, reply: ReplyFn, args: string): Promise<void> {
     if (!args) {
-      reply('Usage: !stream <url> [preset]  — Presets: 480p, 720p, 1080p');
+      reply(this.messages.streamUsage);
       return;
     }
 
@@ -890,7 +888,7 @@ export class MusicCommandHandler {
     const preset = parts[1] || undefined;
 
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      reply('Please provide a valid URL.');
+      reply(this.messages.invalidStreamUrl);
       return;
     }
 
@@ -898,46 +896,46 @@ export class MusicCommandHandler {
       // Change source if already streaming
       try {
         await bot.setVideoSource(url);
-        reply(`Stream source changed to: ${url}`);
+        reply(this.messages.streamSourceChanged(url));
       } catch (err: any) {
-        reply(`Error: ${err.message}`);
+        reply(this.messages.streamError(err.message));
       }
       return;
     }
 
-    reply('Starting video stream...');
+    reply(this.messages.startingVideoStream);
     try {
       await bot.startVideoStream(url, preset);
-      reply(`Video stream started: ${url}`);
+      reply(this.messages.videoStreamStarted(url));
     } catch (err: any) {
-      reply(`Failed to start stream: ${err.message}`);
+      reply(this.messages.failedToStartStream(err.message));
     }
   }
 
   private async handleStopStream(bot: VoiceBot, reply: ReplyFn): Promise<void> {
     if (!bot.videoStreaming) {
-      reply('No active video stream.');
+      reply(this.messages.noActiveVideoStream);
       return;
     }
     await bot.stopVideoStream();
-    reply('Video stream stopped.');
+    reply(this.messages.videoStreamStopped);
   }
 
   private handleViewers(bot: VoiceBot, reply: ReplyFn): void {
     const status = bot.videoStreamStatus;
     if (!status.streaming) {
-      reply('No active video stream.');
+      reply(this.messages.noActiveVideoStream);
       return;
     }
     if (status.viewers.length === 0) {
-      reply('No viewers connected.');
+      reply(this.messages.noViewers);
       return;
     }
     const lines = status.viewers.map((v) => {
       const duration = Math.floor((Date.now() - v.joinedAt) / 1000);
-      return `  clid=${v.clid} (${duration}s)`;
+      return this.messages.viewerLine(v.clid, duration);
     });
-    reply(`Viewers (${status.viewerCount}):\n${lines.join('\n')}`);
+    reply(this.messages.viewersHeader(status.viewerCount) + '\n' + lines.join('\n'));
   }
 
 }

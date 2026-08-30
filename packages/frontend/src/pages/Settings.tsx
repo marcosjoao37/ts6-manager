@@ -1389,8 +1389,8 @@ function MusicCommandsTab() {
   const { data: groupsData } = useServerGroups();
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean }>({
-    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false,
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR' }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en',
   });
 
   const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
@@ -1400,6 +1400,7 @@ function MusicCommandsTab() {
       musicCommandSgid: settings.musicCommandSgid ? String(settings.musicCommandSgid) : NO_GROUP,
       adminCommandSgid: settings.adminCommandSgid ? String(settings.adminCommandSgid) : NO_GROUP,
       notifyNowPlaying: settings.notifyNowPlaying,
+      botLanguage: settings.botLanguage ?? 'en',
     });
   }
 
@@ -1408,6 +1409,7 @@ function MusicCommandsTab() {
       musicCommandSgid: form.musicCommandSgid === NO_GROUP ? null : parseInt(form.musicCommandSgid),
       adminCommandSgid: form.adminCommandSgid === NO_GROUP ? null : parseInt(form.adminCommandSgid),
       notifyNowPlaying: form.notifyNowPlaying,
+      botLanguage: form.botLanguage,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['music-command-settings'] });
@@ -1455,6 +1457,17 @@ function MusicCommandsTab() {
         <div className="flex items-center gap-2">
           <Switch checked={form.notifyNowPlaying} onCheckedChange={(v) => setForm((f) => ({ ...f, notifyNowPlaying: v }))} />
           <Label className="text-xs">{t('settings.musicCommands.notifyNowPlaying')}</Label>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.musicCommands.botLanguage')}</Label>
+          <Select value={form.botLanguage} onValueChange={(v) => setForm((f) => ({ ...f, botLanguage: v as 'en' | 'pt-BR' }))}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="en">{t('settings.musicCommands.botLanguageEn')}</SelectItem>
+              <SelectItem value="pt-BR">{t('settings.musicCommands.botLanguagePtBR')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>

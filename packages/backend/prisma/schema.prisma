@@ -313,6 +313,7 @@ model MusicCommandSettings {
   musicCommandSgid Int?     // server group allowed to run music commands (null = open to all)
   adminCommandSgid Int?     // server group allowed to run move/moveall/notif (null = open to all)
   notifyNowPlaying Boolean  @default(false) // post "now playing" in the bot's TS channel
+  botLanguage      String   @default("en") // language used by music bot chat replies ('en' | 'pt-BR')
   updatedAt        DateTime @updatedAt
 }
 

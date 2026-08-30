@@ -1,9 +1,12 @@
 import api from './client';
 
+export type MusicBotLanguage = 'en' | 'pt-BR';
+
 export interface MusicCommandSettings {
   musicCommandSgid: number | null;
   adminCommandSgid: number | null;
   notifyNowPlaying: boolean;
+  botLanguage: MusicBotLanguage;
 }
 
 export const musicCommandSettingsApi = {
