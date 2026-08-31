@@ -76,6 +76,7 @@ export class VoiceBot extends EventEmitter {
   private identity: IdentityData | null = null;
   private playbackTimer: ReturnType<typeof setTimeout> | null = null;
   private _nowPlaying: QueueItem | null = null;
+  private prefetching: { id: string; promise: Promise<void> } | null = null;
 
   // File playback state (streamed: ffmpeg decodes as we consume)
   private loopEpoch: number = 0;       // tick-loop lifetime (bumped by clearTimer)
@@ -394,14 +395,20 @@ export class VoiceBot extends EventEmitter {
       throw new Error('Bot is not connected');
     }
 
-    // Lazy queue items have a downloadUrl and no filePath yet. Download them
-    // now so only the track that is actually starting is fetched.
+    // Lazy queue items have a downloadUrl and no filePath yet. If a prefetch
+    // is already running for this exact item, wait for it instead of starting
+    // a second download; otherwise download it now.
     if (!item.filePath && item.downloadUrl) {
-      const { filePath, info } = await downloadYouTube(item.downloadUrl, MUSIC_DIR);
-      item.filePath = filePath;
-      item.title = item.title || info.title;
-      item.artist = item.artist || info.artist;
-      item.duration = item.duration || info.duration;
+      if (this.prefetching?.id === item.id) {
+        await this.prefetching.promise;
+      }
+      if (!item.filePath) {
+        const { filePath, info } = await downloadYouTube(item.downloadUrl, MUSIC_DIR);
+        item.filePath = filePath;
+        item.title = item.title || info.title;
+        item.artist = item.artist || info.artist;
+        item.duration = item.duration || info.duration;
+      }
     }
 
     this.stopIcyPolling();
@@ -410,6 +417,7 @@ export class VoiceBot extends EventEmitter {
     this._status = 'playing';
     this.emit('statusChange', this._status);
     this.emit('nowPlaying', item);
+    this.prefetchNextDownload();
     this.updateNowPlayingNickname(item.title);
 
     try {
@@ -424,6 +432,30 @@ export class VoiceBot extends EventEmitter {
       this.emit('statusChange', this._status);
       throw err;
     }
+  }
+
+  /** Download the next queued track in the background while the current one plays. */
+  private prefetchNextDownload(): void {
+    const next = this.queue.peekNext();
+    if (!next || next.filePath || !next.downloadUrl) return;
+    if (this.prefetching?.id === next.id) return;
+
+    const id = next.id;
+    const promise = downloadYouTube(next.downloadUrl, MUSIC_DIR)
+      .then(({ filePath, info }) => {
+        next.filePath = filePath;
+        next.title = next.title || info.title;
+        next.artist = next.artist || info.artist;
+        next.duration = next.duration || info.duration;
+      })
+      .catch((err: any) => {
+        console.error(`[VoiceBot] Prefetch failed for ${next.title}:`, err?.message);
+      })
+      .finally(() => {
+        if (this.prefetching?.id === id) this.prefetching = null;
+      });
+
+    this.prefetching = { id, promise };
   }
 
   /** Spawn the decode ffmpeg for a file at the given offset and wire its events. */

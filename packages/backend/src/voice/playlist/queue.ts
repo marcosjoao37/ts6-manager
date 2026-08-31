@@ -125,6 +125,20 @@ export class PlayQueue {
     return this.current;
   }
 
+  /** Peek at the track that `next()` would return, without advancing the queue. */
+  peekNext(): QueueItem | null {
+    if (this.items.length === 0) return null;
+
+    let nextIndex = this.currentIndex + 1;
+    if (nextIndex >= this.items.length) {
+      if (this._repeat !== "queue") return null;
+      nextIndex = 0;
+    }
+
+    const idx = this._shuffle ? this.shuffleOrder[nextIndex] : nextIndex;
+    return this.items[idx] ?? null;
+  }
+
   playAt(index: number): QueueItem | null {
     if (index < 0 || index >= this.items.length) return null;
     this.currentIndex = index;
