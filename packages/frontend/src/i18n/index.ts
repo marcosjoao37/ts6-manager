@@ -7,6 +7,7 @@ import fr from './locales/fr.json';
 import de from './locales/de.json';
 import es from './locales/es.json';
 import it from './locales/it.json';
+import ptBR from './locales/pt-BR.json';
 
 export const LANGUAGES = [
   { code: 'en', label: 'English', country: 'gb' },
@@ -14,6 +15,7 @@ export const LANGUAGES = [
   { code: 'de', label: 'Deutsch', country: 'de' },
   { code: 'es', label: 'Español', country: 'es' },
   { code: 'it', label: 'Italiano', country: 'it' },
+  { code: 'pt-BR', label: 'Português (Brasil)', country: 'br' },
 ] as const;
 
 export const SUPPORTED_LANGUAGES = LANGUAGES.map((l) => l.code);
@@ -28,6 +30,7 @@ i18n
       de: { translation: de },
       es: { translation: es },
       it: { translation: it },
+      'pt-BR': { translation: ptBR },
     },
     fallbackLng: 'en',
     supportedLngs: SUPPORTED_LANGUAGES as unknown as string[],
