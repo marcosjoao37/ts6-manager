@@ -53,8 +53,8 @@ type SpotifyPlaylistObject = {
   name: string;
   description?: string;
   external_urls?: { spotify?: string };
-  tracks?: {
-    items?: { track?: SpotifyTrackObject | null }[];
+  items?: {
+    items?: { item?: SpotifyTrackObject | null }[];
     next?: string | null;
   };
 };
@@ -145,6 +145,51 @@ function toTrackInfo(track: SpotifyTrackObject, albumName = '', fallbackArtist =
   };
 }
 
+function spotifyIdFromUri(uri: string): string | null {
+  const match = /^spotify:track:([A-Za-z0-9]+)$/i.exec(uri);
+  return match ? match[1] : null;
+}
+
+type SpotifyEmbedTrack = {
+  uri?: string;
+  title?: string;
+  subtitle?: string;
+  duration?: number;
+};
+
+async function fetchSpotifyEmbedTracks(id: string, config: SpotifyConfig): Promise<SpotifyTrackInfo[]> {
+  const url = `https://open.spotify.com/embed/playlist/${encodeURIComponent(id)}`;
+  const res = await fetchWithTimeout(url, {
+    method: 'GET',
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+  }, config.requestTimeoutMs);
+  if (!res.ok) throw new Error(`Spotify embed HTTP ${res.status}`);
+
+  const html = await res.text();
+  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (!match) throw new Error('Spotify embed JSON not found');
+
+  const json = JSON.parse(match[1]);
+  const trackList = json?.props?.pageProps?.state?.data?.entity?.trackList as SpotifyEmbedTrack[] | undefined;
+  if (!Array.isArray(trackList)) throw new Error('Spotify embed trackList not found');
+
+  const tracks: SpotifyTrackInfo[] = [];
+  for (const item of trackList) {
+    const trackId = item.uri ? spotifyIdFromUri(item.uri) : null;
+    if (!trackId) continue;
+    tracks.push({
+      id: trackId,
+      title: item.title || 'Unknown Title',
+      artist: item.subtitle || 'Unknown Artist',
+      album: '',
+      durationMs: Number(item.duration || 0),
+      spotifyUrl: `https://open.spotify.com/track/${trackId}`,
+    });
+  }
+
+  return tracks;
+}
+
 export async function resolveSpotifyInput(input: string, config: SpotifyConfig): Promise<SpotifyResolvedInput> {
   const parsed = parseSpotifyInput(input);
   if (!parsed) throw new Error('Invalid Spotify link (track, album or playlist only)');
@@ -179,31 +224,46 @@ export async function resolveSpotifyInput(input: string, config: SpotifyConfig):
   // Fetch tracks from the dedicated playlist-tracks endpoint. Some Spotify
   // API responses omit the embedded tracks paging object, which made the old
   // implementation see an empty playlist.
-  let playlistTracks: { items?: { track?: SpotifyTrackObject | null }[]; next?: string | null } | null = null;
+  let playlistTracks: { items?: { item?: SpotifyTrackObject | null }[]; next?: string | null } | null = null;
   try {
-    playlistTracks = await spotifyGet<{ items?: { track?: SpotifyTrackObject | null }[]; next?: string | null }>(
+    playlistTracks = await spotifyGet<{ items?: { item?: SpotifyTrackObject | null }[]; next?: string | null }>(
       `/playlists/${encodeURIComponent(parsed.id)}/tracks`,
       config,
     );
   } catch (err: any) {
-    console.warn(`[Spotify] Playlist tracks endpoint failed, falling back to embedded tracks: ${err.message}`);
+    console.warn(`[Spotify] Playlist tracks endpoint failed, falling back to embedded items: ${err.message}`);
   }
 
-  const firstPage = playlistTracks ?? playlist.tracks ?? null;
-  for (const item of firstPage?.items || []) {
-    if (item.track) tracks.push(toTrackInfo(item.track));
+  const firstPage = playlistTracks ?? playlist.items ?? null;
+  for (const entry of firstPage?.items || []) {
+    if (entry.item) tracks.push(toTrackInfo(entry.item));
   }
 
   let next = firstPage?.next || null;
   while (next) {
-    const page = await spotifyGet<{ items?: { track?: SpotifyTrackObject | null }[]; next?: string | null }>(next, config);
-    for (const item of page.items || []) {
-      if (item.track) tracks.push(toTrackInfo(item.track));
+    const page = await spotifyGet<{ items?: { item?: SpotifyTrackObject | null }[]; next?: string | null }>(next, config);
+    for (const entry of page.items || []) {
+      if (entry.item) tracks.push(toTrackInfo(entry.item));
     }
     next = page.next || null;
   }
 
   console.log(`[Spotify] Playlist ${parsed.id}: ${tracks.length} tracks from playlist endpoint`);
+
+  // Spotify's Web API sometimes rejects playlist tracks for client-credentials
+  // tokens. The public embed page still exposes the track list, so use it as a
+  // fallback before giving up.
+  if (tracks.length === 0) {
+    try {
+      const embedTracks = await fetchSpotifyEmbedTracks(parsed.id, config);
+      if (embedTracks.length > 0) {
+        tracks.push(...embedTracks);
+        console.log(`[Spotify] Playlist ${parsed.id}: ${tracks.length} tracks from embed fallback`);
+      }
+    } catch (err: any) {
+      console.warn(`[Spotify] Playlist embed fallback failed: ${err.message}`);
+    }
+  }
 
   // Some Spotify links are shared as /playlist/<album-id>; if the playlist
   // endpoint returns no tracks, retry as an album before giving up.
