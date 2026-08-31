@@ -36,6 +36,7 @@ musicCommandSettingsRoutes.get('/', async (req: Request, res: Response, next) =>
       audioQuality: s.audioQuality ?? 'normal',
       downloadRateLimitKbps: s.downloadRateLimitKbps ?? null,
       defaultPlaylistSize: s.defaultPlaylistSize ?? 10,
+      downloadProgressEnabled: s.downloadProgressEnabled ?? false,
     });
   } catch (err) { next(err); }
 });
@@ -45,7 +46,7 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
   try {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreate(prisma);
-    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel, audioQuality, downloadRateLimitKbps, defaultPlaylistSize } = req.body;
+    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel, audioQuality, downloadRateLimitKbps, defaultPlaylistSize, downloadProgressEnabled } = req.body;
 
     const data: any = {};
     if (musicCommandSgid !== undefined) data.musicCommandSgid = normSgid(musicCommandSgid);
@@ -74,6 +75,7 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
       if (!Number.isFinite(parsed) || parsed <= 0) throw new AppError(400, 'Invalid defaultPlaylistSize');
       data.defaultPlaylistSize = parsed;
     }
+    if (downloadProgressEnabled !== undefined) data.downloadProgressEnabled = !!downloadProgressEnabled;
 
     await prisma.musicCommandSettings.update({ where: { id: current.id }, data });
     setYtDlpRateLimit(data.downloadRateLimitKbps !== undefined ? data.downloadRateLimitKbps : current.downloadRateLimitKbps ?? null);

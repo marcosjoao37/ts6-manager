@@ -56,6 +56,32 @@ function clearDownloadController(botId: number, controller: AbortController): vo
   }
 }
 
+export interface DownloadStatus {
+  active: boolean;
+  message: string;
+  completed: number;
+  total: number;
+  failed: number;
+  cancelled: boolean;
+}
+
+let downloadStatus: DownloadStatus = {
+  active: false,
+  message: 'Idle',
+  completed: 0,
+  total: 0,
+  failed: 0,
+  cancelled: false,
+};
+
+export function getDownloadStatus(): DownloadStatus {
+  return { ...downloadStatus };
+}
+
+function setDownloadStatus(partial: Partial<DownloadStatus>): void {
+  downloadStatus = { ...downloadStatus, ...partial };
+}
+
 function notify(onProgress: ((msg: string) => void) | undefined, message: string): void {
   if (onProgress) onProgress(message);
   console.log(`[MusicOps] ${message}`);
@@ -110,6 +136,8 @@ export async function enqueueSpotify(
   const controller = createDownloadController(bot.id);
   const activeSignal = signal ?? controller.signal;
 
+  setDownloadStatus({ active: true, message: 'Resolving Spotify link...', completed: 0, total: 0, failed: 0, cancelled: false });
+
   try {
     notify(onProgress, 'Resolving Spotify link...');
     const resolved = await resolveSpotifyInput(url, config);
@@ -121,55 +149,68 @@ export async function enqueueSpotify(
     }
 
     notify(onProgress, `Spotify ${resolved.type}: ${resolved.name} (${tracks.length} tracks)`);
+    setDownloadStatus({ message: `Spotify ${resolved.type}: ${resolved.name}`, total: tracks.length });
 
     const failed: string[] = [];
-    let added = 0;
-    let firstStarted = false;
-    let cancelled = false;
+    const items: QueueItem[] = [];
 
     for (let i = 0; i < tracks.length; i++) {
-      if (activeSignal.aborted) {
-        cancelled = true;
-        break;
-      }
+      if (activeSignal.aborted) break;
 
       const track = tracks[i];
       try {
         notify(onProgress, `Searching YouTube for ${i + 1}/${tracks.length}: ${track.artist} - ${track.title}`);
         const yt = await findBestYouTubeForSpotify(track);
-        if (activeSignal.aborted) {
-          cancelled = true;
-          break;
-        }
-        notify(onProgress, `Downloading ${i + 1}/${tracks.length}: ${track.artist} - ${track.title}`);
-        const { filePath } = await downloadYouTube(`https://www.youtube.com/watch?v=${yt.id}`, MUSIC_DIR, activeSignal);
-
-        const item: QueueItem = {
+        const youtubeUrl = `https://www.youtube.com/watch?v=${yt.id}`;
+        items.push({
           id: `sp_${track.id}_${yt.id}`,
           title: track.title,
           artist: track.artist,
           duration: track.durationMs ? Math.round(track.durationMs / 1000) : undefined,
-          filePath,
+          filePath: '',
           source: 'youtube',
           sourceUrl: track.spotifyUrl,
-        };
-
-        bot.queue.add(item);
-        saveMusicRequest(prisma, bot, item);
-
-        if (!firstStarted && bot.status !== 'playing' && bot.status !== 'paused') {
-          bot.queue.playAt(bot.queue.length - 1);
-          await bot.play(item);
-          firstStarted = true;
-        }
-        added++;
-        notify(onProgress, `Downloaded ${i + 1}/${tracks.length}: ${track.artist} - ${track.title}`);
+          downloadUrl: youtubeUrl,
+        });
       } catch (err: any) {
         failed.push(`${track.artist} - ${track.title}: ${err.message}`);
+        setDownloadStatus({ failed: failed.length });
       }
     }
 
-    return { type: resolved.type, name: resolved.name, added, total: tracks.length, failed, firstStarted, cancelled };
+    if (items.length === 0) {
+      throw new Error(`No tracks from Spotify playlist could be resolved${failed.length ? ` (${failed.length} failed)` : ''}`);
+    }
+
+    const firstIndex = bot.queue.length;
+    bot.queue.addMany(items);
+    items.forEach((item) => saveMusicRequest(prisma, bot, item));
+
+    const firstItem = items[0];
+    const shouldStart = bot.status !== 'playing' && bot.status !== 'paused';
+    if (shouldStart) {
+      bot.queue.playAt(firstIndex);
+      await bot.play(firstItem);
+    }
+
+    setDownloadStatus({
+      active: false,
+      message: `Queued ${items.length} tracks (download on playback)`,
+      completed: 0,
+      total: items.length,
+      failed: failed.length,
+      cancelled: activeSignal.aborted,
+    });
+
+    return {
+      type: resolved.type,
+      name: resolved.name,
+      added: items.length,
+      total: items.length,
+      failed,
+      firstStarted: shouldStart,
+      cancelled: activeSignal.aborted,
+    };
   } finally {
     clearDownloadController(bot.id, controller);
   }
@@ -273,6 +314,7 @@ async function enqueueYouTubePlaylist(
   options: DownloadEnqueueOptions,
 ): Promise<PlayResult> {
   const controller = createDownloadController(bot.id);
+  setDownloadStatus({ active: true, message: 'Resolving YouTube playlist...', completed: 0, total: 0, failed: 0, cancelled: false });
   try {
     notify(options.onProgress, 'Resolving YouTube playlist...');
     const videos = (await getYouTubePlaylistVideos(url, controller.signal)).slice(0, normalizePlaylistLimit(options.playlistLimit));
@@ -281,71 +323,55 @@ async function enqueueYouTubePlaylist(
     }
 
     notify(options.onProgress, `YouTube playlist has ${videos.length} tracks to download`);
+    setDownloadStatus({ message: 'YouTube playlist', total: videos.length });
 
     const firstIndex = bot.queue.length;
     const failed: string[] = [];
-    let firstItem: QueueItem | null = null;
-    let added = 0;
-    let cancelled = false;
-    let firstStarted = false;
+    const items: QueueItem[] = [];
 
-    for (let i = 0; i < videos.length; i++) {
-      if (controller.signal.aborted) {
-        cancelled = true;
-        break;
-      }
+    for (const video of videos) {
+      if (controller.signal.aborted) break;
 
-      const video = videos[i];
-      try {
-        const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
-        notify(options.onProgress, `Downloading ${i + 1}/${videos.length}: ${video.title || video.id}`);
-        const { filePath, info } = await downloadYouTube(videoUrl, MUSIC_DIR, controller.signal);
-        const item = makeYouTubeQueueItem(info, filePath, videoUrl);
-        bot.queue.add(item);
-        saveMusicRequest(prisma, bot, item);
-        if (!firstItem) firstItem = item;
-        added++;
-        notify(options.onProgress, `Downloaded ${i + 1}/${videos.length}: ${video.title || video.id}`);
-
-        // Start the first track as soon as it is downloaded while the rest
-        // continue to be fetched and queued.
-        if (!firstStarted && bot.status !== 'playing' && bot.status !== 'paused') {
-          bot.queue.playAt(firstIndex);
-          await bot.play(item);
-          firstStarted = true;
-        }
-      } catch (err: any) {
-        failed.push(`${video.title || video.id}: ${err.message}`);
-      }
+      const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
+      items.push({
+        id: `yt_${video.id}`,
+        title: video.title || 'Unknown',
+        artist: video.artist || 'Unknown',
+        duration: video.duration || undefined,
+        filePath: '',
+        source: 'youtube',
+        sourceUrl: videoUrl,
+        downloadUrl: videoUrl,
+      });
     }
 
-    if (!firstItem) {
-      if (cancelled) {
-        return {
-          item: makeYouTubeQueueItem(
-            { id: 'cancelled', title: 'Download cancelled', artist: '', duration: 0, thumbnail: '', url },
-            '',
-            url,
-          ),
-          queued: true,
-          cancelled: true,
-          playlist: { added: 0, failed, total: videos.length },
-        };
-      }
-      throw new Error(`No tracks from playlist could be downloaded${failed.length ? ` (${failed.length} failed)` : ''}`);
+    if (items.length === 0) {
+      throw new Error('Could not read YouTube playlist');
     }
 
-    const playlist: PlaylistEnqueueInfo = { added, failed, total: videos.length };
+    bot.queue.addMany(items);
+    items.forEach((item) => saveMusicRequest(prisma, bot, item));
+
+    const firstItem = items[0];
     const shouldStart = options.forceStart || (bot.status !== 'playing' && bot.status !== 'paused');
-    if (!shouldStart) return { item: firstItem, queued: true, playlist, cancelled };
-
-    if (!firstStarted) {
+    if (shouldStart) {
       bot.queue.playAt(firstIndex);
       await bot.play(firstItem);
     }
-    return { item: firstItem, queued: false, playlist, cancelled };
+
+    const playlist: PlaylistEnqueueInfo = { added: items.length, failed, total: items.length };
+    setDownloadStatus({
+      active: false,
+      message: `Queued ${items.length} tracks (download on playback)`,
+      completed: 0,
+      total: items.length,
+      failed: failed.length,
+      cancelled: controller.signal.aborted,
+    });
+    return { item: firstItem, queued: !shouldStart, playlist, cancelled: controller.signal.aborted };
   } finally {
     clearDownloadController(bot.id, controller);
+    setDownloadStatus({ active: false });
   }
 }
 

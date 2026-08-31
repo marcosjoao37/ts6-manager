@@ -192,6 +192,7 @@ model Song {
   filePath        String
   source          String    @default("local")
   sourceUrl       String?
+  downloadUrl     String?
   fileSize        Int?
   serverConfigId  Int
   serverConfig    TsServerConfig @relation(fields: [serverConfigId], references: [id], onDelete: Cascade)
@@ -318,6 +319,7 @@ model MusicCommandSettings {
   audioQuality             String   @default("normal") // music bot audio preset ('normal' | 'low')
   downloadRateLimitKbps    Int?     // yt-dlp download rate limit in kbps (null = unlimited)
   defaultPlaylistSize      Int      @default(10) // default tracks per playlist when !play has no count
+  downloadProgressEnabled  Boolean  @default(false) // send download progress spam to TS chat
   updatedAt                DateTime @updatedAt
 }
 

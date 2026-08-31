@@ -9,6 +9,7 @@ export interface QueueItem {
   source: "local" | "youtube" | "url" | "radio";
   sourceUrl?: string;
   streamUrl?: string; // If set, play as live stream (radio) instead of file
+  downloadUrl?: string; // If set and filePath is empty, download before playing
 }
 
 export class PlayQueue {

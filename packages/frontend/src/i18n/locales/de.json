@@ -378,6 +378,7 @@
       "downloadRateLimit": "Download-Limit (kbps)",
       "downloadRateLimitHint": "0 oder leer = unbegrenzt. Beispiel: 2048 = ~2 Mbps.",
       "defaultPlaylistSize": "Standard-Playlistgröße",
+      "downloadProgressEnabled": "Download-Fortschritt im Chat spammen",
       "save": "Speichern",
       "saving": "Wird gespeichert...",
       "toastSaved": "Einstellungen gespeichert",

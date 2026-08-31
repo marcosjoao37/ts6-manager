@@ -54,6 +54,7 @@ export interface BotMessages {
   savedPlaylistUsage: string;
   savedPlaylistLoaded: (name: string, songCount: number) => string;
   savedNoPlaylists: string;
+  downloadStatus: (message: string, completed: number, total: number, failed: number, cancelled: boolean) => string;
 
   // Playback
   playbackStopped: string;
@@ -175,6 +176,8 @@ const en: BotMessages = {
   savedPlaylistUsage: 'Usage: !savedplay <id>',
   savedPlaylistLoaded: (name, songCount) => `Loaded saved playlist: ${name} (${songCount} tracks)`,
   savedNoPlaylists: 'No saved playlists yet.',
+  downloadStatus: (message, completed, total, failed, cancelled) =>
+    `Download: ${message} | ${completed}/${total} done${failed ? `, ${failed} failed` : ''}${cancelled ? ', cancelled' : ''}`,
 
   playbackStopped: 'Playback stopped.',
   paused: 'Paused.',
@@ -234,6 +237,7 @@ const en: BotMessages = {
     '  !saved               List saved playlists/albums',
     '  !savedplay <id>      Play a saved playlist/album',
     '  !stopdl              Cancel the current playlist download',
+    '  !downloadstatus      Show current download progress',
     '  !add <url>           Add a track to the queue',
     '  !skip / !next        Next track',
     '  !prev                Previous track',
@@ -317,6 +321,8 @@ const ptBR: BotMessages = {
   savedPlaylistUsage: 'Uso: !savedplay <id>',
   savedPlaylistLoaded: (name, songCount) => `Playlist salva carregada: ${name} (${songCount} faixas)`,
   savedNoPlaylists: 'Nenhuma playlist salva ainda.',
+  downloadStatus: (message, completed, total, failed, cancelled) =>
+    `Download: ${message} | ${completed}/${total} concluídos${failed ? `, ${failed} falharam` : ''}${cancelled ? ', cancelado' : ''}`,
 
   playbackStopped: 'Reprodução parada.',
   paused: 'Pausado.',
@@ -376,6 +382,7 @@ const ptBR: BotMessages = {
     '  !saved               Listar playlists/álbuns salvos',
     '  !savedplay <id>      Tocar uma playlist/álbum salvo',
     '  !stopdl              Cancelar o download da playlist atual',
+    '  !downloadstatus      Mostrar o progresso do download atual',
     '  !add <url>           Adicionar uma faixa à fila',
     '  !skip / !next        Próxima faixa',
     '  !prev                Faixa anterior',

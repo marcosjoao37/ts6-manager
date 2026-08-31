@@ -2,7 +2,7 @@ import type { PrismaClient } from '../../generated/prisma/index.js';
 import { VoiceBotManager } from './voice-bot-manager.js';
 import type { VoiceBot } from './voice-bot.js';
 import type { QueueItem } from './playlist/queue.js';
-import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify, cancelDownloadsForBot } from './music-ops.js';
+import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify, cancelDownloadsForBot, getDownloadStatus } from './music-ops.js';
 import { saveQueueItemsAsPlaylist, listSavedPlaylists, loadSavedPlaylist } from './saved-playlists.js';
 import { setYtDlpRateLimit } from './audio/youtube.js';
 import { setDefaultPlaylistLimit } from './music-ops.js';
@@ -59,6 +59,7 @@ const MUSIC_COMMANDS = new Set([
   'stream', 'stopstream', 'viewers',
   'move', 'moveall', 'channels', 'notif',
   'stopdl', 'stopdownload', 'cancel', 'playlist',
+  'downloadstatus', 'dlstatus',
   'saved', 'savedplay',
   'help', 'aide', 'info',
 ]);
@@ -70,6 +71,7 @@ interface MusicCommandSettingsRow extends MusicCommandAccessSettings {
   audioQuality: MusicAudioQuality;
   downloadRateLimitKbps: number | null;
   defaultPlaylistSize: number;
+  downloadProgressEnabled: boolean;
 }
 
 /**
@@ -93,6 +95,7 @@ export class MusicCommandHandler {
   // Messages for the currently configured bot response language. Updated on
   // every command after the (cached) settings row is loaded.
   private messages: BotMessages = botMessages.en;
+  private downloadProgressEnabled = false;
 
   constructor(
     private prisma: PrismaClient,
@@ -171,6 +174,7 @@ export class MusicCommandHandler {
     bot.setAudioQuality(settings.audioQuality);
     setYtDlpRateLimit(settings.downloadRateLimitKbps ?? null);
     setDefaultPlaylistLimit(settings.defaultPlaylistSize);
+    this.downloadProgressEnabled = settings.downloadProgressEnabled;
 
     // Optionally move the bot to the channel of the user that issued the command.
     await this.maybeMoveBotToRequesterChannel(botId, bot, command, args, userClid);
@@ -213,6 +217,10 @@ export class MusicCommandHandler {
           break;
         case 'playlist':
           this.showQueue(bot, reply);
+          break;
+        case 'downloadstatus':
+        case 'dlstatus':
+          this.handleDownloadStatus(reply);
           break;
         case 'saved':
           await this.handleSavedPlaylists(bot, reply);
@@ -343,7 +351,7 @@ export class MusicCommandHandler {
     try {
       const result = await downloadAndEnqueue(this.prisma, bot, url, {
         playlistLimit: count,
-        onProgress: (message) => reply(message),
+        onProgress: this.downloadProgressEnabled ? (message) => reply(message) : undefined,
       });
       if (result.cancelled) {
         reply(this.messages.downloadCancelled);
@@ -390,7 +398,15 @@ export class MusicCommandHandler {
 
     const queueStart = bot.queue.length;
     try {
-      const result = await enqueueSpotify(this.prisma, bot, config, args, limit, undefined, (message) => reply(message));
+      const result = await enqueueSpotify(
+        this.prisma,
+        bot,
+        config,
+        args,
+        limit,
+        undefined,
+        this.downloadProgressEnabled ? (message) => reply(message) : undefined,
+      );
       if (result.cancelled) {
         reply(this.messages.downloadCancelled);
         return;
@@ -504,7 +520,7 @@ export class MusicCommandHandler {
     const queueStart = bot.queue.length;
     try {
       const result = await downloadAndEnqueue(this.prisma, bot, args, {
-        onProgress: (message) => reply(message),
+        onProgress: this.downloadProgressEnabled ? (message) => reply(message) : undefined,
       });
       if (result.cancelled) {
         reply(this.messages.downloadCancelled);
@@ -540,6 +556,17 @@ export class MusicCommandHandler {
   private async handleStopDownload(botId: number, reply: ReplyFn): Promise<void> {
     const cancelled = cancelDownloadsForBot(botId);
     reply(cancelled ? this.messages.downloadCancelled : this.messages.noActiveDownload);
+  }
+
+  private handleDownloadStatus(reply: ReplyFn): void {
+    const status = getDownloadStatus();
+    reply(this.messages.downloadStatus(
+      status.message,
+      status.completed,
+      status.total,
+      status.failed,
+      status.cancelled,
+    ));
   }
 
   private async handleSavedPlaylists(bot: VoiceBot, reply: ReplyFn): Promise<void> {
@@ -759,6 +786,7 @@ export class MusicCommandHandler {
       audioQuality: isMusicAudioQuality(row?.audioQuality) ? row.audioQuality : 'normal',
       downloadRateLimitKbps: row?.downloadRateLimitKbps ?? null,
       defaultPlaylistSize: row?.defaultPlaylistSize ?? 10,
+      downloadProgressEnabled: row?.downloadProgressEnabled ?? false,
     };
     this.settingsCache = { at: Date.now(), value };
     return value;

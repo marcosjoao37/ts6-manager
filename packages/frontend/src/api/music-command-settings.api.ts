@@ -12,6 +12,7 @@ export interface MusicCommandSettings {
   audioQuality: MusicAudioQuality;
   downloadRateLimitKbps: number | null;
   defaultPlaylistSize: number;
+  downloadProgressEnabled: boolean;
 }
 
 export const musicCommandSettingsApi = {

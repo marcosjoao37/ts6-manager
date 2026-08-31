@@ -7,8 +7,10 @@ import { StreamSignaling, type ActiveStream, type SignalingMessage } from './str
 import { SidecarClient } from './streaming/sidecar-client.js';
 import { SidecarProcess, type SidecarConfig } from './streaming/sidecar-process.js';
 import { STREAM_PRESETS, DEFAULT_PRESET, type VideoViewerInfo, type VideoStreamStatus } from './streaming/types.js';
-import { getCookieArgs, runYtDlp } from './audio/youtube.js';
+import { getCookieArgs, runYtDlp, downloadYouTube } from './audio/youtube.js';
 import { MUSIC_AUDIO_PRESETS, type MusicAudioQuality } from './audio-presets.js';
+
+const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
 
 /** Resolve a YouTube/yt-dlp-compatible URL to a direct stream URL */
 async function resolveVideoUrl(url: string, maxHeight: number = 720): Promise<string> {
@@ -390,6 +392,16 @@ export class VoiceBot extends EventEmitter {
   async play(item: QueueItem): Promise<void> {
     if (this._status !== 'connected' && this._status !== 'playing' && this._status !== 'paused') {
       throw new Error('Bot is not connected');
+    }
+
+    // Lazy queue items have a downloadUrl and no filePath yet. Download them
+    // now so only the track that is actually starting is fetched.
+    if (!item.filePath && item.downloadUrl) {
+      const { filePath, info } = await downloadYouTube(item.downloadUrl, MUSIC_DIR);
+      item.filePath = filePath;
+      item.title = item.title || info.title;
+      item.artist = item.artist || info.artist;
+      item.duration = item.duration || info.duration;
     }
 
     this.stopIcyPolling();

@@ -378,6 +378,7 @@
       "downloadRateLimit": "Limite de téléchargement (kbps)",
       "downloadRateLimitHint": "0 ou vide = illimité. Exemple : 2048 = ~2 Mbps.",
       "defaultPlaylistSize": "Taille de playlist par défaut",
+      "downloadProgressEnabled": "Spammer la progression du téléchargement dans le chat",
       "save": "Enregistrer",
       "saving": "Enregistrement...",
       "toastSaved": "Réglages enregistrés",

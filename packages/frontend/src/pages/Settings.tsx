@@ -1389,8 +1389,8 @@ function MusicCommandsTab() {
   const { data: groupsData } = useServerGroups();
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low'; downloadRateLimitKbps: string; defaultPlaylistSize: string }>({
-    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal', downloadRateLimitKbps: '', defaultPlaylistSize: '10',
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low'; downloadRateLimitKbps: string; defaultPlaylistSize: string; downloadProgressEnabled: boolean }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal', downloadRateLimitKbps: '', defaultPlaylistSize: '10', downloadProgressEnabled: false,
   });
 
   const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
@@ -1405,6 +1405,7 @@ function MusicCommandsTab() {
       audioQuality: settings.audioQuality ?? 'normal',
       downloadRateLimitKbps: settings.downloadRateLimitKbps ? String(settings.downloadRateLimitKbps) : '',
       defaultPlaylistSize: settings.defaultPlaylistSize ? String(settings.defaultPlaylistSize) : '10',
+      downloadProgressEnabled: settings.downloadProgressEnabled ?? false,
     });
   }
 
@@ -1418,6 +1419,7 @@ function MusicCommandsTab() {
       audioQuality: form.audioQuality,
       downloadRateLimitKbps: form.downloadRateLimitKbps === '' ? null : parseInt(form.downloadRateLimitKbps),
       defaultPlaylistSize: parseInt(form.defaultPlaylistSize),
+      downloadProgressEnabled: form.downloadProgressEnabled,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['music-command-settings'] });
@@ -1505,6 +1507,11 @@ function MusicCommandsTab() {
           <Label className="text-xs">{t('settings.musicCommands.defaultPlaylistSize')}</Label>
           <Input className="h-8 text-xs w-40" type="number" min={1} value={form.defaultPlaylistSize}
             onChange={(e) => setForm((f) => ({ ...f, defaultPlaylistSize: e.target.value }))} />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch checked={form.downloadProgressEnabled} onCheckedChange={(v) => setForm((f) => ({ ...f, downloadProgressEnabled: v }))} />
+          <Label className="text-xs">{t('settings.musicCommands.downloadProgressEnabled')}</Label>
         </div>
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>
