@@ -378,6 +378,7 @@
       "downloadRateLimit": "Limite de taxa de download (kbps)",
       "downloadRateLimitHint": "0 ou vazio = ilimitado. ",
       "defaultPlaylistSize": "Tamanho padrão da lista de reprodução",
+      "downloadProgressEnabled": "Enviar spam de progresso de download no chat",
       "save": "Salvar",
       "saving": "Salvando...",
       "toastSaved": "Configurações salvas",
