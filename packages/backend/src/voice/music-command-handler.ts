@@ -5,6 +5,7 @@ import type { QueueItem } from './playlist/queue.js';
 import { downloadAndEnqueue, isSpotifyUrl, loadSpotifyConfig, enqueueSpotify, cancelDownloadsForBot } from './music-ops.js';
 import { saveQueueItemsAsPlaylist, listSavedPlaylists, loadSavedPlaylist } from './saved-playlists.js';
 import { setYtDlpRateLimit } from './audio/youtube.js';
+import { setDefaultPlaylistLimit } from './music-ops.js';
 import type { ConnectionPool } from '../ts-client/connection-pool.js';
 import type { WebQueryClient } from '../ts-client/webquery-client.js';
 import { requiredSgid, parseServerGroupIds, type MusicCommandAccessSettings } from './music-command-access.js';
@@ -68,6 +69,7 @@ interface MusicCommandSettingsRow extends MusicCommandAccessSettings {
   moveBotToRequesterChannel: boolean;
   audioQuality: MusicAudioQuality;
   downloadRateLimitKbps: number | null;
+  defaultPlaylistSize: number;
 }
 
 /**
@@ -168,6 +170,7 @@ export class MusicCommandHandler {
     const settings = await this.getSettings();
     bot.setAudioQuality(settings.audioQuality);
     setYtDlpRateLimit(settings.downloadRateLimitKbps ?? null);
+    setDefaultPlaylistLimit(settings.defaultPlaylistSize);
 
     // Optionally move the bot to the channel of the user that issued the command.
     await this.maybeMoveBotToRequesterChannel(botId, bot, command, args, userClid);
@@ -755,6 +758,7 @@ export class MusicCommandHandler {
       moveBotToRequesterChannel: row?.moveBotToRequesterChannel ?? false,
       audioQuality: isMusicAudioQuality(row?.audioQuality) ? row.audioQuality : 'normal',
       downloadRateLimitKbps: row?.downloadRateLimitKbps ?? null,
+      defaultPlaylistSize: row?.defaultPlaylistSize ?? 10,
     };
     this.settingsCache = { at: Date.now(), value };
     return value;

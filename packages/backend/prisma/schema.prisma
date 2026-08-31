@@ -317,6 +317,7 @@ model MusicCommandSettings {
   moveBotToRequesterChannel Boolean @default(false) // move bot to the command invoker's channel before playback
   audioQuality             String   @default("normal") // music bot audio preset ('normal' | 'low')
   downloadRateLimitKbps    Int?     // yt-dlp download rate limit in kbps (null = unlimited)
+  defaultPlaylistSize      Int      @default(10) // default tracks per playlist when !play has no count
   updatedAt                DateTime @updatedAt
 }
 

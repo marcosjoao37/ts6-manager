@@ -16,13 +16,19 @@ export const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
 const SPOTIFY_REQUEST_TIMEOUT_MS = 10000;
 
 /** Default number of tracks pulled from each playlist when no count is given. */
-export const DEFAULT_PLAYLIST_LIMIT = 50;
+let defaultPlaylistLimit = 10;
+
+export function setDefaultPlaylistLimit(value: number): void {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    defaultPlaylistLimit = Math.floor(value);
+  }
+}
 
 function normalizePlaylistLimit(value?: number): number {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
     return Math.floor(value);
   }
-  return DEFAULT_PLAYLIST_LIMIT;
+  return defaultPlaylistLimit;
 }
 
 /** Active download cancellation controllers, keyed by music bot id. */

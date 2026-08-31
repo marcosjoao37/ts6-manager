@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { requireRole } from '../middleware/rbac.js';
 import { AppError } from '../middleware/error-handler.js';
 import { setYtDlpRateLimit } from '../voice/audio/youtube.js';
+import { setDefaultPlaylistLimit } from '../voice/music-ops.js';
 
 export const musicCommandSettingsRoutes: Router = Router();
 
@@ -25,6 +26,7 @@ musicCommandSettingsRoutes.get('/', async (req: Request, res: Response, next) =>
   try {
     const s = await getOrCreate(req.app.locals.prisma);
     setYtDlpRateLimit(s.downloadRateLimitKbps ?? null);
+    setDefaultPlaylistLimit(s.defaultPlaylistSize ?? 10);
     res.json({
       musicCommandSgid: s.musicCommandSgid,
       adminCommandSgid: s.adminCommandSgid,
@@ -33,6 +35,7 @@ musicCommandSettingsRoutes.get('/', async (req: Request, res: Response, next) =>
       moveBotToRequesterChannel: s.moveBotToRequesterChannel ?? false,
       audioQuality: s.audioQuality ?? 'normal',
       downloadRateLimitKbps: s.downloadRateLimitKbps ?? null,
+      defaultPlaylistSize: s.defaultPlaylistSize ?? 10,
     });
   } catch (err) { next(err); }
 });
@@ -42,7 +45,7 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
   try {
     const prisma = req.app.locals.prisma;
     const current = await getOrCreate(prisma);
-    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel, audioQuality, downloadRateLimitKbps } = req.body;
+    const { musicCommandSgid, adminCommandSgid, notifyNowPlaying, botLanguage, moveBotToRequesterChannel, audioQuality, downloadRateLimitKbps, defaultPlaylistSize } = req.body;
 
     const data: any = {};
     if (musicCommandSgid !== undefined) data.musicCommandSgid = normSgid(musicCommandSgid);
@@ -66,9 +69,15 @@ musicCommandSettingsRoutes.put('/', async (req: Request, res: Response, next) =>
         data.downloadRateLimitKbps = parsed;
       }
     }
+    if (defaultPlaylistSize !== undefined) {
+      const parsed = parseInt(String(defaultPlaylistSize), 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) throw new AppError(400, 'Invalid defaultPlaylistSize');
+      data.defaultPlaylistSize = parsed;
+    }
 
     await prisma.musicCommandSettings.update({ where: { id: current.id }, data });
     setYtDlpRateLimit(data.downloadRateLimitKbps !== undefined ? data.downloadRateLimitKbps : current.downloadRateLimitKbps ?? null);
+    setDefaultPlaylistLimit(data.defaultPlaylistSize ?? current.defaultPlaylistSize ?? 10);
     res.json({ success: true });
   } catch (err) { next(err); }
 });

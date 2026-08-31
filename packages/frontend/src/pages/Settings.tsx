@@ -1389,8 +1389,8 @@ function MusicCommandsTab() {
   const { data: groupsData } = useServerGroups();
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low'; downloadRateLimitKbps: string }>({
-    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal', downloadRateLimitKbps: '',
+  const [form, setForm] = useState<{ musicCommandSgid: string; adminCommandSgid: string; notifyNowPlaying: boolean; botLanguage: 'en' | 'pt-BR'; moveBotToRequesterChannel: boolean; audioQuality: 'normal' | 'low'; downloadRateLimitKbps: string; defaultPlaylistSize: string }>({
+    musicCommandSgid: NO_GROUP, adminCommandSgid: NO_GROUP, notifyNowPlaying: false, botLanguage: 'en', moveBotToRequesterChannel: false, audioQuality: 'normal', downloadRateLimitKbps: '', defaultPlaylistSize: '10',
   });
 
   const [seededSettings, setSeededSettings] = useState<typeof settings>(undefined);
@@ -1404,6 +1404,7 @@ function MusicCommandsTab() {
       moveBotToRequesterChannel: settings.moveBotToRequesterChannel ?? false,
       audioQuality: settings.audioQuality ?? 'normal',
       downloadRateLimitKbps: settings.downloadRateLimitKbps ? String(settings.downloadRateLimitKbps) : '',
+      defaultPlaylistSize: settings.defaultPlaylistSize ? String(settings.defaultPlaylistSize) : '10',
     });
   }
 
@@ -1416,6 +1417,7 @@ function MusicCommandsTab() {
       moveBotToRequesterChannel: form.moveBotToRequesterChannel,
       audioQuality: form.audioQuality,
       downloadRateLimitKbps: form.downloadRateLimitKbps === '' ? null : parseInt(form.downloadRateLimitKbps),
+      defaultPlaylistSize: parseInt(form.defaultPlaylistSize),
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['music-command-settings'] });
@@ -1497,6 +1499,12 @@ function MusicCommandsTab() {
           <Input className="h-8 text-xs w-40" type="number" min={0} placeholder="0" value={form.downloadRateLimitKbps}
             onChange={(e) => setForm((f) => ({ ...f, downloadRateLimitKbps: e.target.value }))} />
           <p className="text-[10px] text-muted-foreground">{t('settings.musicCommands.downloadRateLimitHint')}</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">{t('settings.musicCommands.defaultPlaylistSize')}</Label>
+          <Input className="h-8 text-xs w-40" type="number" min={1} value={form.defaultPlaylistSize}
+            onChange={(e) => setForm((f) => ({ ...f, defaultPlaylistSize: e.target.value }))} />
         </div>
 
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>

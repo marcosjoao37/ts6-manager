@@ -11,6 +11,7 @@ export interface MusicCommandSettings {
   moveBotToRequesterChannel: boolean;
   audioQuality: MusicAudioQuality;
   downloadRateLimitKbps: number | null;
+  defaultPlaylistSize: number;
 }
 
 export const musicCommandSettingsApi = {

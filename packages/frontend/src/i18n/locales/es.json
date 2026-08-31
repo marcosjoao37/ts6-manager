@@ -377,6 +377,7 @@
       "audioQualityLow": "Baja (64 kbps, 400 ms buffer)",
       "downloadRateLimit": "Límite de descarga (kbps)",
       "downloadRateLimitHint": "0 o vacío = ilimitado. Ejemplo: 2048 = ~2 Mbps.",
+      "defaultPlaylistSize": "Tamaño de playlist por defecto",
       "save": "Guardar",
       "saving": "Guardando...",
       "toastSaved": "Ajustes guardados",
