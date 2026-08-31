@@ -35,6 +35,7 @@ function fakeBot(status: string = 'connected') {
     queue: new PlayQueue(),
     status,
     play: vi.fn(async () => { }),
+    playAdvancingOnError: vi.fn(async () => { }),
     currentConfig: { serverConfigId: null },
   } as any;
 }
@@ -78,7 +79,7 @@ describe('downloadAndEnqueue', () => {
     expect(playlist).toEqual({ added: 2, failed: [], total: 2 });
     expect(item.id).toBe('yt_vid1');
     expect(bot.queue.length).toBe(2);
-    expect(bot.play).toHaveBeenCalledWith(expect.objectContaining({ id: 'yt_vid1' }));
+    expect(bot.playAdvancingOnError).toHaveBeenCalledWith(expect.objectContaining({ id: 'yt_vid1' }));
   });
 
   it('queues all playlist tracks behind the current track when playing', async () => {
@@ -99,7 +100,7 @@ describe('downloadAndEnqueue', () => {
       prisma, bot, 'https://www.youtube.com/watch?v=abc123&list=PL123', { forceStart: true },
     );
     expect(queued).toBe(false);
-    expect(bot.play).toHaveBeenCalledWith(expect.objectContaining({ id: 'yt_vid1' }));
+    expect(bot.playAdvancingOnError).toHaveBeenCalledWith(expect.objectContaining({ id: 'yt_vid1' }));
   });
 
   it('limits playlist tracks to the requested count', async () => {

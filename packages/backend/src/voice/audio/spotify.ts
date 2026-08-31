@@ -1,4 +1,4 @@
-import { searchYouTube, type YouTubeSearchResult } from './youtube.js';
+import { searchYouTube, downloadYouTube, type YouTubeSearchResult, type YouTubeInfo } from './youtube.js';
 
 /**
  * Spotify does not allow audio downloads. This module uses the Spotify Web
@@ -53,10 +53,19 @@ type SpotifyPlaylistObject = {
   name: string;
   description?: string;
   external_urls?: { spotify?: string };
-  items?: {
-    items?: { item?: SpotifyTrackObject | null }[];
-    next?: string | null;
-  };
+  tracks?: SpotifyPlaylistTracksPage;
+};
+
+type SpotifyPlaylistTrackEntry = {
+  // `/playlists/{id}/tracks` returns `track`; the embedded playlist object
+  // uses the same shape, and some payloads/storelers use `item`.
+  track?: SpotifyTrackObject | null;
+  item?: SpotifyTrackObject | null;
+};
+
+type SpotifyPlaylistTracksPage = {
+  items?: SpotifyPlaylistTrackEntry[];
+  next?: string | null;
 };
 
 // Access token cached per clientId (client-credentials flow).
@@ -221,31 +230,29 @@ export async function resolveSpotifyInput(input: string, config: SpotifyConfig):
   const playlist = await spotifyGet<SpotifyPlaylistObject>(`/playlists/${encodeURIComponent(parsed.id)}`, config);
   const tracks: SpotifyTrackInfo[] = [];
 
-  // Fetch tracks from the dedicated playlist-tracks endpoint. Some Spotify
-  // API responses omit the embedded tracks paging object, which made the old
-  // implementation see an empty playlist.
-  let playlistTracks: { items?: { item?: SpotifyTrackObject | null }[]; next?: string | null } | null = null;
+  // Fetch tracks from the dedicated playlist-tracks endpoint. Entries here use
+  // `track` (not `item`), and the endpoint pages through `next`. Some Spotify
+  // client-credentials tokens get 403 here, so fall back to the embedded
+  // `tracks` paging object on the playlist payload when that happens.
+  let page: SpotifyPlaylistTracksPage | null;
   try {
-    playlistTracks = await spotifyGet<{ items?: { item?: SpotifyTrackObject | null }[]; next?: string | null }>(
+    page = await spotifyGet<SpotifyPlaylistTracksPage>(
       `/playlists/${encodeURIComponent(parsed.id)}/tracks`,
       config,
     );
   } catch (err: any) {
-    console.warn(`[Spotify] Playlist tracks endpoint failed, falling back to embedded items: ${err.message}`);
+    console.warn(`[Spotify] Playlist tracks endpoint failed, falling back to embedded tracks: ${err.message}`);
+    page = playlist.tracks ?? null;
   }
 
-  const firstPage = playlistTracks ?? playlist.items ?? null;
-  for (const entry of firstPage?.items || []) {
-    if (entry.item) tracks.push(toTrackInfo(entry.item));
-  }
-
-  let next = firstPage?.next || null;
-  while (next) {
-    const page = await spotifyGet<{ items?: { item?: SpotifyTrackObject | null }[]; next?: string | null }>(next, config);
-    for (const entry of page.items || []) {
-      if (entry.item) tracks.push(toTrackInfo(entry.item));
+  let current: SpotifyPlaylistTracksPage | null = page;
+  while (current) {
+    for (const entry of current.items || []) {
+      const track = entry.track ?? entry.item;
+      if (track) tracks.push(toTrackInfo(track));
     }
-    next = page.next || null;
+    const nextUrl = current.next || null;
+    current = nextUrl ? await spotifyGet<SpotifyPlaylistTracksPage>(nextUrl, config) : null;
   }
 
   console.log(`[Spotify] Playlist ${parsed.id}: ${tracks.length} tracks from playlist endpoint`);
@@ -381,4 +388,28 @@ export async function findBestYouTubeForSpotify(track: SpotifyTrackInfo): Promis
     throw new Error(`Aucune correspondance fiable pour ${track.artist} - ${track.title}`);
   }
   return scored[0];
+}
+
+/**
+ * Resolve a lazily-queued Spotify track to its best YouTube match and download
+ * it through the existing yt-dlp pipeline. Called by VoiceBot only when the
+ * track is about to play (or is being prefetched), so we avoid searching
+ * YouTube for an entire playlist up front.
+ */
+export async function downloadSpotifyTrack(
+  item: { title: string; artist?: string; album?: string; durationSec?: number },
+  outputDir: string,
+  signal?: AbortSignal,
+): Promise<{ filePath: string; info: YouTubeInfo }> {
+  const track: SpotifyTrackInfo = {
+    id: '',
+    title: item.title,
+    artist: item.artist || 'Unknown Artist',
+    album: item.album || '',
+    durationMs: Math.max(0, Math.round((item.durationSec || 0) * 1000)),
+    spotifyUrl: '',
+  };
+  const yt = await findBestYouTubeForSpotify(track);
+  const youtubeUrl = `https://www.youtube.com/watch?v=${yt.id}`;
+  return downloadYouTube(youtubeUrl, outputDir, signal);
 }

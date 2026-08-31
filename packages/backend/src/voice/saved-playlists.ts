@@ -30,7 +30,7 @@ export async function saveQueueItemsAsPlaylist(
   sourceName: string | null,
   items: QueueItem[],
 ): Promise<SavedPlaylistSummary | null> {
-  const savable = items.filter((item) => item.filePath || item.downloadUrl);
+  const savable = items.filter((item) => item.filePath || item.downloadUrl || item.source === 'spotify');
   if (savable.length === 0) return null;
 
   const musicName =
@@ -54,6 +54,7 @@ export async function saveQueueItemsAsPlaylist(
       data: {
         title: item.title,
         artist: item.artist ?? null,
+        album: item.album ?? null,
         duration: item.duration ?? null,
         filePath: item.filePath || '',
         source: item.source,
@@ -103,6 +104,7 @@ export async function loadSavedPlaylist(prisma: PrismaClient, playlistId: number
     id: `saved_${ps.song.id}`,
     title: ps.song.title,
     artist: ps.song.artist ?? undefined,
+    album: ps.song.album ?? undefined,
     duration: ps.song.duration ?? undefined,
     filePath: ps.song.filePath,
     source: (ps.song.source as QueueItem['source']) || 'local',

@@ -169,6 +169,10 @@ export class MusicCommandHandler {
     // Access control: music vs admin tier, gated by configured server groups.
     if (!(await this.checkAccess(botId, command, userClid, reply))) return;
 
+    // Acknowledge immediately for slow commands so the user gets a response
+    // before any DB lookups, bot channel moves, or downloads.
+    if (this.shouldAckLoading(command, args)) reply(this.messages.loading);
+
     // Apply runtime audio quality/buffer settings before any playback command.
     const settings = await this.getSettings();
     bot.setAudioQuality(settings.audioQuality);
@@ -345,8 +349,6 @@ export class MusicCommandHandler {
       return;
     }
 
-    reply(this.messages.loading);
-
     const queueStart = bot.queue.length;
     try {
       const result = await downloadAndEnqueue(this.prisma, bot, url, {
@@ -447,15 +449,29 @@ export class MusicCommandHandler {
       return;
     }
 
-    const currentIdx = bot.queue.index;
-    const lines = items.slice(0, 15).map((item, i) => {
+    // List every remaining track, from the current one to the end. Message
+    // chunks keep each reply under the TeamSpeak send-message size limit.
+    const currentIdx = Math.max(0, Math.min(bot.queue.index, items.length - 1));
+    const lines: string[] = [];
+    for (let i = currentIdx; i < items.length; i++) {
+      const item = items[i];
       const marker = i === currentIdx ? '▶ ' : '  ';
       const artist = item.artist ? `${item.artist} - ` : '';
       const dur = item.duration ? ` [${Math.floor(item.duration / 60)}:${String(Math.floor(item.duration % 60)).padStart(2, '0')}]` : '';
-      return `${marker}${i + 1}. ${artist}${item.title}${dur}`;
-    });
-    if (items.length > 15) lines.push(this.messages.queueMore(items.length - 15));
-    reply(this.messages.queueHeader(items.length) + '\n' + lines.join('\n'));
+      lines.push(`${marker}${i + 1}. ${artist}${item.title}${dur}`);
+    }
+
+    const header = this.messages.queueHeader(items.length);
+    let buf = header;
+    for (const line of lines) {
+      if (buf.length + 1 + line.length > 900) {
+        reply(buf);
+        buf = line;
+      } else {
+        buf += '\n' + line;
+      }
+    }
+    if (buf) reply(buf);
   }
 
   private async handleQueue(bot: VoiceBot, reply: ReplyFn, args: string, userName?: string): Promise<void> {
@@ -490,7 +506,7 @@ export class MusicCommandHandler {
       if (item.streamUrl) {
         await bot.playStream(item);
       } else {
-        await bot.play(item);
+        await bot.playAdvancingOnError(item);
       }
       reply(this.messages.playingIndex(idx + 1, item.title));
       return;
@@ -514,8 +530,6 @@ export class MusicCommandHandler {
       reply(this.messages.queueUsage);
       return;
     }
-
-    reply(this.messages.loading);
 
     const queueStart = bot.queue.length;
     try {
@@ -605,7 +619,7 @@ export class MusicCommandHandler {
     }
 
     const first = bot.queue.playAt(firstIndex);
-    if (first) await bot.play(first);
+    if (first) await bot.playAdvancingOnError(first);
     reply(this.messages.savedPlaylistLoaded(playlist.name, items.length));
   }
 
@@ -632,7 +646,7 @@ export class MusicCommandHandler {
       if (next.streamUrl) {
         await bot.playStream(next);
       } else {
-        await bot.play(next);
+        await bot.playAdvancingOnError(next);
       }
       reply(this.messages.skippedTo(next.title));
     } else {
@@ -794,6 +808,22 @@ export class MusicCommandHandler {
 
   private invalidateSettings(): void {
     this.settingsCache = null;
+  }
+
+  /** True when we should send an immediate "Loading..." ack for a command. */
+  private shouldAckLoading(command: string, args: string): boolean {
+    if (command === 'radio' || command === 'stream' || command === 'savedplay') return !!args;
+    if (command === 'spotify') return !!args;
+
+    if (command === 'play' || command === 'queue' || command === 'add') {
+      const first = args.trim().split(/\s+/)[0] || '';
+      if (command === 'queue' || command === 'add') {
+        const a = args.trim().toLowerCase();
+        if (!a || a === 'show' || a === 'clear' || a.startsWith('remove ')) return false;
+      }
+      return isSpotifyUrl(first) || first.startsWith('http://') || first.startsWith('https://');
+    }
+    return false;
   }
 
   /**

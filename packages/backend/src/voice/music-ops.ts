@@ -5,7 +5,6 @@ import { downloadYouTube, searchYouTube, getYouTubePlaylistVideos, isYouTubePlay
 import { decrypt } from '../utils/crypto.js';
 import {
   resolveSpotifyInput,
-  findBestYouTubeForSpotify,
   type SpotifyConfig,
 } from './audio/spotify.js';
 
@@ -154,28 +153,20 @@ export async function enqueueSpotify(
     const failed: string[] = [];
     const items: QueueItem[] = [];
 
-    for (let i = 0; i < tracks.length; i++) {
+    // Queue Spotify tracks lazily: metadata only. The YouTube search + audio
+    // download happen when VoiceBot starts (or prefetches) each track.
+    for (const track of tracks) {
       if (activeSignal.aborted) break;
-
-      const track = tracks[i];
-      try {
-        notify(onProgress, `Searching YouTube for ${i + 1}/${tracks.length}: ${track.artist} - ${track.title}`);
-        const yt = await findBestYouTubeForSpotify(track);
-        const youtubeUrl = `https://www.youtube.com/watch?v=${yt.id}`;
-        items.push({
-          id: `sp_${track.id}_${yt.id}`,
-          title: track.title,
-          artist: track.artist,
-          duration: track.durationMs ? Math.round(track.durationMs / 1000) : undefined,
-          filePath: '',
-          source: 'youtube',
-          sourceUrl: track.spotifyUrl,
-          downloadUrl: youtubeUrl,
-        });
-      } catch (err: any) {
-        failed.push(`${track.artist} - ${track.title}: ${err.message}`);
-        setDownloadStatus({ failed: failed.length });
-      }
+      items.push({
+        id: `sp_${track.id}`,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.durationMs ? Math.round(track.durationMs / 1000) : undefined,
+        filePath: '',
+        source: 'spotify',
+        sourceUrl: track.spotifyUrl,
+      });
     }
 
     if (items.length === 0) {
@@ -190,7 +181,7 @@ export async function enqueueSpotify(
     const shouldStart = bot.status !== 'playing' && bot.status !== 'paused';
     if (shouldStart) {
       bot.queue.playAt(firstIndex);
-      await bot.play(firstItem);
+      await bot.playAdvancingOnError(firstItem);
     }
 
     setDownloadStatus({
@@ -356,7 +347,7 @@ async function enqueueYouTubePlaylist(
     const shouldStart = options.forceStart || (bot.status !== 'playing' && bot.status !== 'paused');
     if (shouldStart) {
       bot.queue.playAt(firstIndex);
-      await bot.play(firstItem);
+      await bot.playAdvancingOnError(firstItem);
     }
 
     const playlist: PlaylistEnqueueInfo = { added: items.length, failed, total: items.length };

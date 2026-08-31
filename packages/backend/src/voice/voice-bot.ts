@@ -8,6 +8,7 @@ import { SidecarClient } from './streaming/sidecar-client.js';
 import { SidecarProcess, type SidecarConfig } from './streaming/sidecar-process.js';
 import { STREAM_PRESETS, DEFAULT_PRESET, type VideoViewerInfo, type VideoStreamStatus } from './streaming/types.js';
 import { getCookieArgs, runYtDlp, downloadYouTube } from './audio/youtube.js';
+import { downloadSpotifyTrack } from './audio/spotify.js';
 import { MUSIC_AUDIO_PRESETS, type MusicAudioQuality } from './audio-presets.js';
 
 const MUSIC_DIR = process.env.MUSIC_DIR || '/data/music';
@@ -395,19 +396,15 @@ export class VoiceBot extends EventEmitter {
       throw new Error('Bot is not connected');
     }
 
-    // Lazy queue items have a downloadUrl and no filePath yet. If a prefetch
-    // is already running for this exact item, wait for it instead of starting
-    // a second download; otherwise download it now.
-    if (!item.filePath && item.downloadUrl) {
+    // Lazy queue items hand no file yet. If a prefetch is already running for
+    // this exact item, wait for it instead of starting a second download;
+    // otherwise download the audio now.
+    if (!item.filePath) {
       if (this.prefetching?.id === item.id) {
         await this.prefetching.promise;
       }
       if (!item.filePath) {
-        const { filePath, info } = await downloadYouTube(item.downloadUrl, MUSIC_DIR);
-        item.filePath = filePath;
-        item.title = item.title || info.title;
-        item.artist = item.artist || info.artist;
-        item.duration = item.duration || info.duration;
+        await this.ensureDownloaded(item);
       }
     }
 
@@ -434,20 +431,73 @@ export class VoiceBot extends EventEmitter {
     }
   }
 
+  /**
+   * Play `item`; if it fails (e.g. "Video unavailable" during download),
+   * record the error, advance the queue and try the next track until one plays
+   * or the queue is exhausted.
+   */
+  async playAdvancingOnError(item: QueueItem): Promise<void> {
+    let current: QueueItem | null = item;
+    let attempts = 0;
+    const maxAttempts = Math.max(this.queue.length, 1) + 1;
+
+    while (current && attempts < maxAttempts) {
+      attempts++;
+      try {
+        await this.play(current);
+        return;
+      } catch (err: any) {
+        this.emit('error', err);
+        current = this.queue.next();
+      }
+    }
+
+    this.resetNickname();
+  }
+
+  /** Resolve + download a lazily-queued item (YouTube URL or Spotify metadata). */
+  private async ensureDownloaded(item: QueueItem): Promise<void> {
+    if (item.filePath) return;
+
+    const apply = (filePath: string, info: { title?: string; artist?: string; duration?: number }): void => {
+      item.filePath = filePath;
+      item.title = item.title || info.title || 'Unknown';
+      item.artist = item.artist || info.artist;
+      item.duration = item.duration || info.duration;
+    };
+
+    if (item.source === 'spotify') {
+      const { filePath, info } = await downloadSpotifyTrack(
+        {
+          title: item.title,
+          artist: item.artist,
+          album: item.album,
+          durationSec: item.duration,
+        },
+        MUSIC_DIR,
+      );
+      apply(filePath, info);
+      return;
+    }
+
+    if (item.downloadUrl) {
+      const { filePath, info } = await downloadYouTube(item.downloadUrl, MUSIC_DIR);
+      apply(filePath, info);
+      return;
+    }
+
+    throw new Error('No audio source for track');
+  }
+
   /** Download the next queued track in the background while the current one plays. */
   private prefetchNextDownload(): void {
     const next = this.queue.peekNext();
-    if (!next || next.filePath || !next.downloadUrl) return;
+    if (!next || next.filePath) return;
+    if (!next.downloadUrl && next.source !== 'spotify') return;
     if (this.prefetching?.id === next.id) return;
 
     const id = next.id;
-    const promise = downloadYouTube(next.downloadUrl, MUSIC_DIR)
-      .then(({ filePath, info }) => {
-        next.filePath = filePath;
-        next.title = next.title || info.title;
-        next.artist = next.artist || info.artist;
-        next.duration = next.duration || info.duration;
-      })
+    const promise = this.ensureDownloaded(next)
       .catch((err: any) => {
         console.error(`[VoiceBot] Prefetch failed for ${next.title}:`, err?.message);
       })
@@ -672,7 +722,7 @@ export class VoiceBot extends EventEmitter {
 
     const next = this.queue.next();
     if (next) {
-      this.play(next).catch((err) => this.emit('error', err));
+      void this.playAdvancingOnError(next);
     } else {
       this.resetNickname();
     }
@@ -896,7 +946,7 @@ export class VoiceBot extends EventEmitter {
     }
 
     const next = this.queue.next();
-    if (next) this.play(next).catch((err) => this.emit('error', err));
+    if (next) void this.playAdvancingOnError(next);
     else this.resetNickname();
   }
 

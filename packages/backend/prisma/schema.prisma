@@ -188,6 +188,7 @@ model Song {
   id              Int       @id @default(autoincrement())
   title           String
   artist          String?
+  album           String?
   duration        Float?
   filePath        String
   source          String    @default("local")
