@@ -350,7 +350,7 @@ authRoutes.delete('/trusted/:id', authMiddleware, async (req: Request, res: Resp
   } catch (err) { next(err); }
 });
 
-const SUPPORTED_LANGUAGES = ['en', 'fr', 'de', 'es', 'it'];
+const SUPPORTED_LANGUAGES = ['en', 'fr', 'de', 'es', 'it', 'pt-BR'];
 
 // PUT /api/auth/language — persist the current user's UI language
 authRoutes.put('/language', authMiddleware, async (req: Request, res: Response, next) => {
