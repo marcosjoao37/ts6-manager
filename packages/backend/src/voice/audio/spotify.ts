@@ -176,17 +176,55 @@ export async function resolveSpotifyInput(input: string, config: SpotifyConfig):
   const playlist = await spotifyGet<SpotifyPlaylistObject>(`/playlists/${encodeURIComponent(parsed.id)}`, config);
   const tracks: SpotifyTrackInfo[] = [];
 
-  for (const item of playlist.tracks?.items || []) {
+  // Fetch tracks from the dedicated playlist-tracks endpoint. Some Spotify
+  // API responses omit the embedded tracks paging object, which made the old
+  // implementation see an empty playlist.
+  let playlistTracks: { items?: { track?: SpotifyTrackObject | null }[]; next?: string | null } | null = null;
+  try {
+    playlistTracks = await spotifyGet<{ items?: { track?: SpotifyTrackObject | null }[]; next?: string | null }>(
+      `/playlists/${encodeURIComponent(parsed.id)}/tracks`,
+      config,
+    );
+  } catch (err: any) {
+    console.warn(`[Spotify] Playlist tracks endpoint failed, falling back to embedded tracks: ${err.message}`);
+  }
+
+  const firstPage = playlistTracks ?? playlist.tracks ?? null;
+  for (const item of firstPage?.items || []) {
     if (item.track) tracks.push(toTrackInfo(item.track));
   }
 
-  let next = playlist.tracks?.next || null;
+  let next = firstPage?.next || null;
   while (next) {
     const page = await spotifyGet<{ items?: { track?: SpotifyTrackObject | null }[]; next?: string | null }>(next, config);
     for (const item of page.items || []) {
       if (item.track) tracks.push(toTrackInfo(item.track));
     }
     next = page.next || null;
+  }
+
+  console.log(`[Spotify] Playlist ${parsed.id}: ${tracks.length} tracks from playlist endpoint`);
+
+  // Some Spotify links are shared as /playlist/<album-id>; if the playlist
+  // endpoint returns no tracks, retry as an album before giving up.
+  if (tracks.length === 0) {
+    try {
+      const album = await spotifyGet<SpotifyAlbumObject>(`/albums/${encodeURIComponent(parsed.id)}`, config);
+      const albumName = album.name || '';
+      const albumArtist = artistNames(album.artists);
+      for (const item of album.tracks?.items || []) tracks.push(toTrackInfo(item, albumName, albumArtist));
+      let albumNext = album.tracks?.next || null;
+      while (albumNext) {
+        const page = await spotifyGet<{ items?: SpotifyTrackObject[]; next?: string | null }>(albumNext, config);
+        for (const item of page.items || []) tracks.push(toTrackInfo(item, albumName, albumArtist));
+        albumNext = page.next || null;
+      }
+      if (tracks.length > 0) {
+        return { type: 'album', name: `${albumArtist} - ${albumName}`, tracks };
+      }
+    } catch (err: any) {
+      console.warn(`[Spotify] Playlist ${parsed.id} has no tracks and album fallback failed: ${err.message}`);
+    }
   }
 
   return { type: 'playlist', name: playlist.name || 'Spotify playlist', tracks };
