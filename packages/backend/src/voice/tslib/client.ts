@@ -146,6 +146,11 @@ export class Ts3Client extends EventEmitter {
     }));
   }
 
+  /** Update the cached channel id after an external move (e.g. WebQuery). */
+  setCurrentChannelId(cid: number): void {
+    this.currentChannelId = cid;
+  }
+
   async connect(opts: Ts3ClientOptions): Promise<void> {
     this.opts = opts;
     this.state = "init";

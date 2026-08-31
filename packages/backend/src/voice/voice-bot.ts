@@ -232,6 +232,11 @@ export class VoiceBot extends EventEmitter {
     this.client.moveToChannel(cid, password ?? '');
   }
 
+  /** Update the cached channel id after an external move (e.g. WebQuery). */
+  setCurrentChannelId(cid: number): void {
+    this.client.setCurrentChannelId(cid);
+  }
+
   sendTextMessage(targetClid: number, msg: string): void {
     const cmd = buildCommand('sendtextmessage', {
       targetmode: 1,

@@ -805,7 +805,11 @@ export class MusicCommandHandler {
       const cid = parseInt(entry?.cid) || 0;
       if (!cid || cid === bot.currentChannelId) return;
 
-      bot.moveToChannel(cid);
+      // Use the WebQuery clientmove API: it runs with the configured API key,
+      // so it can move the bot even when the bot client itself lacks the
+      // native clientmove permission.
+      await client.execute(sid, 'clientmove', { clid: String(bot.ts3ClientId), cid });
+      bot.setCurrentChannelId(cid);
       console.log(`[MusicCmd] Bot ${botId}: moved to requester channel ${cid}`);
     } catch (err: any) {
       console.error(`[MusicCmd] Failed to move bot ${botId} to requester channel: ${err.message}`);
